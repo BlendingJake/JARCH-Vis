@@ -10,7 +10,7 @@ HI = 0.5 / METRIC_INCH
 def convert(num, to):
     if to == "ft":
         out = num / 3.28084
-    elif to == "in":
+    else:
         out = num / 39.3701
     re = round(out, 5)
     return re
