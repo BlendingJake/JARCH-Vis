@@ -239,7 +239,7 @@ def create_rectangle_jamb(verts, faces, width, height, jamb, full_jamb, start_x)
     cur_z = 0.0    
     
     # counteract extra inch for jamb thickness on left side if not full_jamb
-    ex = I if not full_jamb else I
+    ex = I if not full_jamb else 0
     
     verts += [(cur_x + ex, cur_y, cur_z), (cur_x + width + (2 * I), cur_y, cur_z),
               (cur_x + width + (2 * I), cur_y + jamb, cur_z), (cur_x + ex, cur_y + jamb, cur_z),
@@ -306,7 +306,7 @@ def create_rectangle_pane(verts, faces, width, height, sx, sy, sz, wide_frame):
 
 def double_hung(width, height, jamb, num):
     verts, faces = [], []             
-    sx = 0.0
+    sx = -(num - 1) / 2 * width - (num - 1) * HI
     full_jamb = True
     
     for i in range(num):
@@ -318,8 +318,7 @@ def double_hung(width, height, jamb, num):
                               (height - I) / 2, [0.0, 0.0, 0.0, 0.0])
         
         sx += width + I
-        if full_jamb:
-            full_jamb = False
+        full_jamb = False
                                         
     return verts, faces 
 

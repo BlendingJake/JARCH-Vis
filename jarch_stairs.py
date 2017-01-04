@@ -927,7 +927,7 @@ def update_stairs(self, context):
 
     if o.s_unwrap:
         unwrap_stairs(self, context)
-        if o.s_random_uve:
+        if o.s_random_uv:
             random_uvs(self, context)
 
     for i in mats:
