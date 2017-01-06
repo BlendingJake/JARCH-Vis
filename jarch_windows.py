@@ -228,7 +228,8 @@ def circular(radius, angle, res, jamb_w, full):
         
         p2 = p
         for i in range(res+3):
-            faces += [(p, p+2, p+8, p+6), (p+2, p+3, p+9, p+8), (p+4, p+5, p+11, p+10), (p+1, p+7, p+11, p+5), (p, p+1, p+7, p+6)]
+            faces += [(p, p+2, p+8, p+6), (p+2, p+3, p+9, p+8), (p+4, p+5, p+11, p+10), (p+1, p+7, p+11, p+5),
+                      (p, p+1, p+7, p+6)]
             p += 6
         faces += [(p, p+2, p2+2, p2), (p+2, p+3, p2+3, p2+2), (p2+1, p2+5, p+5, p+1), (p2+5, p2+4, p+4, p+5)]
 
@@ -832,6 +833,7 @@ bpy.types.Object.jv_is_split_center = BoolProperty(name="Split Center Pane?", de
 bpy.types.Object.jv_is_double_hung = BoolProperty(name="Double Hung?", default=True, update=update_window)
 
 
+# TODO: materials not completed
 class WindowMaterials(bpy.types.Operator):
     bl_idname = "mesh.jarch_window_materials"
     bl_label = "Generate\\Update Materials"
@@ -965,17 +967,6 @@ class WindowUpdate(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# TODO: not completed
-class WindowMesh(bpy.types.Operator):
-    bl_idname = "mesh.jarch_window_mesh"
-    bl_label = "Convert To Mesh"
-    bl_description = "Converts Window Object To Normal Object (No Longer Editable)"
-    bl_options = {"UNDO", "INTERNAL"}
-    
-    def execute(self, context):
-        return {"FINISHED"}
-
-
 class WindowDelete(bpy.types.Operator):
     bl_idname = "mesh.jarch_window_delete"
     bl_label = "Delete Window"
@@ -988,7 +979,8 @@ class WindowDelete(bpy.types.Operator):
 
 def register():
     bpy.utils.register_module(__name__)   
-    
+
+
 def unregister():
     bpy.utils.unregister_module(__name__)
     
