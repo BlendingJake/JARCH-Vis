@@ -19,7 +19,8 @@ def convert(num, to):
 # point rotation
 def point_rotation(data, origin, rot):
     from math import sin, cos
-    # Takes in a single tuple (x, y) or a tuple of tuples ((x, y), (x, y)) and rotates them rot radians around origin,
+    # Takes in a single tuple (x, y) or a tuple of tuples ((x, y), (x, y)) and rotates them rot or [rot1, rot2] radians
+    # around origin where rot1, rot2 match up to tuples in data so each point can have a separate rotation,
     # returns new (x, y) or ((x, y), (x, y)) values###
     data_list = []
     if isinstance(data[0], float) or isinstance(data[0], int):
@@ -27,15 +28,23 @@ def point_rotation(data, origin, rot):
     else:
         data_list = data
 
+    if isinstance(rot, float) or isinstance(rot, int):
+        rot_list = [rot] * len(data_list)
+    else:
+        rot_list = rot
+
     out_list = []
+    ct = 0
     for point in data_list:
         new_point = (point[0] - origin[0], point[1] - origin[1])
         x = new_point[0]
         y = new_point[1]
-        new_x = (x * cos(rot)) - (y * sin(rot))
-        new_y = (x * sin(rot)) - (y * cos(rot))
+        cur_rot = rot_list[ct]
+        new_x = (x * cos(cur_rot)) - (y * sin(cur_rot))
+        new_y = (x * sin(cur_rot)) - (y * cos(cur_rot))
         out = (new_x + origin[0], new_y + origin[1])
-        out_list.append((round(out[0], 4), round(out[1], 4)))
+        out_list.append((out[0], out[1]))
+        ct += 1
 
     if isinstance(data[0], float) or isinstance(data[0], int):
         return out_list[0]
