@@ -1,7 +1,8 @@
 import bpy
 from bpy.props import EnumProperty, FloatProperty, StringProperty, BoolProperty, IntProperty
-from math import radians, sqrt, acos, cos, sin
+from math import radians, sqrt, acos, cos, sin, asin
 from . jarch_utils import METRIC_INCH, METRIC_FOOT, I, HI, point_rotation
+from mathutils import Vector, Matrix
 
 # variables for pane size
 t = 1.5 / METRIC_INCH
@@ -22,10 +23,119 @@ def arch_function(half_width, half_height, res):
 
 
 # bay windows
-def bay(width, height, depth, segments, split_center, double_hung, jamb_w):
+def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, depth):
     verts, faces = [], []
-    ang = radians(180) / segments
-    hw = width / 2
+    segments = int(segments)
+    hw, jw, h2 = width / 2, jamb_w / 2, h
+    h -= 2 * I  # adjust for height of jamb
+
+    if is_bay:  # bay
+        side_pw, th2 = (depth - jamb_w) / sin(bay_angle), radians(90) - bay_angle
+        x = hw - 0.5 * jamb_w * cos(th2) - side_pw * 0.5 * cos(bay_angle)
+        y = 0.5 * jamb_w * sin(th2) + side_pw * sin(bay_angle) * 0.5
+
+        for r in [bay_angle, -bay_angle]:
+            p = len(verts)
+
+            matrix = Matrix.Translation((x, y, 0)) * Matrix.Rotation(radians(180) - r, 4, "Z")
+            create_rectangle_jamb(verts, faces, side_pw - 2 * I, h, jamb_w, True, 0)
+
+            if db_hung:
+                create_rectangle_pane(verts, faces, side_pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                                      [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, side_pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                                      I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
+            else:
+                create_rectangle_pane(verts, faces, side_pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+
+            # rotation and translation
+            for v in range(p, len(verts), 1):
+                verts[v] = (matrix * Vector(verts[v])).to_tuple()
+
+            x *= -1  # flip for other side
+
+        # center jambs and panes
+        hpw = hw - jamb_w * cos(th2) - side_pw * cos(bay_angle)
+        width_between_sides = 2 * hpw - 2 * I
+        pw = width_between_sides / 2 - I if split_center else width_between_sides
+        cx = -pw / 2 - I if split_center else 0
+
+        for i in range(2 if split_center else 1):
+            p = len(verts)
+            create_rectangle_jamb(verts, faces, pw, h, jamb_w, True, 0)
+
+            if db_hung:
+                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                                      [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                                      I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
+            else:
+                create_rectangle_pane(verts, faces, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+
+            matrix = Matrix.Translation((cx, depth - jw, 0)) * Matrix.Rotation(radians(180), 4, "Z")
+            # rotation and translation
+            for v in range(p, len(verts), 1):
+                verts[v] = (matrix * Vector(verts[v])).to_tuple()
+
+            cx += pw + 2 * I
+
+        # filler strips
+        points = [((hw - jamb_w * cos(th2), 0), (hw, 0), (hw, jamb_w * sin(th2))),
+                  ((-hw + jamb_w * cos(th2), 0), (-hw, jamb_w * sin(th2)), (-hw, 0)),
+                  ((hpw, depth - jamb_w), (hpw + jamb_w * cos(th2), depth - jamb_w + jamb_w * sin(th2)),
+                   (hpw, depth)), ((-hpw, depth - jamb_w), (-hpw, depth),
+                                   (-hpw - jamb_w * cos(th2), depth - jamb_w + jamb_w * sin(th2)),)]
+
+        for pts in points:
+            p = len(verts)
+            for pt in pts:
+                verts += [(pt[0], pt[1], 0), (pt[0], pt[1], h2)]
+            faces += [(p, p + 2, p + 3, p + 1), (p + 2, p + 4, p + 5, p + 3), (p, p + 1, p + 5, p + 4),
+                      (p + 1, p + 3, p + 5), (p, p + 4, p + 2)]
+    else:  # bow
+        ang = radians(180) / segments
+        th2 = asin(jamb_w * sin(ang / 2) / hw)
+        pw = 2 * hw * sin(ang / 2 - th2) - 2 * I
+        r = hw * cos(ang / 2 - th2) - jamb_w / 2
+        sx= jamb_w * cos(ang / 2)
+
+        # first filler strip on far right
+        pt = point_rotation((hw, 0), (0, 0), th2)
+        adj_x = pt[0] - sx
+        verts += [(pt[0] - sx, 0, 0), (pt[0] - sx, 0, h2), (pt[0], 0, 0), (pt[0], 0, h2), (pt[0], pt[1], 0),
+                  (pt[0], pt[1], h2)]
+        faces += [(0, 2, 3, 1), (2, 4, 5, 3), (0, 1, 5, 4), (1, 3, 5), (0, 4, 2)]
+
+        for i in range(segments):
+            p = len(verts)
+            x, y = point_rotation((r, 0), (0, 0), ang * (i + 1) - ang / 2)
+            matrix = Matrix.Translation((x, y, 0)) * Matrix.Rotation(radians(90) + ang * i + ang / 2, 4, "Z")
+            create_rectangle_jamb(verts, faces, pw, h, jamb_w, True, 0)
+
+            if db_hung:
+                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                                      [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                                      I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
+            else:
+                create_rectangle_pane(verts, faces, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+
+            # rotation and translation
+            for v in range(p, len(verts), 1):
+                verts[v] = (matrix * Vector(verts[v])).to_tuple()
+
+            # filler strips between panes/jambs on outside
+            p2 = len(verts)
+            if i == segments - 1:  # last strip, adjust final point rotation
+                pts = point_rotation(((adj_x, 0), (hw, 0), (adj_x + sx, 0)), (0, 0),
+                                     (ang * (i + 1), ang * (i + 1) - th2, ang * (i + 1)))
+            else:
+                pts = point_rotation(((adj_x, 0), (hw, 0), (hw, 0)), (0, 0),
+                                     (ang * (i + 1), ang * (i + 1) - th2, ang * (i + 1) + th2))
+            for pt in pts:
+                verts += [(pt[0], pt[1], 0), (pt[0], pt[1], h2)]
+            faces += [(p2, p2 + 2, p2 + 3, p2 + 1), (p2 + 2, p2 + 4, p2 + 5, p2 + 3), (p2, p2 + 1, p2 + 5, p2 + 4),
+                      (p2 + 1, p2 + 3, p2 + 5), (p2, p2 + 4, p2 + 2)]
 
     return verts, faces
 
@@ -229,7 +339,7 @@ def arch(width, height, roundness, res, is_slider, jamb_w):
     return verts, faces
 
 
-# creates a single window with two panes in it, startX, startY define the bottom center of the window
+# creates jamb, startX define the bottom center of the window
 def create_rectangle_jamb(verts, faces, width, height, jamb, full_jamb, start_x):
     p = len(verts) 
     
@@ -604,7 +714,7 @@ def stationary(width, height, jamb_w):
 # create window based off of parameters
 def create_window(context, types, sub_type, jamb_w, dh_width, dh_height, dh_num, gl_width, gl_height, gl_slide_right,
                   so_width, so_height, so_height_tall, sides, radius, is_full_circle, angle, roundness, res, is_slider,
-                  ba_width, ba_height, depth, segments, is_split_center, is_double_hung):
+                  ba_width, ba_height, is_bay, bay_angle, segments, is_split_center, is_double_hung, depth):
      
     verts, faces, ob_to_join = [], [], []     
 
@@ -627,7 +737,8 @@ def create_window(context, types, sub_type, jamb_w, dh_width, dh_height, dh_num,
         elif sub_type == "5":
             verts, faces = oval(so_width, so_height, res, jamb_w)
     elif types == "5":
-        verts, faces = bay(ba_width, ba_height, depth, segments, is_split_center, is_double_hung, jamb_w)
+        verts, faces = bay(ba_width, ba_height, is_bay, bay_angle, segments, is_split_center, is_double_hung, jamb_w,
+                           depth)
     
     return verts, faces, ob_to_join
 
@@ -636,12 +747,14 @@ def create_window(context, types, sub_type, jamb_w, dh_width, dh_height, dh_num,
 def update_window(self, context):
     ob = context.object
     
-    verts, faces, ob_to_join = create_window(context, ob.w_types, ob.w_odd_types, ob.w_jamb_width, ob.w_dh_width,
-                                             ob.w_dh_height, ob.w_dh_num, ob.w_gl_width, ob.w_gl_height,
-                                             ob.w_gl_slide_right, ob.w_so_width, ob.w_so_height, ob.w_so_height_tall,
-                                             ob.w_sides, ob.w_o_radius, ob.w_full_circle, ob.w_angle, ob.w_roundness,
-                                             ob.w_resolution, ob.w_is_slider, ob.w_ba_width, ob.w_ba_height, ob.w_depth,
-                                             ob.w_segments, ob.w_is_split_center, ob.w_is_double_hung)
+    verts, faces, ob_to_join = create_window(context, ob.jv_w_types, ob.jv_odd_types, ob.jv_jamb_width, ob.jv_dh_width,
+                                             ob.jv_dh_height, ob.jv_dh_num, ob.jv_gl_width, ob.jv_gl_height,
+                                             ob.jv_gl_slide_right, ob.jv_so_width, ob.jv_so_height,
+                                             ob.jv_so_height_tall, ob.jv_sides, ob.jv_o_radius, ob.jv_full_circle,
+                                             ob.jv_w_angle, ob.jv_roundness, ob.jv_resolution, ob.jv_is_slider,
+                                             ob.jv_ba_width, ob.jv_ba_height, ob.jv_is_bay, ob.jv_bay_angle,
+                                             ob.jv_bow_segments, ob.jv_is_split_center, ob.jv_is_double_hung,
+                                             ob.jv_depth)
             
     old_mesh = ob.data
     mesh = bpy.data.meshes.new(name="window")
@@ -659,59 +772,64 @@ def update_window(self, context):
     
 
 # general variables
-bpy.types.Object.w_types = EnumProperty(items=(("1", "Double-Hung", ""), ("2", "Gliding", ""), ("3", "Stationary", ""),
-                                               ("4", "Odd-Shaped", ""), ("5", "Bay", "")), name="",
-                                        update=update_window)
-bpy.types.Object.w_odd_types = EnumProperty(items=(("1", "Polygon", ""), ("2", "Circular", ""), ("3", "Arch", ""),
-                                                   ("4", "Gothic", ""), ("5", "Oval", "")), name="",
-                                            update=update_window)
-bpy.types.Object.w_object_add = StringProperty(default="none", update=update_window)
-bpy.types.Object.w_jamb_width = FloatProperty(name="Jamb Width", subtype="DISTANCE", min=2 / METRIC_INCH,
-                                              max=8 / METRIC_INCH, default=4 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_w_types = EnumProperty(items=(("1", "Double-Hung", ""), ("2", "Gliding", ""),
+                                                  ("3", "Stationary", ""), ("4", "Odd-Shaped", ""),
+                                                  ("5", "Bay/Bow", "")), name="", update=update_window)
+bpy.types.Object.jv_odd_types = EnumProperty(items=(("1", "Polygon", ""), ("2", "Circular", ""), ("3", "Arch", ""),
+                                                    ("4", "Gothic", ""), ("5", "Oval", "")), name="",
+                                             update=update_window)
+bpy.types.Object.jv_object_add = StringProperty(default="none", update=update_window)
+bpy.types.Object.jv_jamb_width = FloatProperty(name="Jamb Width", subtype="DISTANCE", min=2 / METRIC_INCH,
+                                               max=8 / METRIC_INCH, default=4 / METRIC_INCH, update=update_window)
 
 # double hung
-bpy.types.Object.w_dh_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=3 / METRIC_FOOT,
-                                            default=32 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_dh_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
-                                             max=6 / METRIC_FOOT, default=48 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_dh_num = IntProperty(name="Number Ganged Together", min=1, max=4, default=1, update=update_window)
+bpy.types.Object.jv_dh_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=3 / METRIC_FOOT,
+                                             default=32 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_dh_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
+                                              max=6 / METRIC_FOOT, default=48 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_dh_num = IntProperty(name="Number Ganged Together", min=1, max=4, default=1, update=update_window)
 # gliding
-bpy.types.Object.w_gl_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
-                                            default=60 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_gl_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
-                                             max=4 / METRIC_FOOT, default=36 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_gl_slide_right = BoolProperty(name="Slide Right?", default=True, update=update_window)
+bpy.types.Object.jv_gl_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
+                                             default=60 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_gl_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
+                                              max=4 / METRIC_FOOT, default=36 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_gl_slide_right = BoolProperty(name="Slide Right?", default=True, update=update_window)
 # stationary & odd-shaped
-bpy.types.Object.w_so_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
-                                            default=24 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_so_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
-                                             max=10 / METRIC_FOOT, default=36 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_so_height_tall = FloatProperty(name="Height", subtype="DISTANCE", min=3 / METRIC_FOOT,
-                                                  max=20 / METRIC_FOOT, default=5 / METRIC_FOOT, update=update_window)
-bpy.types.Object.w_o_radius = FloatProperty(name="Radius", subtype="DISTANCE", min=1 / METRIC_FOOT, max=3 / METRIC_FOOT,
-                                            default=1.5 / METRIC_FOOT, update=update_window)
+bpy.types.Object.jv_so_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
+                                             default=24 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_so_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
+                                              max=10 / METRIC_FOOT, default=36 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_so_height_tall = FloatProperty(name="Height", subtype="DISTANCE", min=3 / METRIC_FOOT,
+                                                   max=20 / METRIC_FOOT, default=5 / METRIC_FOOT, update=update_window)
+bpy.types.Object.jv_o_radius = FloatProperty(name="Radius", subtype="DISTANCE", min=1 / METRIC_FOOT,
+                                             max=3 / METRIC_FOOT, default=1.5 / METRIC_FOOT, update=update_window)
 # polygon
-bpy.types.Object.w_sides = IntProperty(name="Sides", min=3, max=12, default=3, update=update_window)
+bpy.types.Object.jv_sides = IntProperty(name="Sides", min=3, max=12, default=3, update=update_window)
 # circular
-bpy.types.Object.w_full_circle = BoolProperty(name="Full Circle?", default=True, update=update_window)
-bpy.types.Object.w_angle = FloatProperty(name="Angle", unit="ROTATION", min=radians(45), max=radians(270),
-                                         default=radians(90), update=update_window)
+bpy.types.Object.jv_full_circle = BoolProperty(name="Full Circle?", default=True, update=update_window)
+bpy.types.Object.jv_w_angle = FloatProperty(name="Angle", unit="ROTATION", min=radians(45), max=radians(270),
+                                            default=radians(90), update=update_window)
 # arch
-bpy.types.Object.w_roundness = FloatProperty(name="Roundness", subtype="PERCENTAGE", max=100.0, min=1.0, default=25.0,
+bpy.types.Object.jv_roundness = FloatProperty(name="Roundness", subtype="PERCENTAGE", max=100.0, min=1.0, default=25.0,
+                                              update=update_window)
+bpy.types.Object.jv_resolution = IntProperty(name="Resolution", min=32, max=512, default=64, step=2,
                                              update=update_window)
-bpy.types.Object.w_resolution = IntProperty(name="Resolution", min=32, max=512, default=64, step=2,
-                                            update=update_window)
-bpy.types.Object.w_is_slider = BoolProperty(name="Slider?", update=update_window)
+bpy.types.Object.jv_is_slider = BoolProperty(name="Slider?", update=update_window)
 # bay
-bpy.types.Object.w_ba_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=10 / METRIC_FOOT,
-                                            default=72 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_ba_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
-                                             max=6 / METRIC_FOOT, default=48 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_depth = FloatProperty(name="Window Depth", subtype="DISTANCE", min=0.5 / METRIC_FOOT,
-                                         max=2 / METRIC_FOOT, default=16 / METRIC_INCH, update=update_window)
-bpy.types.Object.w_segments = IntProperty(name="Segments", min=3, max=8, default=3, update=update_window)
-bpy.types.Object.w_is_split_center = BoolProperty(name="Split Center Pane?", default=False, update=update_window)
-bpy.types.Object.w_is_double_hung = BoolProperty(name="Double Hung?", default=True, update=update_window)
+bpy.types.Object.jv_ba_width = FloatProperty(name="Width", subtype="DISTANCE", min=2 / METRIC_FOOT,
+                                             max=20 / METRIC_FOOT, default=72 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_ba_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT,
+                                              max=15 / METRIC_FOOT, default=48 / METRIC_INCH, update=update_window)
+bpy.types.Object.jv_is_bay = BoolProperty(name="Bay?", default=True, update=update_window)
+bpy.types.Object.jv_bay_angle = FloatProperty(name="Side Pane Angle", subtype="ANGLE", min=radians(10), max=radians(75),
+                                              default=radians(45), update=update_window)
+bpy.types.Object.jv_depth = FloatProperty(name="Window Depth", subtype="DISTANCE", min=12/METRIC_INCH,
+                                          max=4/METRIC_FOOT, default=2/METRIC_FOOT, update=update_window)
+bpy.types.Object.jv_bow_segments = EnumProperty(items=(("2", "2", ""), ("4", "4", ""), ("6", "6", ""), ("8", "8", ""),
+                                                       ("10", "10", ""), ("12", "12", ""), ("14", "14", "")),
+                                                name="Segments", update=update_window)
+bpy.types.Object.jv_is_split_center = BoolProperty(name="Split Center Pane?", default=False, update=update_window)
+bpy.types.Object.jv_is_double_hung = BoolProperty(name="Double Hung?", default=True, update=update_window)
 
 
 class WindowMaterials(bpy.types.Operator):
@@ -736,84 +854,86 @@ class WindowPanel(bpy.types.Panel):
             layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
         else:
             o = context.object
-            if o is not None and o.w_object_add == "add":
+            if o is not None and o.jv_object_add == "add":
                 layout.label("Window Type:")
-                layout.prop(o, "w_types", icon="OBJECT_DATAMODE")
+                layout.prop(o, "jv_w_types", icon="OBJECT_DATAMODE")
                 
-                if o.w_types == "4":
+                if o.jv_w_types == "4":
                     layout.label("Shape:")
-                    layout.prop(o, "w_odd_types", icon="SPACE2")
+                    layout.prop(o, "jv_odd_types", icon="SPACE2")
                     
                 # parameters
-                if o.w_types != "5":
-                    layout.separator()
-                    layout.prop(o, "w_jamb_width")
+                layout.separator()
+                layout.prop(o, "jv_jamb_width")
                     
                 # double hung
                 layout.separator()
-                if o.w_types == "1":
-                    layout.prop(o, "w_dh_width")
-                    layout.prop(o, "w_dh_height")
-                    layout.prop(o, "w_dh_num")
+                if o.jv_w_types == "1":
+                    layout.prop(o, "jv_dh_width")
+                    layout.prop(o, "jv_dh_height")
+                    layout.prop(o, "jv_dh_num")
                 # gliding
-                elif o.w_types == "2":
-                    layout.prop(o, "w_gl_width")
-                    layout.prop(o, "w_gl_height")
-                    layout.prop(o, "w_gl_slide_right", icon="FORWARD")
+                elif o.jv_w_types == "2":
+                    layout.prop(o, "jv_gl_width")
+                    layout.prop(o, "jv_gl_height")
+                    layout.prop(o, "jv_gl_slide_right", icon="FORWARD")
                 # stationary 
-                elif o.w_types == "3":
-                    layout.prop(o, "w_so_width")
-                    layout.prop(o, "w_so_height")
+                elif o.jv_w_types == "3":
+                    layout.prop(o, "jv_so_width")
+                    layout.prop(o, "jv_so_height")
                 # odd-shaped
-                elif o.w_types == "4":
+                elif o.jv_w_types == "4":
                     # polygon
-                    if o.w_odd_types == "1":
-                        layout.prop(o, "w_o_radius")
-                        layout.prop(o, "w_sides")
+                    if o.jv_odd_types == "1":
+                        layout.prop(o, "jv_o_radius")
+                        layout.prop(o, "jv_sides")
                     # circular
-                    elif o.w_odd_types == "2":
-                        layout.prop(o, "w_o_radius")
-                        layout.prop(o, "w_resolution")
-                        layout.prop(o, "w_full_circle", icon="MESH_CIRCLE")
-                        if not o.w_full_circle:
-                            layout.prop(o, "w_angle")
+                    elif o.jv_odd_types == "2":
+                        layout.prop(o, "jv_o_radius")
+                        layout.prop(o, "jv_resolution")
+                        layout.prop(o, "jv_full_circle", icon="MESH_CIRCLE")
+                        if not o.jv_full_circle:
+                            layout.prop(o, "jv_w_angle")
                     
                     else:
-                        layout.prop(o, "w_so_width")
+                        layout.prop(o, "jv_so_width")
                         
-                        if o.w_odd_types == "4":  # gothic
-                            layout.prop(o, "w_so_height_tall")                                
-                            layout.prop(o, "w_is_slider", icon="SETTINGS")
+                        if o.jv_odd_types == "4":  # gothic
+                            layout.prop(o, "jv_so_height_tall")                                
+                            layout.prop(o, "jv_is_slider", icon="SETTINGS")
                         else:
-                            layout.prop(o, "w_so_height")
+                            layout.prop(o, "jv_so_height")
                             
                         layout.separator()                    
-                        layout.prop(o, "w_resolution")
+                        layout.prop(o, "jv_resolution")
                         
                         # arch
-                        if o.w_odd_types == "3":
-                            layout.prop(o, "w_roundness")                            
-                            layout.prop(o, "w_is_slider", icon="SETTINGS")
+                        if o.jv_odd_types == "3":
+                            layout.prop(o, "jv_roundness")                            
+                            layout.prop(o, "jv_is_slider", icon="SETTINGS")
                             
                 # bay
-                elif o.w_types == "5":
-                    layout.prop(o, "w_ba_width")
-                    layout.prop(o, "w_ba_height")
-                    layout.prop(o, "w_segments")                    
+                elif o.jv_w_types == "5":
+                    layout.prop(o, "jv_ba_width")
+                    layout.prop(o, "jv_ba_height")
                     layout.separator()
-                    
-                    if o.w_segments % 2 != 0:
-                        layout.prop(o, "w_depth")  
-                        layout.prop(o, "w_is_split_center", icon="PAUSE")
+
+                    layout.prop(o, "jv_is_bay", icon="NOCURVE")
+                    if o.jv_is_bay:
+                        layout.prop(o, "jv_bay_angle", icon="MAN_ROT")
+                        layout.prop(o, "jv_depth")
                         layout.separator()
-                    
-                    layout.prop(o, "w_is_double_hung", icon="SPLITSCREEN")
+                        layout.prop(o, "jv_is_split_center", icon="PAUSE")
+                    else:
+                        layout.prop(o, "jv_bow_segments")
+                    layout.prop(o, "jv_is_double_hung", icon="SPLITSCREEN")
                                               
                 # operators
                 layout.separator()
                 layout.separator()
                 layout.operator("mesh.jarch_window_update", icon="FILE_REFRESH")
                 layout.operator("mesh.jarch_window_delete", icon="CANCEL")
+                layout.operator("mesh.jarch_window_add", icon="OUTLINER_OB_LATTICE")
             
             else:
                 layout.operator("mesh.jarch_window_add", icon="OUTLINER_OB_LATTICE")
@@ -831,7 +951,7 @@ class WindowAdd(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.mesh.primitive_cube_add()
         o = context.object
-        o.w_object_add = "add"            
+        o.jv_object_add = "add"            
         return {"FINISHED"}
 
 
