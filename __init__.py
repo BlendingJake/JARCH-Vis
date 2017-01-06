@@ -16,29 +16,27 @@
 bl_info = {
     "name": "JARCH Vis",
     "author": "Jacob Morris",
-    "version": (0, 8, 3),
-    "blender": (2, 76, 0),
+    "version": (1, 0, 0),
+    "blender": (2, 78, 0),
     "location": "View 3D > Toolbar > JARCH Vis",
-    "description": "Allows The Creation Of Architectural Objects Like Flooring, Siding, Stairs, and Roofing",
+    "description": "Allows The Creation Of Architectural Objects Like Flooring, Siding, Stairs, Roofing, and Windows",
     "category": "Add Mesh"
     }
 
 if "bpy" in locals():
     import importlib
-    import jarch_siding
-    import jarch_flooring
-    import jarch_stairs
-    import jarch_roofing
 
     importlib.reload(jarch_siding)
     importlib.reload(jarch_flooring)
     importlib.reload(jarch_stairs)
     importlib.reload(jarch_roofing)
+    importlib.reload(jarch_windows)
 else: 
     from . import jarch_siding
-    from . import jarch_flooring
+    from . import jv_flooring
     from . import jarch_stairs
     from . import jarch_roofing
+    from . import jarch_windows
 
 import bpy
 from bpy.props import StringProperty, CollectionProperty, IntProperty, FloatProperty
@@ -52,19 +50,20 @@ class FaceGroup(bpy.types.PropertyGroup):
 
 
 class INFO_MT_mesh_jarch_menu_add(bpy.types.Menu):
-    bl_idname = "INFO_MT_mesh_jarch_menu_add"
+    bl_idname = "INFO_MT_mesh_jv_menu_add"
     bl_label = "JARCH Vis"
 
     def draw(self, context):
         layout = self.layout       
-        layout.operator("mesh.jarch_flooring_add", text="Add Flooring", icon="MESH_GRID")
-        layout.operator("mesh.jarch_roofing_add", text="Add Roofing", icon="LINCURVE")
-        layout.operator("mesh.jarch_siding_add", text="Add Siding", icon="UV_ISLANDSEL")
-        layout.operator("mesh.jarch_stairs_add", text="Add Stairs", icon="MOD_ARRAY")
+        layout.operator("mesh.jv_flooring_add", text="Add Flooring", icon="MESH_GRID")
+        layout.operator("mesh.jv_roofing_add", text="Add Roofing", icon="LINCURVE")
+        layout.operator("mesh.jv_siding_add", text="Add Siding", icon="UV_ISLANDSEL")
+        layout.operator("mesh.jv_stairs_add", text="Add Stairs", icon="MOD_ARRAY")
+        layout.operator("mesh.jv_window_add", text="Add Window", icon="OUTLINER_OB_LATTICE")
 
 
 def menu_add(self, context):
-    self.layout.menu("INFO_MT_mesh_jarch_menu_add", icon="PLUGIN")
+    self.layout.menu("INFO_MT_mesh_jv_menu_add", icon="PLUGIN")
 
 
 def register():

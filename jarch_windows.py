@@ -850,7 +850,7 @@ bpy.types.Object.jv_is_double_hung = BoolProperty(name="Double Hung?", default=T
 
 # TODO: materials not completed
 class WindowMaterials(bpy.types.Operator):
-    bl_idname = "mesh.jarch_window_materials"
+    bl_idname = "mesh.jv_window_materials"
     bl_label = "Generate\\Update Materials"
     bl_options = {"UNDO", "INTERNAL"}
     
@@ -859,7 +859,7 @@ class WindowMaterials(bpy.types.Operator):
 
 
 class WindowPanel(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_jarch_window"
+    bl_idname = "OBJECT_PT_jv_window"
     bl_label = "JARCH Vis: Window"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
@@ -949,15 +949,15 @@ class WindowPanel(bpy.types.Panel):
                 layout.separator()
                 layout.separator()
                 layout.operator("mesh.jarch_window_update", icon="FILE_REFRESH")
-                layout.operator("mesh.jarch_window_delete", icon="CANCEL")
-                layout.operator("mesh.jarch_window_add", icon="OUTLINER_OB_LATTICE")
+                layout.operator("mesh.jv_window_delete", icon="CANCEL")
+                layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
             
             else:
-                layout.operator("mesh.jarch_window_add", icon="OUTLINER_OB_LATTICE")
+                layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
 
 
 class WindowAdd(bpy.types.Operator):
-    bl_idname = "mesh.jarch_window_add"
+    bl_idname = "mesh.jv_window_add"
     bl_label = "JARCH Vis: Add Window"
     bl_description = "JARCH Vis: Window Generator"
     
@@ -973,7 +973,7 @@ class WindowAdd(bpy.types.Operator):
 
 
 class WindowUpdate(bpy.types.Operator):
-    bl_idname = "mesh.jarch_window_update"
+    bl_idname = "mesh.jv_window_update"
     bl_label = "Update Window"
     bl_options = {"UNDO", "INTERNAL"}
     
@@ -983,7 +983,7 @@ class WindowUpdate(bpy.types.Operator):
 
 
 class WindowDelete(bpy.types.Operator):
-    bl_idname = "mesh.jarch_window_delete"
+    bl_idname = "mesh.jv_window_delete"
     bl_label = "Delete Window"
     bl_options = {"UNDO", "INTERNAL"}
     
