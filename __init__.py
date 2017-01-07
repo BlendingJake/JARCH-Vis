@@ -31,12 +31,14 @@ if "bpy" in locals():
     importlib.reload(jv_stairs)
     importlib.reload(jv_roofing)
     importlib.reload(jv_windows)
+    importlib.reload(jv_properties)
 else: 
     from . import jv_siding
     from . import jv_flooring
     from . import jv_stairs
     from . import jv_roofing
     from . import jv_windows
+    from . import jv_properties
 
 import bpy
 from bpy.props import StringProperty, CollectionProperty, IntProperty, FloatProperty
@@ -49,7 +51,7 @@ class FaceGroup(bpy.types.PropertyGroup):
     rot = FloatProperty(unit="ROTATION")
 
 
-class INFO_MT_mesh_jarch_menu_add(bpy.types.Menu):
+class INFO_MT_mesh_jv_menu_add(bpy.types.Menu):
     bl_idname = "INFO_MT_mesh_jv_menu_add"
     bl_label = "JARCH Vis"
 

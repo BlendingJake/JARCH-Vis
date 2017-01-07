@@ -20,7 +20,7 @@ from mathutils import Euler, Vector
 import bmesh
 from random import uniform
 from . jv_materials import image_material
-from . jv_utils import point_rotation, METRIC_INCH, I
+from . jv_utils import point_rotation, METRIC_INCH, I, unwrap_object, random_uvs
 import jv_properties
 
 
@@ -944,7 +944,7 @@ def update_stairs(self, context):
         bpy.ops.object.join()
 
     if o.jv_is_unwrap:
-        unwrap_stairs(self, context)
+        unwrap_object(self, context)
         if o.jv_is_random_uv:
             random_uvs(self, context)
 
@@ -997,51 +997,6 @@ def stair_materials(self, context):
                 bpy.data.materials.remove(i)
     else:
         self.report({"ERROR"}, "JARCH VIS: Render Engine Must Be Cycles To Create Materials")
-
-
-def unwrap_stairs(self, context):
-    o = context.object
-    for i in context.selected_objects:
-        i.select = False
-
-    o.select = True
-    context.scene.objects.active = o
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for region in area.regions:
-                if region.type == 'WINDOW':
-                    bpy.ops.object.editmode_toggle()
-                    override = bpy.context.copy()
-                    override["area"] = area
-                    override["region"] = region
-                    override["active_object"] = context.selected_objects[0]
-                    bpy.ops.mesh.select_all(action="SELECT")
-                    bpy.ops.uv.cube_project(override)
-                    bpy.ops.object.editmode_toggle()
-
-
-def random_uvs(self, context):
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for region in area.regions:
-                if region.type == 'WINDOW':
-                    bpy.ops.object.editmode_toggle()
-                    bpy.ops.mesh.select_all(action="SELECT")
-                    obj = bpy.context.object
-                    me = obj.data
-                    bm = bmesh.from_edit_mesh(me)      
-
-                    uv_layer = bm.loops.layers.uv.verify()
-                    bm.faces.layers.tex.verify()
-                    # adjust UVs                        
-                    for f in bm.faces:
-                        offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
-                        for v in f.loops:
-                            luv = v[uv_layer]   
-                            luv.uv = (luv.uv + offset).xy
-
-                    bmesh.update_edit_mesh(me)
-                    bpy.ops.object.editmode_toggle()
 
 
 class StairsPanel(bpy.types.Panel):

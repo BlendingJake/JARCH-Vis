@@ -44,6 +44,83 @@ def preview_materials(self, context):
                         space.viewport_shade = "SOLID"
 
 
+def unwrap_object(self, context):
+    import bpy
+
+    o = context.object
+    for ob in context.selected_objects:
+        ob.select = False
+    o.select = True
+    context.scene.objects.active = o
+
+    bpy.ops.object.editmode_toggle()
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.cube_project()
+    bpy.ops.object.editmode_toggle()
+
+
+def random_uvs(self, context):
+    import bpy
+    import bmesh
+    from mathutils import Vector
+    from random import uniform
+    bpy.ops.object.editmode_toggle()
+    bpy.ops.mesh.select_all(action="SELECT")
+    obj = bpy.context.object
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    uv_layer = bm.loops.layers.uv.verify()
+    bm.faces.layers.tex.verify()
+    # adjust UVs
+    for f in bm.faces:
+        offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
+        for v in f.loops:
+            luv = v[uv_layer]
+            luv.uv = (luv.uv + offset).xy
+
+    bmesh.update_edit_mesh(me)
+    bpy.ops.object.editmode_toggle()
+
+
+def update_roofing_facegroup_selection(self, context):
+    import bpy
+    # updates which faces are selected based on which face group is selected in the UI##
+    ob = context.object
+    bpy.ops.object.editmode_toggle()
+
+    if len(ob.jv_face_groups) >= 1:
+        fg = ob.jv_face_groups[ob.jv_group_index]
+
+        # deselect all faces and edges
+        for f in ob.data.polygons:
+            f.select = False
+        for e in ob.data.edges:
+            e.select = False
+
+            # get info from face group and use to define selection
+        st = fg.data.split(",")
+        del st[len(st) - 1]
+
+        temp_l = []
+        for i in st:
+            st2 = i.split("+")
+            tl = (float(st2[0]), float(st2[1]), float(st2[2]))
+            temp_l.append(tl)
+
+            # select correct faces
+        for f in temp_l:
+            for face_in_obj in ob.data.polygons:
+                if round_tuple(tuple(face_in_obj.center), 4) == f:
+                    face_in_obj.select = True
+
+        # make sure selection list is up to date
+        bpy.ops.object.editmode_toggle()
+        bpy.ops.object.editmode_toggle()
+
+    bpy.ops.object.editmode_toggle()
+
+
 # convert
 def convert(num, to):
     if to == "ft":
@@ -201,4 +278,5 @@ def apply_modifier_boolean(bpy, ob, bool_name: str):
     bpy.ops.object.modifier_add(type="BOOLEAN")
     pos = len(ob.modifiers) - 1
     bpy.context.object.modifiers[pos].object = bpy.data.objects[bool_name]
+    bpy.context.object.modifiers[pos].solver = "CARVE"
     bpy.ops.object.modifier_apply(apply_as="DATA", modifier=ob.modifiers[0].name)

@@ -736,7 +736,7 @@ def update_flooring(self, context):
     if o.jv_is_bevel and o.jv_flooring_types == "1":
         bpy.ops.object.modifier_add(type="BEVEL")
         pos = len(o.modifiers) - 1
-        o.modifiers[pos].segments = o.jv_res
+        o.modifiers[pos].segments = o.jv_bevel_res
         o.modifiers[pos].width = o.jv_bevel_amo
         bpy.ops.object.modifier_apply(apply_as="DATA", modifier=o.modifiers[pos].name)
     
@@ -1063,7 +1063,7 @@ class FlooringPanel(bpy.types.Panel):
                                 # bevel
                                 layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
                                 if o.jv_is_bevel:
-                                    layout.prop(o, "jv_res", icon="OUTLINER_DATA_CURVE")
+                                    layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
                                     layout.prop(o, "jv_bevel_amo")
                                     layout.separator()
                             

@@ -22,7 +22,8 @@ from mathutils import Euler, Vector
 from . jv_materials import *
 import jv_properties
 import bmesh
-from . jv_utils import rot_from_normal, object_dimensions, point_rotation, METRIC_INCH, METRIC_FOOT, I, HI
+from . jv_utils import rot_from_normal, object_dimensions, point_rotation, METRIC_INCH, METRIC_FOOT, I, HI, \
+    unwrap_object, random_uvs
 from ast import literal_eval
 
 
@@ -1273,7 +1274,7 @@ def update_siding(self, context):
             bpy.ops.object.modifier_add(type="BEVEL")
             soldier.modifiers["Bevel"].width = 0.0024384
             soldier.modifiers["Bevel"].use_clamp_overlap = False
-            soldier.modifiers["Bevel"].segments = o.jv_res
+            soldier.modifiers["Bevel"].segments = o.jv_bevel_res
             bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Bevel")
             context.scene.objects.active = o
 
@@ -1283,7 +1284,7 @@ def update_siding(self, context):
         pos = len(o.modifiers) - 1
         bpy.context.object.modifiers[pos].width = 0.003048
         bpy.context.object.modifiers[pos].use_clamp_overlap = o.vinyl_types != "3"
-        bpy.context.object.modifiers[pos].segments = o.jv_res
+        bpy.context.object.modifiers[pos].segments = o.jv_bevel_res
         bpy.context.object.modifiers[pos].limit_method = "ANGLE"
         bpy.context.object.modifiers[pos].angle_limit = 1.4
         bpy.ops.object.modifier_apply(apply_as="DATA", modifier=o.modifiers[pos].name)
@@ -1302,7 +1303,7 @@ def update_siding(self, context):
         width = o.jv_bevel_width if o.jv_siding_types == "1" else 0.0024384
         bpy.context.object.modifiers[pos].width = width
         bpy.context.object.modifiers[pos].use_clamp_overlap = False
-        bpy.context.object.modifiers[pos].segments = o.jv_res
+        bpy.context.object.modifiers[pos].segments = o.jv_bevel_res
         bpy.ops.object.modifier_apply(apply_as="DATA", modifier=o.modifiers[pos].name)
 
     # cut slope on brick and stone
@@ -1553,9 +1554,10 @@ def update_siding(self, context):
             mat = bpy.data.materials.get(i)
             o.data.materials.append(mat)
 
-    unwrap_siding(self, context)
-    if o.jv_is_random_uv and o.jv_is_unwrap:
-        randomize_uv(self, context)
+    if o.jv_is_unwrap:
+        unwrap_object(self, context)
+        if o.jv_is_random_uv:
+            random_uvs(self, context)
 
 
 def siding_materials(self, context):
@@ -1630,29 +1632,6 @@ def siding_materials(self, context):
             bpy.data.materials.remove(i)
 
 
-def unwrap_siding(self, context):
-    o = context.object
-
-    if o.jv_siding_types in ("1", "5", "6") and o.jv_is_unwrap:
-        for i in context.selected_objects:
-            i.select = False
-        o.select = True
-        bpy.context.scene.objects.active = o
-
-        for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        bpy.ops.object.editmode_toggle()
-                        override = bpy.context.copy()
-                        override["area"] = area
-                        override["region"] = region
-                        override["active_object"] = bpy.context.selected_objects[0]
-                        bpy.ops.mesh.select_all(action="SELECT")
-                        bpy.ops.uv.cube_project(override)
-                        bpy.ops.object.editmode_toggle()
-
-
 def vertex_group(self, context):
     o = context.object
     for i in context.selected_objects:
@@ -1673,30 +1652,6 @@ def vertex_group(self, context):
                     active = o.vertex_groups.active
                     active.name = "JARCH"
                     bpy.ops.object.editmode_toggle()
-
-
-def randomize_uv(self, context):
-    for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        bpy.ops.object.editmode_toggle()
-                        bpy.ops.mesh.select_all(action="SELECT")
-                        obj = bpy.context.object
-                        me = obj.data
-                        bm = bmesh.from_edit_mesh(me)
-
-                        uv_layer = bm.loops.layers.uv.verify()
-                        bm.faces.layers.tex.verify()
-                        # adjust UVs
-                        for f in bm.faces:
-                            offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
-                            for v in f.loops:
-                                luv = v[uv_layer]
-                                luv.uv = (luv.uv + offset).xy
-
-                        bmesh.update_edit_mesh(me)
-                        bpy.ops.object.editmode_toggle()
 
 
 class SidingUpdate(bpy.types.Operator):
@@ -1773,7 +1728,7 @@ class SidingPanel(bpy.types.Panel):
             layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
         else:
             o = context.object
-            if o is not None:
+            if o is not None and o.jv_internal_type == "siding":
                 if o.type == "MESH":
                     if o.jv_object_add in ("convert", "add"):
                         layout.label("Material:")
@@ -1848,7 +1803,7 @@ class SidingPanel(bpy.types.Panel):
                         if o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and o.wood_types == "1"):
                             layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
                             if o.jv_is_bevel and o.jv_siding_types != "1":
-                                layout.prop(o, "jv_res", icon="OUTLINER_DATA_CURVE")
+                                layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
                                 layout.separator()
                             elif o.jv_siding_types == "1" and o.jv_is_bevel:
                                 layout.prop(o, "jv_bevel_width")
@@ -1902,7 +1857,7 @@ class SidingPanel(bpy.types.Panel):
                                 layout.prop(o, "jv_max_boards")
                             if o.jv_siding_types == "2":
                                 layout.separator()
-                                layout.prop(o, "jv_res", icon="OUTLINER_DATA_CURVE")
+                                layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
                                 layout.separator()
 
                         if o.jv_object_add == "add":
@@ -1988,14 +1943,13 @@ class SidingPanel(bpy.types.Panel):
                         layout.operator("mesh.jv_siding_delete", icon="CANCEL")
                         layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
                     else:
-                        if o.jv_object_add != "mesh":
-                            layout.operator("mesh.jv_siding_convert", icon="FILE_REFRESH")
-                            layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
-                        else:
-                            layout.label("This Is A JARCH Vis Mesh Object", icon="INFO")
+                        layout.operator("mesh.jv_siding_convert", icon="FILE_REFRESH")
+                        layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
                 else:
                     layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
             else:
+                if o is not None and o.jv_internal_type != "siding":
+                    layout.label("This Is Already A JARCH Vis Object", icon="INFO")
                 layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
 
 
