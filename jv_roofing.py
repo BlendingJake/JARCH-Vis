@@ -988,10 +988,10 @@ def roofing_materials(self):
 
     # check to make sure pictures have been picked
     if o.jv_col_image == "" and o.jv_roofing_types in ("2", "3"): 
-        self.report({"ERROR"}, "No Color Image Entered")
+        self.report({"ERROR"}, "JARCH Vis: No Color Image Filepath")
         return
     if o.jv_is_bump and o.jv_norm_image == "" and o.jv_roofing_types in ("2", "3"):
-        self.report({"ERROR"}, "No Normal Map Image Entered")
+        self.report({"ERROR"}, "JARCH Vis: No Normal Image Filepath")
         return
 
     if o.jv_roofing_types == "1":
@@ -1007,7 +1007,7 @@ def roofing_materials(self):
             o.data.materials[0] = mat.copy()
         o.data.materials[0].name = "roofing_"+o.name
     else:
-        self.report({"ERROR"}, "Images Not Found, Make Sure Path Is Correct")
+        self.report({"ERROR"}, "JARCH Vis: Image(s) Not Found, Make Sure Path Is Correct")
 
     # remove extra materials
     for i in bpy.data.materials:
@@ -1064,9 +1064,9 @@ def add_item(context):
         item.face_slope = 12 * tan(rot[1])
         item.rot = rot[2] - radians(270)
         
-        item.name = "Group "+str(ob.jv_face_group_ct)
+        item.name = "Group " + str(ob.jv_face_group_ct)
         
-        ob.jv_group_index = len(ob.jv_face_groups)-1
+        ob.jv_group_index = len(ob.jv_face_groups) - 1
         ob.jv_face_group_ct = len(ob.jv_face_groups) 
 
 
@@ -1121,7 +1121,7 @@ class RoofingPanel(bpy.types.Panel):
                     layout.operator("mesh.jv_remove_item", icon="ZOOMOUT")
                     layout.operator("mesh.jv_update_item", icon="FILE_REFRESH")
                 elif context.mode == "EDIT_MESH" and ob.jv_object_add != "none":
-                    layout.label("This Object Is Already A JARCH Vis: Siding Object", icon="INFO")
+                    layout.label("This Object Is Already A JARCH Vis: Roofing Object", icon="INFO")
                     
                 # if in object mode and there are face groups
                 if (context.mode == "OBJECT" and len(ob.jv_face_groups) >= 1 and ob.jv_object_add == "convert") or \

@@ -944,10 +944,10 @@ def vertex_group(self, context):
 def flooring_material(self, context):
     o = bpy.context.object
     if o.jv_col_image == "":
-        self.report({"ERROR"}, "No Color Image Entered")
+        self.report({"ERROR"}, "JARCH Vis: No Color Image Filepath")
         return
     if o.jv_is_bump and o.jv_norm_image == "":
-        self.report({"ERROR"}, "No Normal Map Image Entered")
+        self.report({"ERROR"}, "JARCH Vis: No Normal Image Filepath")
         return
 
     extra_rot = None
@@ -964,7 +964,7 @@ def flooring_material(self, context):
             o.data.materials[0] = mat.copy()
         o.data.materials[0].name = "flooring_" + o.name
     else:
-        self.report({"ERROR"}, "Images Not Found, Make Sure Path Is Correct")
+        self.report({"ERROR"}, "JARCH Vis: Image(s) Not Found, Make Sure Path Is Correct")
         return
 
     if o.jv_flooring_types == "2" and len(o.data.materials) >= 2:
@@ -998,7 +998,7 @@ class FlooringPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         if bpy.context.mode == "EDIT_MESH":
-            layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
+            layout.label("JARCH Vis: Flooring Doesn't Work In Edit Mode", icon="ERROR")
         else:
             o = context.object
             if o is not None:

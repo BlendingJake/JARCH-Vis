@@ -901,7 +901,7 @@ class WindowPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         if bpy.context.mode == "EDIT_MESH":
-            layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
+            layout.label("JARCH Vis: Windows Doesn't Work In Edit Mode", icon="ERROR")
         elif context.object is None:
             layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
         elif context.object.jv_internal_type == "window":

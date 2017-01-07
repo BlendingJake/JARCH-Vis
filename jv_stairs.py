@@ -1009,7 +1009,7 @@ class StairsPanel(bpy.types.Panel):
         layout = self.layout
         o = context.object
         if bpy.context.mode == "EDIT_MESH":
-            layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
+            layout.label("JARCH Vis: Stairs Doesn't Work In Edit Mode", icon="ERROR")
         else:
             if o is not None:
                 if o.jv_internal_type == "stair":

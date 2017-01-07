@@ -1241,7 +1241,7 @@ def update_siding(self, context):
             o.jv_cut_name = o.name + "_cutter"
             coords = [o.location, o.rotation_euler]
         else:
-            self.report({"ERROR"}, "Can't Find Cutter Object")
+            self.report({"ERROR"}, "JARCH Vis: Can't Find Cutter Object")
 
     for i in bpy.data.objects:
         if i.data == old_mesh:
@@ -1730,7 +1730,7 @@ class SidingPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         if bpy.context.mode == "EDIT_MESH":
-            layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
+            layout.label("JARCH Vis: Siding Doesn't Work In Edit Mode", icon="ERROR")
         else:
             o = context.object
             if o is not None and o.jv_internal_type == "siding":
