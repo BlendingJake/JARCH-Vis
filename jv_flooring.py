@@ -648,7 +648,7 @@ def update_flooring(self, context):
 
     # generate faces and vertices
     if o.jv_object_add == "add":
-        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_types, o.jv_tile_types, o.jv_over_width,
+        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_flooring_types, o.jv_tile_types, o.jv_over_width,
                                        o.jv_over_length, o.jv_b_width, o.jv_b_length, o.jv_b_length_s,
                                        o.jv_is_length_vary, o.jv_length_vary, o.jv_num_boards, o.jv_space_l,
                                        o.jv_space_w, o.jv_spacing, o.jv_t_width, o.jv_t_length, o.jv_is_offset,
@@ -656,7 +656,7 @@ def update_flooring(self, context):
                                        o.jv_is_width_vary, o.jv_width_vary, o.jv_max_boards, o.jv_is_ran_thickness,
                                        o.jv_ran_thickness, o.jv_thickness, o.jv_hb_direction)
     elif o.jv_object_add == "convert":
-        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_types, o.jv_tile_types, dim[0], dim[1],
+        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_flooring_types, o.jv_tile_types, dim[0], dim[1],
                                        o.jv_b_width, o.jv_b_length, o.jv_b_length_s, o.jv_is_length_vary,
                                        o.jv_length_vary, o.jv_num_boards, o.jv_space_l, o.jv_space_w, o.jv_spacing,
                                        o.jv_t_width, o.jv_t_length, o.jv_is_offset, o.jv_offset, o.jv_is_random_offset,
@@ -834,7 +834,7 @@ def update_flooring(self, context):
     
     # cut tile or herringbone wood
     if o.jv_object_add == "add" and (o.jv_flooring_types == "2" and o.jv_tile_types in ("2", "4")) or \
-            (o.jv_flooring_types == "1" and o.jv_wood_types in ("3", "4")):
+            (o.jv_flooring_types == "1" and o.jv_wood_flooring_types in ("3", "4")):
         verts3, faces3 = tile_cutter(o.jv_over_width, o.jv_over_length)
 
         cutter_me = bpy.data.meshes.new("cutter")
@@ -951,7 +951,7 @@ def flooring_material(self, context):
         return
 
     extra_rot = None
-    if o.jv_flooring_types == "1" and o.jv_wood_types in ("3", "4"):
+    if o.jv_flooring_types == "1" and o.jv_wood_flooring_types in ("3", "4"):
         extra_rot = 45
 
     mat = image_material(bpy, o.jv_im_scale, o.jv_col_image, o.jv_norm_image, o.jv_bump_amo, o.jv_is_bump,
@@ -1010,7 +1010,7 @@ class FlooringPanel(bpy.types.Panel):
                             layout.label("Types:")
 
                             if o.jv_flooring_types == "1":
-                                layout.prop(o, "jv_wood_types", icon="OBJECT_DATA")
+                                layout.prop(o, "jv_wood_flooring_types", icon="OBJECT_DATA")
                             elif o.jv_flooring_types == "2":
                                 layout.prop(o, "jv_tile_types", icon="OBJECT_DATA")
                             layout.separator()
@@ -1025,11 +1025,11 @@ class FlooringPanel(bpy.types.Panel):
                             if o.jv_flooring_types == "1":
                                 layout.prop(o, "jv_b_width")
                                 
-                                if o.jv_wood_types == "1":
+                                if o.jv_wood_flooring_types == "1":
                                     layout.prop(o, "jv_b_length")
                                 layout.separator()
                                 
-                                if o.jv_wood_types == "1":
+                                if o.jv_wood_flooring_types == "1":
                                     layout.prop(o, "jv_is_length_vary", icon="NLA")
                                     if o.jv_is_length_vary:
                                         layout.prop(o, "jv_length_vary")
@@ -1049,15 +1049,15 @@ class FlooringPanel(bpy.types.Panel):
                                     layout.prop(o, "jv_space_w")
                                     layout.prop(o, "jv_space_l")
                                     layout.separator()
-                                elif o.jv_wood_types in ("3", "4"):
+                                elif o.jv_wood_flooring_types in ("3", "4"):
                                     layout.prop(o, "jv_b_length_s")
                                     layout.prop(o, "jv_hb_direction")
                                     layout.separator()   
                                 
-                                if o.jv_wood_types != "1":
+                                if o.jv_wood_flooring_types != "1":
                                     layout.prop(o, "jv_spacing")
 
-                                if o.jv_wood_types == "2":
+                                if o.jv_wood_flooring_types == "2":
                                     layout.prop(o, "jv_num_boards")
                                 
                                 # bevel

@@ -28,7 +28,7 @@ from ast import literal_eval
 
 
 # manages sorting out which type of siding needs to be create, gets corner data for cutout objects
-def create_siding(context, mat, tin_types, wood_types, vinyl_types, sloped, ow, oh, bw, slope, is_width_vary,
+def create_siding(context, mat, jv_tin_siding_types, wood_types, vinyl_types, sloped, ow, oh, bw, slope, is_width_vary,
                   width_vary, is_cutout, num_cutouts, nc1, nc2, nc3, nc4, nc5, baw, spacing, is_length_vary,
                   length_vary, max_boards, b_w, b_h, b_offset, b_gap, b_ran_offset, b_vary, is_corner, is_invert,
                   is_soldier, is_left, is_right, avw, avh, s_random, b_random, x_off):
@@ -137,9 +137,9 @@ def create_siding(context, mat, tin_types, wood_types, vinyl_types, sloped, ow, 
         verts, faces = vinyl_dutch_lap(oh, ow, sloped, slope, is_length_vary, length_vary, bw, faces, verts,
                                        max_boards, spacing)
     # Tin
-    elif mat == "3" and tin_types == "1":
+    elif mat == "3" and jv_tin_siding_types == "1":
         verts, faces = tin_normal(oh, ow, sloped, slope, faces, verts)
-    elif mat == "3" and tin_types == "2":
+    elif mat == "3" and jv_tin_siding_types == "2":
         verts, faces = tin_angular(oh, ow, sloped, slope, faces, verts)
     # Fiber Cement
     elif mat == "4":
@@ -1149,8 +1149,9 @@ def update_siding(self, context):
 
     # create object
     if o.jv_object_add == "add":
-        verts, faces, corner_data, corner_data_l, v, f = create_siding(context, o.jv_siding_types, o.tin_types,
-                                                                       o.wood_types, o.vinyl_types, o.jv_is_slope,
+        verts, faces, corner_data, corner_data_l, v, f = create_siding(context, o.jv_siding_types,
+                                                                       o.jv_tin_siding_types,  o.jv_wood_siding_types,
+                                                                       o.jv_vinyl_siding_types, o.jv_is_slope,
                                                                        o.jv_over_width, o.jv_over_height, o.jv_b_width,
                                                                        o.jv_slope, o.jv_is_width_vary, o.jv_width_vary,
                                                                        o.jv_is_cutout, o.jv_num_cutouts, o.jv_nc1,
@@ -1167,13 +1168,14 @@ def update_siding(self, context):
         ow, oh = dim[0], dim[1]
         o.jv_pre_jv_dims = "something"
 
-        verts, faces, corner_data, corner_data_l, v, f = create_siding(context, o.jv_siding_types, o.tin_types,
-                                                                       o.wood_types, o.vinyl_types, o.jv_is_slope, ow,
-                                                                       oh, o.jv_b_width, o.jv_slope, o.jv_is_width_vary,
+        verts, faces, corner_data, corner_data_l, v, f = create_siding(context, o.jv_siding_types,
+                                                                       o.jv_tin_siding_types, o.jv_wood_siding_types,
+                                                                       o.jv_vinyl_siding_types, o.jv_is_slope, ow, oh,
+                                                                       o.jv_b_width, o.jv_slope, o.jv_is_width_vary,
                                                                        o.jv_width_vary, o.jv_is_cutout,
                                                                        o.jv_num_cutouts, o.jv_nc1, o.jv_nc2, o.jv_nc3,
                                                                        o.jv_nc4, o.jv_nc5, o.jv_batten_width,
-                                                                       o.jv_spacing,  o.jv_is_length_vary,
+                                                                       o.jv_spacing, o.jv_is_length_vary,
                                                                        o.jv_length_vary, o.jv_max_boards, o.jv_br_width,
                                                                        o.jv_br_height, o.jv_br_offset, o.jv_br_gap,
                                                                        o.jv_br_ran_offset, o.jv_br_vary, o.jv_is_corner,
@@ -1283,7 +1285,7 @@ def update_siding(self, context):
         bpy.ops.object.modifier_add(type="BEVEL")
         pos = len(o.modifiers) - 1
         bpy.context.object.modifiers[pos].width = 0.003048
-        bpy.context.object.modifiers[pos].use_clamp_overlap = o.vinyl_types != "3"
+        bpy.context.object.modifiers[pos].use_clamp_overlap = o.jv_vinyl_siding_types != "3"
         bpy.context.object.modifiers[pos].segments = o.jv_bevel_res
         bpy.context.object.modifiers[pos].limit_method = "ANGLE"
         bpy.context.object.modifiers[pos].angle_limit = 1.4
@@ -1297,7 +1299,8 @@ def update_siding(self, context):
         bpy.context.object.modifiers[pos].thickness = 0.0003429
         bpy.ops.object.modifier_apply(apply_as="DATA", modifier=o.modifiers[pos].name)
     # brick or stone
-    elif (o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and o.wood_types == "1")) and o.jv_is_bevel:
+    elif (o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and o.jv_wood_siding_types == "1")) and \
+            o.jv_is_bevel:
         bpy.ops.object.modifier_add(type="BEVEL")
         pos = len(o.modifiers) - 1
         width = o.jv_bevel_width if o.jv_siding_types == "1" else 0.0024384
@@ -1343,9 +1346,9 @@ def update_siding(self, context):
                                     o.jv_is_right, o.jv_object_add, o.jv_br_width, o.jv_br_gap, brick_stone,
                                     o.jv_x_offset)
         else:
-            verts3, faces3 = mortar(o.jv_over_height, o.jv_over_width, depth, o.jv_is_slope, o.jv_slope, o.jv_is_corner,
-                                    o.jv_is_left, o.jv_is_right, o.jv_object_add, o.jv_br_width, o.jv_br_gap,
-                                    brick_stone, o.jv_x_offset)
+            verts3, faces3 = mortar(o.jv_over_height, o.jv_over_width, depth, o.jv_is_slope, o.jv_slope,
+                                    o.jv_is_corner, o.jv_is_left, o.jv_is_right, o.jv_object_add, o.jv_br_width,
+                                    o.jv_br_gap, brick_stone, o.jv_x_offset)
 
         bc_m = bpy.data.meshes.new(o.name + "_mortar")
         bc_m.from_pydata(verts3, [], faces3)
@@ -1738,11 +1741,11 @@ class SidingPanel(bpy.types.Panel):
                         layout.label("Type(s):")
 
                         if o.jv_siding_types == "1":
-                            layout.prop(o, "wood_types", icon="OBJECT_DATA")
+                            layout.prop(o, "jv_wood_siding_types", icon="OBJECT_DATA")
                         elif o.jv_siding_types == "2":
-                            layout.prop(o, "vinyl_types", icon="OBJECT_DATA")
+                            layout.prop(o, "jv_vinyl_siding_types", icon="OBJECT_DATA")
                         elif o.jv_siding_types == "3":
-                            layout.prop(o, "tin_types", icon="OBJECT_DATA")
+                            layout.prop(o, "jv_tin_siding_types", icon="OBJECT_DATA")
                         elif o.jv_siding_types == "4":
                             layout.label("Horizontal: Lap", icon="OBJECT_DATA")
                         elif o.jv_siding_types == "5":
@@ -1763,11 +1766,12 @@ class SidingPanel(bpy.types.Panel):
                             layout.prop(o, "jv_is_screws", icon="PLUS")
 
                         if o.jv_siding_types not in ("5", "6"):  # if not bricks or stone
-                            if o.jv_siding_types == "1" and o.wood_types in ("1", "2"):
+                            if o.jv_siding_types == "1" and o.jv_wood_siding_types in ("1", "2"):
                                 layout.prop(o, "jv_spacing")
                                 layout.separator()
-                            if o.jv_siding_types in ("1", "2") and ((o.vinyl_types == "1" and o.jv_siding_types == "2")
-                                                                    or (o.wood_types == "3"
+                            if o.jv_siding_types in ("1", "2") and ((o.jv_vinyl_siding_types == "1" and
+                                                                     o.jv_siding_types == "2")
+                                                                    or (o.jv_wood_siding_types == "3"
                                                                         and o.jv_siding_types == "1")):
                                 layout.prop(o, "jv_batten_width")
                                 if o.jv_batten_width / 2 > (o.jv_b_width / 2) - (0.125 / METRIC_INCH):
@@ -1802,7 +1806,8 @@ class SidingPanel(bpy.types.Panel):
                             layout.prop(o, "jv_x_offset")
                             layout.separator()
 
-                        if o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and o.wood_types == "1"):
+                        if o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and
+                                                               o.jv_wood_siding_types == "1"):
                             layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
                             if o.jv_is_bevel and o.jv_siding_types != "1":
                                 layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
@@ -1839,8 +1844,8 @@ class SidingPanel(bpy.types.Panel):
                                     if ht <= 0:
                                         slope = round(((24 * o.jv_over_height) / o.jv_over_width + (2 * o.jv_br_width))
                                                       - 0.01, 2)
-                                        ht = round(o.jv_over_height - ((slope * ((o.jv_over_width + (2 * o.jv_br_width))
-                                                                                 / 2)) / 12), 2)
+                                        ht = round(o.jv_over_height - ((slope * ((o.jv_over_width +
+                                                                                  (2 * o.jv_br_width)) / 2)) / 12), 2)
                                         layout.label("Max Slope: " + str(slope), icon="ERROR")
                                 if context.scene.unit_settings.system == "IMPERIAL":
                                     ht = round(METRIC_FOOT * ht, 2)
@@ -1848,7 +1853,7 @@ class SidingPanel(bpy.types.Panel):
                                 layout.label("Height At Edges: " + str(ht) + units, icon="TEXT")
 
                         if o.jv_siding_types not in ("5", "6"):
-                            if o.jv_siding_types == "1" and o.wood_types == "1":
+                            if o.jv_siding_types == "1" and o.jv_wood_siding_types == "1":
                                 layout.prop(o, "jv_is_width_vary", icon="UV_ISLANDSEL")
                                 if o.jv_is_width_vary:
                                     layout.prop(o, "jv_width_vary")

@@ -723,8 +723,8 @@ def update_roofing(self, context):
         m_ob.select = True
             
         use_ob = context.object
-        roof_data = [use_ob.jv_object_add, use_ob.jv_roof_types, use_ob.jv_shingle_types, use_ob.jv_tin_types, use_ob.jv_terra_cotta_res,
-                     use_ob.jv_tile_radius]
+        roof_data = [use_ob.jv_object_add, use_ob.jv_roofing_types, use_ob.jv_shingle_types,
+                     use_ob.jv_tin_roofing_types, use_ob.jv_terra_cotta_res, use_ob.jv_tile_radius]
         
     # if the object to use for cutting is already on the other layer
     elif m_ob.jv_main_name != "none":
@@ -755,7 +755,8 @@ def update_roofing(self, context):
         bpy.ops.object.move_to_layer(layers=layer_list)
         context.scene.layers = pre_layers
         
-        roof_data = [m_ob.jv_object_add, m_ob.jv_roof_types, m_ob.jv_shingle_types, m_ob.jv_tin_types, m_ob.jv_terra_cotta_res, m_ob.jv_tile_radius]
+        roof_data = [m_ob.jv_object_add, m_ob.jv_roofing_types, m_ob.jv_shingle_types, m_ob.jv_tin_roofing_types,
+                     m_ob.jv_terra_cotta_res, m_ob.jv_tile_radius]
     else:
         use_ob = context.object      
     
@@ -956,8 +957,9 @@ def update_roofing(self, context):
             materials.append(i.name)
             
         # create new object
-        create_roofing(context, m_ob.jv_object_add, m_ob.jv_roof_types, m_ob.jv_shingle_types, m_ob.jv_tin_types,
-                       m_ob.jv_over_length, m_ob.jv_over_width, m_ob.jv_slope, m_ob.jv_terra_cotta_res, m_ob.jv_tile_radius)
+        create_roofing(context, m_ob.jv_object_add, m_ob.jv_roofing_types, m_ob.jv_shingle_types,
+                       m_ob.jv_tin_roofing_types, m_ob.jv_over_length, m_ob.jv_over_width, m_ob.jv_slope,
+                       m_ob.jv_terra_cotta_res, m_ob.jv_tile_radius)
 
         for i in materials:
             mat = bpy.data.materials[i]
@@ -985,14 +987,14 @@ def roofing_materials(self):
     o = bpy.context.object
 
     # check to make sure pictures have been picked
-    if o.jv_col_image == "" and o.jv_roof_types in ("2", "3"): 
+    if o.jv_col_image == "" and o.jv_roofing_types in ("2", "3"): 
         self.report({"ERROR"}, "No Color Image Entered")
         return
-    if o.jv_is_bump and o.jv_norm_image == "" and o.jv_roof_types in ("2", "3"):
+    if o.jv_is_bump and o.jv_norm_image == "" and o.jv_roofing_types in ("2", "3"):
         self.report({"ERROR"}, "No Normal Map Image Entered")
         return
 
-    if o.jv_roof_types == "1":
+    if o.jv_roofing_types == "1":
         mat = glossy_diffuse_material(bpy, o.jv_tin_color, (1.0, 1.0, 1.0), 0.18, 0.05, "roofing_use")
     else:
         mat = image_material(bpy, o.jv_im_scale, o.jv_col_image, o.jv_norm_image, o.jv_bump_amo, o.jv_is_bump,
@@ -1126,13 +1128,13 @@ class RoofingPanel(bpy.types.Panel):
                         ob.jv_object_add == "add":
 
                     if True:  # ob.jv_object_add != "convert":
-                        layout.prop(ob, "jv_roof_types", icon="MATERIAL")
+                        layout.prop(ob, "jv_roofing_types", icon="MATERIAL")
                     else:
                         layout.label("Material: Tin", icon="MATERIAL")
                     
-                    if ob.jv_roof_types == "1":
-                        layout.prop(ob, "jv_tin_types")
-                    elif ob.jv_roof_types == "2":
+                    if ob.jv_roofing_types == "1":
+                        layout.prop(ob, "jv_tin_roofing_types")
+                    elif ob.jv_roofing_types == "2":
                         layout.prop(ob, "jv_shingle_types")               
                         
                     layout.separator()
@@ -1144,7 +1146,7 @@ class RoofingPanel(bpy.types.Panel):
                         layout.prop(ob, "jv_is_mirrored", icon="MOD_MIRROR")
                         
                     layout.separator()
-                    if ob.jv_roof_types == "3":
+                    if ob.jv_roofing_types == "3":
                         layout.prop(ob, "jv_tile_radius")
                         layout.prop(ob, "jv_terra_cotta_res")
                         layout.separator()
@@ -1162,9 +1164,9 @@ class RoofingPanel(bpy.types.Panel):
                         
                     if ob.jv_is_material and context.scene.render.engine == "CYCLES":
                         layout.separator()
-                        if ob.jv_roof_types == "1":  # tin
+                        if ob.jv_roofing_types == "1":  # tin
                             layout.prop(ob, "jv_tin_color")
-                        elif ob.jv_roof_types in ("2", "3"):  # shingles and terra cotta
+                        elif ob.jv_roofing_types in ("2", "3"):  # shingles and terra cotta
                             layout.prop(ob, "jv_col_image", icon="COLOR")
                             layout.prop(ob, "jv_is_bump", icon="SMOOTHCURVE")
                             

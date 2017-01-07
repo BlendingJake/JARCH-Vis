@@ -21,28 +21,104 @@ def jv_update_object(self, context):
 tp = bpy.types.Object
 tp.jv_internal_type = StringProperty()
 tp.jv_object_add = StringProperty(default="none", update=jv_update_object)
+tp.jv_cut_name = StringProperty(default="none")
+tp.jv_is_cut = StringProperty(default="none")
 
 # types/styles
 tp.jv_w_types = EnumProperty(items=(("1", "Double-Hung", ""), ("2", "Gliding", ""), ("3", "Stationary", ""),
                                     ("4", "Odd-Shaped", ""), ("5", "Bay/Bow", "")), name="", update=jv_update_object)
 tp.jv_odd_types = EnumProperty(items=(("1", "Polygon", ""), ("2", "Circular", ""), ("3", "Arch", ""),
                                       ("4", "Gothic", ""), ("5", "Oval", "")), name="", update=jv_update_object)
+tp.jv_flooring_types = EnumProperty(items=(("1", "Wood", ""), ("2", "Tile", "")), default="1", description="Material",
+                                    update=jv_update_object, name="")
+tp.jv_wood_flooring_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Parquet", ""),
+                                                ("3", "Herringbone Parquet", ""), ("4", "Herringbone", "")),
+                                         default="1", description="Wood Type", update=jv_update_object, name="")
+tp.jv_tile_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Large + Small", ""),
+                                       ("3", "Large + Many Small", ""), ("4", "Hexagonal", "")), default="1",
+                                description="Tile Type", update=jv_update_object, name="")
+tp.jv_roofing_types = EnumProperty(name="Material", items=(("1", "Tin", ""), ("2", "Shingles", ""),
+                                                           ("3", "Terra Cotta", "")), update=jv_update_object)
+tp.jv_shingle_types = EnumProperty(name="Shingle Style", items=(("1", "Architectural", ""), ("2", "3-Tab", "")),
+                                   update=jv_update_object)
+tp.jv_tin_roofing_types = EnumProperty(name="Tin Type", items=(("1", "Normal", ""), ("2", "Angular", ""),
+                                                               ("3", "Standing Seam", "")), update=jv_update_object)
+tp.jv_stair_style = EnumProperty(items=(("1", "Normal", ""), ("2", "Winding", ""), ("3", "Spiral", "")), default="1",
+                                 description="Stair Style", update=jv_update_object, name="")
+tp.jv_siding_types = EnumProperty(items=(("1", "Wood", ""), ("2", "Vinyl", ""), ("3", "Tin", ""),
+                                         ("4", "Fiber Cement", ""), ("5", "Bricks", ""), ("6", "Stone", "")),
+                                  default="1", name="", update=jv_update_object)
+tp.jv_tin_siding_types = EnumProperty(items=(("1", "Normal", ""), ("2", "Angular", "")), default="1", name="",
+                                      update=jv_update_object)
+tp.jv_wood_siding_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Vertical: Tongue & Groove", ""),
+                                              ("3", "Vertical: Board & Batten", ""), ("4", "Horizontal: Lap", ""),
+                                              ("5", "Horizontal: Lap Bevel", "")), default="1", name="",
+                                       update=jv_update_object)
+tp.vinyl_siding_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Horizontal: Lap", ""),
+                                            ("3", "Horizontal: Dutch Lap", "")), default="1", name="",
+                                     update=jv_update_object)
+
+# shared measurements
+tp.jv_over_width = FloatProperty(name="Overall Width", min=2.00 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
+                                 default=20 / METRIC_FOOT, subtype="DISTANCE", description="Overall Width",
+                                 update=jv_update_object)
+tp.jv_over_length = FloatProperty(name="Overall Length", min=2.0 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
+                                  default=8 / METRIC_FOOT, subtype="DISTANCE", description="Overall Length",
+                                  update=jv_update_object)
+tp.jv_b_width = FloatProperty(name="Board Width", min=2.00 / METRIC_INCH, max=14.00 / METRIC_INCH,
+                              default=6.00 / METRIC_INCH, subtype="DISTANCE", description="Board Width",
+                              update=jv_update_object)
+tp.jv_b_length = FloatProperty(name="Board Length", min=4.00 / METRIC_FOOT, max=20.00 / METRIC_FOOT,
+                               default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Board Length",
+                               update=jv_update_object)
+tp.jv_is_length_vary = BoolProperty(name="Vary Length?", default=False, description="Vary Lengths?",
+                                    update=jv_update_object)
+tp.jv_length_vary = FloatProperty(name="Length Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
+                                  description="Length Variance", update=jv_update_object)
+tp.jv_max_boards = IntProperty(name="Max # Of Boards", min=2, max=10, default=2,
+                               description="Maximum Number Of Boards Possible In One Length", update=jv_update_object)
+tp.jv_is_width_vary = BoolProperty(name="Vary Width?", default=False, description="Vary Widths?",
+                                   update=jv_update_object)
+tp.jv_width_vary = FloatProperty(name="Width Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
+                                 description="Width Variance", update=jv_update_object)
+tp.jv_slope = FloatProperty(name="Slope (X/12)", min=1.0, max=12.0, default=4.0,
+                            description="Slope In RISE/RUN Format In Inches", update=jv_update_object)
+
+# shared materials
+tp.jv_is_material = BoolProperty(name="Cycles Materials?", default=False, description="Adds Cycles Materials",
+                                 update=delete_materials)
+tp.jv_is_preview = BoolProperty(name="Preview Material?", default=False, description="Preview Material On Object",
+                                update=preview_materials)
+tp.jv_im_scale = FloatProperty(name="Image Scale", max=10.0, min=0.1, default=1.0, description="Change Image Scaling")
+tp.jv_col_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Color Image")
+tp.jv_is_bump = BoolProperty(name="Normal Map?", default=False, description="Add Normal To Material?")
+tp.jv_norm_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Normal Map Image")
+tp.jv_bump_amo = FloatProperty(name="Normal Strength", min=0.001, max=2.000, default=0.250,
+                               description="Normal Map Strength")
+tp.jv_is_unwrap = BoolProperty(name="UV Unwrap?", default=True, description="UV Unwraps Siding",
+                               update=jv_update_object)
+tp.jv_is_random_uv = BoolProperty(name="Random UV's?", default=True, description="Random UV's", update=jv_update_object)
+tp.jv_mortar_color = FloatVectorProperty(name="Mortar Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0,
+                                         max=1.0, description="Color For Mortar")
+tp.jv_mortar_bump = FloatProperty(name="Mortar Bump", min=0.0, max=1.0, default=0.25, description="Mortar Bump Amount")
+tp.jv_is_rotate = BoolProperty(name="Rotate Image?", default=False, description="Rotate Image 90 Degrees")
+tp.jv_rgba_color = FloatVectorProperty(name="Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0, max=1.0,
+                                       description="Color For Material")
+tp.jv_color_image = EnumProperty(name="Material Type", items=(("rgba", "RGBA", ""), ("image", "Image", "")))
+
+# window specific
 tp.jv_jamb_width = FloatProperty(name="Jamb Width", subtype="DISTANCE", min=2 / METRIC_INCH, max=8 / METRIC_INCH,
                                  default=4 / METRIC_INCH, update=jv_update_object)
-
-# double hung
 tp.jv_dh_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=3 / METRIC_FOOT,
                                default=32 / METRIC_INCH, update=jv_update_object)
 tp.jv_dh_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
                                 default=48 / METRIC_INCH, update=jv_update_object)
 tp.jv_gang_num = IntProperty(name="Number Ganged Together", min=1, max=4, default=1, update=jv_update_object)
-# gliding
 tp.jv_gl_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
                                default=60 / METRIC_INCH, update=jv_update_object)
 tp.jv_gl_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT, max=4 / METRIC_FOOT,
                                 default=36 / METRIC_INCH, update=jv_update_object)
 tp.jv_gl_slide_right = BoolProperty(name="Slide Right?", default=True, update=jv_update_object)
-# stationary & odd-shaped
 tp.jv_so_width = FloatProperty(name="Width", subtype="DISTANCE", min=1 / METRIC_FOOT, max=6 / METRIC_FOOT,
                                default=24 / METRIC_INCH, update=jv_update_object)
 tp.jv_so_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT, max=10 / METRIC_FOOT,
@@ -51,18 +127,14 @@ tp.jv_so_height_tall = FloatProperty(name="Height", subtype="DISTANCE", min=3 / 
                                      default=5 / METRIC_FOOT, update=jv_update_object)
 tp.jv_o_radius = FloatProperty(name="Radius", subtype="DISTANCE", min=1 / METRIC_FOOT, max=3 / METRIC_FOOT,
                                default=1.5 / METRIC_FOOT, update=jv_update_object)
-# polygon
 tp.jv_sides = IntProperty(name="Sides", min=3, max=12, default=3, update=jv_update_object)
-# circular
 tp.jv_full_circle = BoolProperty(name="Full Circle?", default=True, update=jv_update_object)
 tp.jv_w_angle = FloatProperty(name="Angle", unit="ROTATION", min=radians(45), max=radians(270), default=radians(90),
                               update=jv_update_object)
-# arch
 tp.jv_roundness = FloatProperty(name="Roundness", subtype="PERCENTAGE", max=100.0, min=1.0, default=25.0,
                                 update=jv_update_object)
 tp.jv_resolution = IntProperty(name="Resolution", min=32, max=512, default=64, step=2, update=jv_update_object)
 tp.jv_is_slider = BoolProperty(name="Slider?", update=jv_update_object)
-# bay
 tp.jv_ba_width = FloatProperty(name="Width", subtype="DISTANCE", min=2 / METRIC_FOOT, max=20 / METRIC_FOOT,
                                default=72 / METRIC_INCH, update=jv_update_object)
 tp.jv_ba_height = FloatProperty(name="Height", subtype="DISTANCE", min=1 / METRIC_FOOT, max=15 / METRIC_FOOT,
@@ -78,30 +150,7 @@ tp.jv_bow_segments = EnumProperty(items=(("2", "2", ""), ("4", "4", ""), ("6", "
 tp.jv_is_split_center = BoolProperty(name="Split Center Pane?", default=False, update=jv_update_object)
 tp.jv_is_double_hung = BoolProperty(name="Double Hung?", default=True, update=jv_update_object)
 
-tp.jv_cut_name = StringProperty(default="none")
-tp.jv_is_cut = StringProperty(default="none")
-# type/material
-tp.jv_flooring_types = EnumProperty(items=(("1", "Wood", ""), ("2", "Tile", "")), default="1", description="Material",
-                                    update=jv_update_object, name="")
-tp.jv_wood_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Parquet", ""), ("3", "Herringbone Parquet", ""),
-                                       ("4", "Herringbone", "")), default="1", description="Wood Type",
-                                update=jv_update_object, name="")
-tp.jv_tile_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Large + Small", ""),
-                                       ("3", "Large + Many Small", ""), ("4", "Hexagonal", "")), default="1",
-                                description="Tile Type", update=jv_update_object, name="")
-# measurements
-tp.jv_over_width = FloatProperty(name="Overall Width", min=2.00 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
-                                 default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Overall Width",
-                                 update=jv_update_object)
-tp.jv_over_length = FloatProperty(name="Overall Length", min=2.0 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
-                                  default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Overall Length",
-                                  update=jv_update_object)
-tp.jv_b_width = FloatProperty(name="Board Width", min=2.00 / METRIC_INCH, max=14.00 / METRIC_INCH,
-                              default=6.00 / METRIC_INCH, subtype="DISTANCE", description="Board Width",
-                              update=jv_update_object)
-tp.jv_b_length = FloatProperty(name="Board Length", min=4.00 / METRIC_FOOT, max=20.00 / METRIC_FOOT,
-                               default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Board Length",
-                               update=jv_update_object)
+# flooring specific
 tp.jv_b_length_s = FloatProperty(name="Board Length", min=1.00 / METRIC_FOOT, max=4.00 / METRIC_FOOT,
                                  default=1.5 / METRIC_FOOT, subtype="DISTANCE", description="Board Length",
                                  update=jv_update_object)
@@ -111,16 +160,6 @@ tp.jv_hb_direction = EnumProperty(items=(("1", "Forwards (+y)", ""), ("2", "Back
 tp.jv_thickness = FloatProperty(name="Floor Thickness", min=0.75 / METRIC_INCH, max=1.5 / METRIC_INCH,
                                 default=1 / METRIC_INCH, subtype="DISTANCE", description="Thickness Of Flooring",
                                 update=jv_update_object)
-tp.jv_is_length_vary = BoolProperty(name="Vary Length?", default=False, description="Vary Lengths?",
-                                    update=jv_update_object)
-tp.jv_length_vary = FloatProperty(name="Length Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                  description="Length Variance", update=jv_update_object)
-tp.jv_max_boards = IntProperty(name="Max # Of Boards", min=2, max=10, default=2,
-                               description="Maximum Number Of Boards Possible In One Length", update=jv_update_object)
-tp.jv_is_width_vary = BoolProperty(name="Vary Width?", default=False, description="Vary Widths?",
-                                   update=jv_update_object)
-tp.jv_width_vary = FloatProperty(name="Width Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                 description="Width Variance", update=jv_update_object)
 tp.jv_num_boards = IntProperty(name="# Of Boards", min=2, max=6, default=4, description="Number Of Boards In Square",
                                update=jv_update_object)
 tp.jv_space_l = FloatProperty(name="Length Spacing", min=0.001 / METRIC_INCH, max=0.5 / METRIC_INCH,
@@ -140,7 +179,6 @@ tp.jv_bevel_amo = FloatProperty(name="Bevel Amount", min=0.001 / METRIC_INCH, ma
 tp.jv_is_ran_thickness = BoolProperty(name="Random Thickness?", default=False, update=jv_update_object)
 tp.jv_ran_thickness = FloatProperty(name="Thickness Variance", min=0.1, max=100.0, default=50.0, subtype="PERCENTAGE",
                                     update=jv_update_object)
-# tile specific
 tp.jv_t_width = FloatProperty(name="Tile Width", min=2.00 / METRIC_INCH, max=24.00 / METRIC_INCH,
                               default=8.00 / METRIC_INCH, subtype="DISTANCE", description="Tile Width",
                               update=jv_update_object)
@@ -161,75 +199,32 @@ tp.jv_offset_vary = FloatProperty(name="Offset Variance", min=0.001, max=100.0, 
 tp.jv_t_width_s = FloatProperty(name="Small Tile Width", min=2.00 / METRIC_INCH, max=10.00 / METRIC_INCH,
                                 default=6.00 / METRIC_INCH, subtype="DISTANCE", description="Small Tile Width",
                                 update=jv_update_object)
-# materials
-tp.jv_is_material = BoolProperty(name="Cycles Materials?", default=False, description="Adds Cycles Materials",
-                                 update=delete_materials)
-tp.jv_is_preview = BoolProperty(name="Preview Material?", default=False, description="Preview Material On Object",
-                                update=preview_materials)
-tp.jv_im_scale = FloatProperty(name="Image Scale", max=10.0, min=0.1, default=1.0, description="Change Image Scaling")
-tp.jv_col_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Color Image")
-tp.jv_is_bump = BoolProperty(name="Normal Map?", default=False, description="Add Normal To Material?")
-tp.jv_norm_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Normal Map Image")
-tp.jv_bump_amo = FloatProperty(name="Normal Strength", min=0.001, max=2.000, default=0.250,
-                               description="Normal Map Strength")
-tp.jv_is_unwrap = BoolProperty(name="UV Unwrap?", default=True, description="UV Unwraps Siding",
-                               update=jv_update_object)
-tp.jv_is_random_uv = BoolProperty(name="Random UV's?", default=True, description="Random UV's", update=jv_update_object)
-tp.jv_mortar_color = FloatVectorProperty(name="Mortar Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0,
-                                         max=1.0, description="Color For Mortar")
-tp.jv_mortar_bump = FloatProperty(name="Mortar Bump", min=0.0, max=1.0, default=0.25, description="Mortar Bump Amount")
-tp.jv_is_rotate = BoolProperty(name="Rotate Image?", default=False, description="Rotate Image 90 Degrees")
+
+# roofing specific
 tp.jv_face_group_ct = IntProperty(default=0)
 tp.jv_group_index = IntProperty(default=0, update=update_roofing_facegroup_selection)
-
-# planes info
 tp.jv_pl_z_rot = FloatProperty(unit="ROTATION", name="Object Z Rotation")
 tp.jv_pl_pitch = FloatProperty(min=1.0, max=24.0, default=4.0, name="Pitch X/12")
-
-# overall
 tp.jv_main_name = StringProperty(default="none")
-tp.jv_object_add = StringProperty(default="none", update=jv_update_object)
-tp.jv_roof_types = EnumProperty(name="Material", items=(("1", "Tin", ""), ("2", "Shingles", ""),
-                                                        ("3", "Terra Cotta", "")), update=jv_update_object)
-tp.jv_shingle_types = EnumProperty(name="Shingle Style", items=(("1", "Architectural", ""), ("2", "3-Tab", "")),
-                                   update=jv_update_object)
-tp.jv_tin_types = EnumProperty(name="Tin Type", items=(("1", "Normal", ""), ("2", "Angular", ""),
-                                                       ("3", "Standing Seam", "")), update=jv_update_object)
-tp.jv_slope = FloatProperty(name="Slope (X/12)", min=1.0, max=12.0, default=4.0, update=jv_update_object)
 tp.jv_is_mirrored = BoolProperty(name="Mirror?", default=True, update=jv_update_object)
 
 tp.jv_terra_cotta_res = IntProperty(name="Curve Resolution", min=3, max=10, default=5, update=jv_update_object)
 tp.jv_tile_radius = FloatProperty(name="Tile Radius", min=1.5 / METRIC_INCH, max=3.0 / METRIC_INCH,
                                   default=2.0 / METRIC_INCH, update=jv_update_object, subtype="DISTANCE")
-
-# materials
 tp.jv_tin_color = FloatVectorProperty(name="Tin Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0, max=1.0,
                                       description="Color For Tin")
 
-tp.jv_siding_types = EnumProperty(items=(("1", "Wood", ""), ("2", "Vinyl", ""), ("3", "Tin", ""),
-                                         ("4", "Fiber Cement", ""), ("5", "Bricks", ""), ("6", "Stone", "")),
-                                  default="1", name="", update=jv_update_object)
-tp.tin_types = EnumProperty(items=(("1", "Normal", ""), ("2", "Angular", "")), default="1", name="",
-                            update=jv_update_object)
-tp.wood_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Vertical: Tongue & Groove", ""),
-                                    ("3", "Vertical: Board & Batten", ""), ("4", "Horizontal: Lap", ""),
-                                    ("5", "Horizontal: Lap Bevel", "")), default="1", name="", update=jv_update_object)
-tp.vinyl_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Horizontal: Lap", ""),
-                                     ("3", "Horizontal: Dutch Lap", "")), default="1", name="", update=jv_update_object)
-# measurements
+# siding specific
 tp.jv_pre_jv_dims = StringProperty(default="none")
 tp.jv_previous_rotation = StringProperty(default="none")
 tp.jv_dims = StringProperty(default="none")
 tp.jv_is_slope = BoolProperty(name="Slope Top?", default=False, update=jv_update_object)
 tp.jv_over_height = FloatProperty(name="Overall Height", min=0.30486, max=15.2399, default=2.4384, subtype="DISTANCE",
                                   description="Height", update=jv_update_object)
-tp.jv_over_width = FloatProperty(name="Overall Width", min=0.609, max=30.4799, default=6.0959, subtype="DISTANCE",
-                                 description="Width From Left To Right", update=jv_update_object)
 tp.jv_batten_width = FloatProperty(name="Batten Width", min=0.5 / METRIC_INCH, max=4 / METRIC_INCH,
                                    default=2 / METRIC_INCH, subtype="DISTANCE", description="Width Of Batten",
                                    update=jv_update_object)
-tp.jv_slope = FloatProperty(name="Slope (X/12)", min=1.0, max=12.0, default=4.0,
-                            description="Slope In RISE/RUN Format In Inches", update=jv_update_object)
+
 tp.jv_is_cutout = BoolProperty(name="Cutouts?", default=False, description="Cut Rectangles Out (Slower)",
                                update=jv_update_object)
 tp.jv_num_cutouts = IntProperty(name="# Cutouts", min=1, max=6, default=1, update=jv_update_object)
@@ -239,7 +234,6 @@ tp.jv_bevel_width = FloatProperty(name="Bevel Width", min=0.05 / METRIC_INCH, ma
                                   default=0.2 / METRIC_INCH, subtype="DISTANCE", update=jv_update_object)
 tp.jv_x_offset = FloatProperty(name="X-Offset", min=-2.0 / METRIC_INCH, max=2.0 / METRIC_INCH, default=0.0,
                                subtype="DISTANCE", update=jv_update_object)
-# brick
 tp.jv_br_width = FloatProperty(name="Brick Width", min=4.0 / METRIC_INCH, max=10.0 / METRIC_INCH,
                                default=7.625 / METRIC_INCH, subtype="DISTANCE", description="Brick Width",
                                update=jv_update_object)
@@ -285,7 +279,6 @@ tp.jv_is_left = BoolProperty(name="Corners Left?", default=True, description="Us
                              update=jv_update_object)
 tp.jv_is_right = BoolProperty(name="Corners Right?", default=True, description="Usable Corners On Right",
                               update=jv_update_object)
-# stone
 tp.jv_av_width = FloatProperty(name="Average Width", default=10.00 / METRIC_INCH, min=4.00 / METRIC_INCH,
                                max=36.00 / METRIC_INCH, subtype="DISTANCE", description="Average Width Of Stones",
                                update=jv_update_object)
@@ -301,10 +294,6 @@ tp.jv_st_m_depth = FloatProperty(name="Mortar Depth", default=1.5 / METRIC_INCH,
                                  update=jv_update_object)
 tp.jv_sb_mat_type = EnumProperty(name="", items=(("1", "Image", ""), ("2", "Procedural", "")), default="1",
                                  description="Stone Material Type")
-# materials
-tp.jv_rgba_color = FloatVectorProperty(name="Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0, max=1.0,
-                                       description="Color For Material")
-# cutout variables
 desc = "X, Y, Height, Width In (ft/m)"
 tp.jv_nc1 = StringProperty(name="", default="", description=desc, update=jv_update_object)
 tp.jv_nc2 = StringProperty(name="", default="", description=desc, update=jv_update_object)
@@ -313,12 +302,10 @@ tp.jv_nc4 = StringProperty(name="", default="", description=desc, update=jv_upda
 tp.jv_nc5 = StringProperty(name="", default="", description=desc, update=jv_update_object)
 tp.jv_nc6 = StringProperty(name="", default="", description=desc, update=jv_update_object)
 
-tp.jv_stair_style = EnumProperty(items=(("1", "Normal", ""), ("2", "Winding", ""), ("3", "Spiral", "")), default="1",
-                                 description="Stair Style", update=jv_update_object, name="")
+# stair specific
 tp.jv_overhang_style = EnumProperty(items=(("1", "Normal", ""), ("2", "Right", ""), ("3", "Left", ""),
                                            ("4", "Both", "")), default="1", description="Overhang Style",
                                     update=jv_update_object, name="")
-# common variables
 tp.jv_num_steps = IntProperty(name="Number Of Steps", min=1, max=24, default=13, update=jv_update_object)
 tp.jv_num_steps2 = IntProperty(name="Number Of Steps", min=1, max=48, default=13, update=jv_update_object)
 tp.jv_tread_width = FloatProperty(name="Tread Width", min=9.0 / METRIC_INCH, max=16.0 / METRIC_INCH,
@@ -334,14 +321,12 @@ tp.jv_stair_width = FloatProperty(name="Stair Width", min=36.0 / METRIC_INCH, ma
 tp.jv_is_riser = BoolProperty(name="Risers?", default=True, update=jv_update_object)
 tp.jv_is_custom_tread = BoolProperty(name="Custom Treads?", default=False, update=jv_update_object)
 tp.jv_custom_treads = StringProperty(name="Custom Tread", default="", update=jv_update_object)
-# normal style
 tp.jv_num_landings = IntProperty(name="Number Of Landings", min=0, max=2, default=0, update=jv_update_object)
 tp.jv_is_close_sides = BoolProperty(name="Close Sides?", default=False, update=jv_update_object)
 tp.jv_set_steps_in = BoolProperty(name="Set Steps In?", default=False, update=jv_update_object)
 tp.jv_is_landing = BoolProperty(name="Create Landings?", default=True, update=jv_update_object)
 tp.jv_is_light = BoolProperty(name="Allow Recessed Lights?", default=False, update=jv_update_object,
                               description="Space Middle Step Jacks To Allow Recessed Lights")
-# landing 0
 tp.jv_num_steps0 = IntProperty(name="Number Of Steps", min=1, max=24, default=13, update=jv_update_object)
 tp.jv_tread_width0 = FloatProperty(name="Tread Width", min=9.0 / METRIC_INCH, max=16.0 / METRIC_INCH,
                                    default=9.5 / METRIC_INCH, subtype="DISTANCE", update=jv_update_object)
@@ -359,7 +344,6 @@ tp.jv_overhang_style0 = EnumProperty(items=(("1", "Normal", ""), ("2", "Right", 
                                             ("4", "Both", "")), default="1", description="Overhang Style",
                                      update=jv_update_object, name="")
 tp.jv_is_backwards0 = BoolProperty(name="Turn Backwards?", default=False, update=jv_update_object)
-# landing 1
 tp.jv_num_steps1 = IntProperty(name="Number Of Steps", min=1, max=24, default=13, update=jv_update_object)
 tp.jv_landing_rot1 = EnumProperty(items=(("1", "Forwards", ""), ("2", "Left", ""), ("3", "Right", "")),
                                   update=jv_update_object, name="")
@@ -377,18 +361,15 @@ tp.jv_overhang_style1 = EnumProperty(items=(("1", "Normal", ""), ("2", "Right", 
                                             ("4", "Both", "")), default="1", description="Overhang Style",
                                      update=jv_update_object, name="")
 tp.jv_is_backwards1 = BoolProperty(name="Turn Backwards?", default=False, update=jv_update_object)
-# winding
 tp.jv_winding_rot = EnumProperty(name="", items=(("1", "-90", ""), ("2", "-45", ""), ("3", "45", ""), ("4", "90", "")),
                                  default="3", update=jv_update_object)
 tp.jv_step_begin_rot = IntProperty(name="Stair To Begin Rotation On", update=jv_update_object, min=1, max=13, default=6)
-# spiral
 tp.jv_spiral_rot = FloatProperty(name="Total Rotation", unit="ROTATION", min=radians(-720), max=radians(720),
                                  default=radians(180), update=jv_update_object)
 tp.jv_pole_dia = FloatProperty(name="Pole Diameter", min=3.0 / METRIC_INCH, max=10.0 / METRIC_INCH,
                                default=4.0 / METRIC_INCH, subtype="DISTANCE", update=jv_update_object)
 tp.jv_pole_res = IntProperty(name="Pole Resolution", min=8, max=64, default=16, update=jv_update_object)
 tp.jv_tread_res = IntProperty(name="Tread Resolution", min=0, max=8, default=0, update=jv_update_object)
-# stairs
 tp.jv_im_scale2 = FloatProperty(name="Image Scale", max=10.0, min=0.1, default=1.0, description="Change Image Scaling")
 tp.jv_col_image2 = StringProperty(name="", subtype="FILE_PATH", description="File Path For Color Image")
 tp.jv_is_bump2 = BoolProperty(name="Normal Map?", default=False, description="Add Normal To Material?")
@@ -396,5 +377,3 @@ tp.jv_norm_image2 = StringProperty(name="", subtype="FILE_PATH", description="Fi
 tp.jv_bump_amo2 = FloatProperty(name="Normal Stength", min=0.001, max=2.000, default=0.250,
                                 description="Normal Map Strength")
 tp.jv_is_rotate2 = BoolProperty(name="Rotate Image?", default=False, description="Rotate Image 90 Degrees")
-
-tp.jv_color_image = EnumProperty(name="Material Type", items=(("rgba", "RGBA", ""), ("image", "Image", "")))
