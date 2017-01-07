@@ -578,3 +578,29 @@ def mortar_material(bpy, mortar_color, mortar_bump, name):
             mat.node_tree.links.new(o, i)
 
     return mat
+
+
+def architectural_glass_material(bpy, color, name):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+
+    nodes.remove(nodes["Diffuse BSDF"])
+
+    ns = [("ShaderNodeMixShader", (100, 100)), ("ShaderNodeBsdfGlass", (-200, 100)),
+          ("ShaderNodeBsdfTransparent", (-200, -100)), ("ShaderNodeLightPath", (-200, 400))]
+
+    for n in ns:
+        node = nodes.new(n[0])
+        node.location = n[1]
+
+    nodes["Glass BSDF"].inputs[0].default_value = color
+
+    ls = [("Mix Shader", 0, "Material Output", 0), ("Light Path", 6, "Mix Shader", 0),
+          ("Glass BSDF", 0, "Mix Shader", 1),
+          ("Transparent BSDF", 0, "Mix Shader", 2)]
+
+    for l in ls:
+        links.new(nodes[l[0]].outputs[l[1]], nodes[l[2]].inputs[l[3]])
+
+    return mat

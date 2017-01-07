@@ -965,11 +965,11 @@ def mortar(oh, ow, m_d, sloped, slope, corners, left, right, convert, bw, gap, b
     # expand mortar if brick has usable corners or if it is a converted object
     x, fx, th = 0, ow, 3.5 / METRIC_INCH
 
-    if convert == "convert":
+    if brick and convert == "convert":
         fx = ow + (bw / 2)
-    if corners and left:
+    if brick and corners and left:
         x = -th - gap + m_d
-    if corners and right:
+    if brick and corners and right:
         fx = ow + gap + th - m_d
 
     if sloped:
@@ -1374,6 +1374,7 @@ def update_siding(self, context):
         mortar_ob.select = False
         context.scene.objects.active = o
 
+    # TODO: Tin screws not always joined
     if o.jv_siding_types == "3" and o.jv_is_screws:  # tin screws
         if o.jv_object_add == "convert":
             verts2, faces2 = tin_screws(dim[1], dim[0], o.jv_is_slope, o.jv_slope)
@@ -1386,6 +1387,7 @@ def update_siding(self, context):
         context.scene.objects.link(screw_ob)
         screw_ob.location = o.location
         screw_ob.rotation_euler = o.rotation_euler
+        screw_ob.select = True
         o.select = True
         bpy.context.scene.objects.active = o
         bpy.ops.object.join()
@@ -1934,7 +1936,6 @@ class SidingPanel(bpy.types.Panel):
 
                             layout.separator()
                             layout.operator("mesh.jv_siding_materials", icon="MATERIAL")
-                            layout.separator()
                             layout.prop(o, "jv_is_preview", icon="SCENE")
 
                         layout.separator()

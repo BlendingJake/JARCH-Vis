@@ -980,7 +980,7 @@ def update_roofing(self, context):
         bpy.data.objects[i].select = True
 
 
-def roofing_material(self):
+def roofing_materials(self):
     # create material
     o = bpy.context.object
 
@@ -1173,12 +1173,10 @@ class RoofingPanel(bpy.types.Panel):
                                 layout.prop(ob, "jv_bump_amo")
                             
                             layout.prop(ob, "jv_im_scale")
-                            layout.separator()                       
                             layout.prop(ob, "jv_is_rotate", icon="MAN_ROT")
                             
                         layout.separator()
                         layout.operator("mesh.jv_roofing_materials", icon="MATERIAL")
-                        layout.separator()
                         layout.prop(ob, "jv_is_preview", icon="SCENE")
                                                 
                     # operators
@@ -1268,7 +1266,7 @@ class RoofingMaterials(bpy.types.Operator):
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
-        roofing_material(self)
+        roofing_materials(self)
         return {"FINISHED"}
 
 

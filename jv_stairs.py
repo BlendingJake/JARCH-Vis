@@ -18,7 +18,6 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty,
 from math import radians, tan, sqrt, asin
 from mathutils import Euler, Vector
 import bmesh
-from random import uniform
 from . jv_materials import image_material
 from . jv_utils import point_rotation, METRIC_INCH, I, unwrap_object, random_uvs
 import jv_properties
@@ -907,9 +906,9 @@ def update_stairs(self, context):
     verts, faces, names = create_stairs(self, context, o.jv_stair_style, o.jv_overhang_style, o.jv_num_steps,
                                         o.jv_tread_width, o.jv_riser_height, o.jv_over_front, o.jv_over_sides,
                                         o.jv_stair_width, o.jv_num_landings, o.jv_is_close_sides, o.jv_tread_width0,
-                                        o.jv_riser_height0, o.jv_landing_depth, o.jv_landing_rot0, o.jv_over_front0,
+                                        o.jv_riser_height0, o.jv_landing_depth0, o.jv_landing_rot0, o.jv_over_front0,
                                         o.jv_over_sides0, o.jv_overhang_style0, o.jv_is_backwards0, o.jv_landing_rot1,
-                                        o.jv_tread_width1, o.jv_riser_height1, o.s_landing_depth1, o.jv_over_front1,
+                                        o.jv_tread_width1, o.jv_riser_height1, o.jv_landing_depth1, o.jv_over_front1,
                                         o.jv_over_sides1, o.jv_overhang_style1, o.jv_is_backwards1, o.jv_winding_rot,
                                         o.jv_step_begin_rot, o.jv_spiral_rot, o.jv_num_steps0, o.jv_num_steps1,
                                         o.jv_set_steps_in, o.jv_is_riser, o.jv_is_landing, o.jv_is_light,
@@ -1109,7 +1108,7 @@ class StairsPanel(bpy.types.Panel):
 
                                 if (i == 0 and o.jv_landing_rot0 != "1") or (i == 1 and o.jv_landing_rot1 != "1"):
                                     box.prop(o, "jv_is_backwards" + str(i), icon="LOOP_BACK")
-                                box.prop(o, "s_landing_depth" + str(i))
+                                box.prop(o, "jv_landing_depth" + str(i))
 
                                 if not o.jv_set_steps_in:
                                     box.separator()
@@ -1202,6 +1201,7 @@ class StairsAdd(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.mesh.primitive_cube_add()
         o = context.object
+        o.jv_internal_type = "stair"
         o.jv_object_add = "add"
         return {"FINISHED"}
 

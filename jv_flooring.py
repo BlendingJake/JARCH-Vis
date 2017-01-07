@@ -1130,16 +1130,16 @@ class FlooringPanel(bpy.types.Panel):
                             layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                     else:
                         layout.label("This Is Already A JARCH Vis Object", icon="INFO")
-                        layout.operator("mesh.jv_flooring_add", text="Add Flooring", icon="MESH_GRID")
+                        layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                 else:
                     layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
             else:
-                layout.operator("mesh.jv_flooring_add", text="Add Flooring", icon="MESH_GRID")
+                layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
 
 
 class FlooringAdd(bpy.types.Operator):
     bl_idname = "mesh.jv_flooring_add"
-    bl_label = "JARCH Vis: Add Flooring"
+    bl_label = "Add Flooring"
     bl_description = "JARCH Vis: Flooring Generator"
 
     @classmethod

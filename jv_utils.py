@@ -23,7 +23,7 @@ HI = 0.5 / METRIC_INCH
 def delete_materials(self, context):
     import bpy
     o = context.object
-    if not o.jv_is_material and o.jv_mat != "2":
+    if not o.jv_is_material:
         for i in o.data.materials:
             bpy.ops.object.material_slot_remove()
 

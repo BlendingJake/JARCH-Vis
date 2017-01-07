@@ -16,7 +16,8 @@
 import bpy
 from bpy.props import EnumProperty, FloatProperty, StringProperty, BoolProperty, IntProperty
 from math import radians, sqrt, acos, cos, sin, asin
-from . jv_utils import METRIC_INCH, METRIC_FOOT, I, HI, point_rotation
+from . jv_utils import METRIC_INCH, I, HI, point_rotation, random_uvs, unwrap_object
+from . jv_materials import glossy_diffuse_material, image_material, architectural_glass_material
 import jv_properties
 from mathutils import Vector, Matrix
 
@@ -38,9 +39,124 @@ def arch_function(half_width, half_height, res):
         yield (x, y)
 
 
+# roundness refers to what percentage of height that arch is
+def arch(width, height, roundness, res, is_slider, jamb_w):
+    verts, faces, glass_indices = [], [], []
+
+    arch_h = height * (1 / (100 / roundness))
+    arch_h2 = arch_h + I
+    h = height - arch_h  # height to bottom of arch
+    hw = width / 2
+    hw2 = width / 2 + I
+    w = jamb_w / 2
+    y = -t / 2
+
+    # jamb base
+    verts += [(-hw - I, -w, 0.0), (hw + I, -w, 0.0), (hw + I, w, 0.0), (-hw - I, w, 0.0), (-hw, -w, I), (hw, -w, I),
+              (hw, w, I), (-hw, w, I), (-hw - I, -w, h + I), (-hw, -w, h + I), (-hw, w, h + I), (-hw - I, w, h + I),
+              (hw, -w, h + I), (hw + I, -w, h + I), (hw + I, w, h + I), (hw, w, h + I)]
+
+    faces += [(0, 3, 2, 1), (0, 1, 5, 4), (2, 3, 7, 6), (4, 5, 6, 7), (0, 4, 9, 8), (0, 8, 11, 3), (3, 11, 10, 7),
+              (4, 7, 10, 9), (1, 2, 14, 13), (1, 13, 12, 5), (5, 12, 15, 6), (2, 6, 15, 14)]
+
+    p = len(verts)
+    p2 = len(verts)
+
+    # jamb arch
+    for i in arch_function(hw, arch_h, res):
+        verts += [(i[0], -w, i[1] + h + I), (i[0], w, i[1] + h + I)]
+
+    off = len(verts) - p
+    for i in arch_function(hw2, arch_h2, res):
+        verts += [(i[0], -w, i[1] + h + I), (i[0], w, i[1] + h + I)]
+
+    # jamb faces
+    for i in range(res - 2):  # arch faces
+        faces += [(p, p + 1, p + 3, p + 2), (p, p + 2, p + off + 2, p + off),
+                  (p + off, p + off + 2, p + off + 3, p + off + 1), (p + 1, p + off + 1, p + off + 3, p + 3)]
+        p += 2
+
+    # connecting faces
+    faces += [(p2 - 8, p2 - 7, p2, p2 + off), (p2 - 7, p2 - 6, p2 + 1, p2), (p2 - 6, p2 - 5, p2 + off + 1, p2 + 1),
+              (p2 - 8, p2 + off, p2 + off + 1, p2 - 5), (p2 - 4, p2 - 3, p + off, p),
+              (p2 - 3, p2 - 2, p + off + 1, p + off),
+              (p2 - 2, p2 - 1, p + 1, p + off + 1), (p2 - 1, p2 - 4, p, p + 1)]  # right side
+
+    # if slide add extra pane
+    sz, ph = I, h
+    if is_slider:
+        create_rectangle_pane(verts, faces, glass_indices, width, (h + I) / 2, 0.0, 0.0, I + (h + I) / 4,
+                              [0.0, 0.0, 0.0, 0.0])
+        sz = (h + I) / 2
+        ph = h - (h - I) / 2
+        y = 0.0
+
+    p = len(verts)
+    # border bottom
+    verts += [(-hw, y, sz), (hw, y, sz), (hw, y + t, sz), (-hw, y + t, sz), (-hw + I, y, sz + I),
+              (hw - I, y, sz + I),
+              (hw - I, y + t, sz + I), (-hw + I, y + t, sz + I), (-hw + I + bevelXZ, y + bevelY, sz + I + bevelXZ),
+              (hw - I - bevelXZ, y + bevelY, sz + I + bevelXZ), (hw - I, y + t - ei, sz + I),
+              (-hw + I, y + t - ei, sz + I)]
+
+    # border middle
+    sz += ph
+    p3 = len(verts)
+    verts += [(-hw, y, sz), (hw, y, sz), (hw, y + t, sz), (-hw, y + t, sz), (-hw + I, y, sz), (hw - I, y, sz),
+              (hw - I, y + t, sz), (-hw + I, y + t, sz), (-hw + I + bevelXZ, y + bevelY, sz),
+              (hw - I - bevelXZ, y + bevelY, sz), (hw - I, y + t - ei, sz), (-hw + I, y + t - ei, sz)]
+
+    # border arch
+    temp1 = []
+    p2 = len(verts)
+    for i in arch_function(hw, arch_h, res):
+        temp1 += [(i[0], y, i[1] + h + I), (i[0], y + t, i[1] + h + I)]
+    temp2 = []
+    for i in arch_function(hw - I, arch_h - I, res):
+        temp2 += [(i[0], y, i[1] + h + I), (i[0], y + t - ei, i[1] + h + I), (i[0], y + t, i[1] + h + I)]
+    temp3 = []
+    for i in arch_function(hw - I - bevelXZ, arch_h - I - bevelXZ, res):
+        temp3 += [(i[0], y + bevelY, i[1] + h + I)]
+
+    # bottom and side faces for border
+    faces += [(p, p + 1, p + 5, p + 4), (p + 4, p + 5, p + 9, p + 8), (p, p + 3, p + 2, p + 1),
+              (p + 2, p + 3, p + 7, p + 6),
+              (p + 6, p + 7, p + 11, p + 10), (p, p + 4, p + 16, p + 12), (p + 4, p + 8, p + 20, p + 16),
+              (p + 1, p + 13, p + 17, p + 5),
+              (p + 5, p + 17, p + 21, p + 9), (p + 2, p + 6, p + 18, p + 14), (p + 6, p + 10, p + 22, p + 18),
+              (p + 11, p + 7, p + 19, p + 23),
+              (p + 7, p + 3, p + 15, p + 19), (p + 8, p + 9, p + 21, p + 20), (p + 10, p + 11, p + 23, p + 22)]
+
+    # combine vert lists with correct indexs for easier indexing
+    inner_face, outer_face = sort_window_verts(temp1, temp2, temp3, verts)
+    p4 = len(verts)
+
+    # faces for arch
+    p = p2
+    for i in range(res - 2):
+        faces += [(p, p + 2, p + 8, p + 6), (p + 2, p + 3, p + 9, p + 8), (p + 4, p + 5, p + 11, p + 10),
+                  (p + 1, p + 7, p + 11, p + 5),
+                  (p, p + 1, p + 7, p + 6)]
+        p += 6
+    glass_indices += [len(faces), len(faces) + 1]
+    faces.append(inner_face)
+    faces.append(outer_face)
+
+    # extra faces
+    faces += [(p3, p3 + 4, p3 + 14, p3 + 12), (p3 + 4, p3 + 8, p3 + 15, p3 + 14),
+              (p3 + 7, p3 + 3, p3 + 13, p3 + 17),
+              (p3 + 11, p3 + 7, p3 + 17, p3 + 16), (p3, p3 + 3, p3 + 13, p3 + 12), (p3 + 1, p4 - 6, p4 - 4, p3 + 5),
+              (p3 + 5, p4 - 4, p4 - 3, p3 + 9),
+              (p3 + 6, p3 + 10, p4 - 2, p4 - 1), (p3 + 2, p3 + 6, p4 - 1, p4 - 5), (p3 + 1, p4 - 6, p4 - 5, p3 + 2),
+              (p3 + 8, p3 + 9, p4 - 3, p3 + 15),
+              (p3 + 10, p3 + 11, p3 + 16, p4 - 2)]
+
+    return verts, faces, glass_indices
+
+
 # bay windows
 def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, depth):
-    verts, faces = [], []
+    verts, faces, glass_indices = [], [], []
     segments = int(segments)
     hw, jw, h2 = width / 2, jamb_w / 2, h
     h -= 2 * I  # adjust for height of jamb
@@ -57,12 +173,12 @@ def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, de
             create_rectangle_jamb(verts, faces, side_pw - 2 * I, h, jamb_w, True, 0)
 
             if db_hung:
-                create_rectangle_pane(verts, faces, side_pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                create_rectangle_pane(verts, faces, glass_indices, side_pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
                                       [HI, 0.0, 0.0, 0.0])
-                create_rectangle_pane(verts, faces, side_pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                create_rectangle_pane(verts, faces, glass_indices, side_pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
                                       I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
             else:
-                create_rectangle_pane(verts, faces, side_pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, glass_indices, side_pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
 
             # rotation and translation
             for v in range(p, len(verts), 1):
@@ -81,12 +197,12 @@ def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, de
             create_rectangle_jamb(verts, faces, pw, h, jamb_w, True, 0)
 
             if db_hung:
-                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                create_rectangle_pane(verts, faces, glass_indices, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
                                       [HI, 0.0, 0.0, 0.0])
-                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                create_rectangle_pane(verts, faces, glass_indices, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
                                       I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
             else:
-                create_rectangle_pane(verts, faces, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, glass_indices, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
 
             matrix = Matrix.Translation((cx, depth - jw, 0)) * Matrix.Rotation(radians(180), 4, "Z")
             # rotation and translation
@@ -113,7 +229,7 @@ def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, de
         th2 = asin(jamb_w * sin(ang / 2) / hw)
         pw = 2 * hw * sin(ang / 2 - th2) - 2 * I
         r = hw * cos(ang / 2 - th2) - jamb_w / 2
-        sx= jamb_w * cos(ang / 2)
+        sx = jamb_w * cos(ang / 2)
 
         # first filler strip on far right
         pt = point_rotation((hw, 0), (0, 0), th2)
@@ -129,12 +245,12 @@ def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, de
             create_rectangle_jamb(verts, faces, pw, h, jamb_w, True, 0)
 
             if db_hung:
-                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
+                create_rectangle_pane(verts, faces, glass_indices, pw, (h + I) / 2, 0, 0.0, I + (h + I) / 4,
                                       [HI, 0.0, 0.0, 0.0])
-                create_rectangle_pane(verts, faces, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
+                create_rectangle_pane(verts, faces, glass_indices, pw, (h + I) / 2, 0, (1.5 / METRIC_INCH),
                                       I + (h + I) / 4 + (h - I) / 2, [0.0, 0.0, 0.0, 0.0])
             else:
-                create_rectangle_pane(verts, faces, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
+                create_rectangle_pane(verts, faces, glass_indices, pw, h, 0, 0.0, h / 2 + I, [HI, 0.0, 0.0, 0.0])
 
             # rotation and translation
             for v in range(p, len(verts), 1):
@@ -153,15 +269,15 @@ def bay(width, h, is_bay, bay_angle, segments, split_center, db_hung, jamb_w, de
             faces += [(p2, p2 + 2, p2 + 3, p2 + 1), (p2 + 2, p2 + 4, p2 + 5, p2 + 3), (p2, p2 + 1, p2 + 5, p2 + 4),
                       (p2 + 1, p2 + 3, p2 + 5), (p2, p2 + 4, p2 + 2)]
 
-    return verts, faces
+    return verts, faces, glass_indices
 
 
-# circular
+# circulars
 def circular(radius, angle, res, jamb_w, full):
-    verts, faces = [], []
+    verts, faces, glass_indices = [], [], []
         
     if full:
-        verts, faces = polygon(radius, res, jamb_w)
+        verts, faces, glass_indices = polygon(radius, res, jamb_w)
     else:        
         w = jamb_w / 2
         edge_ang = radians(90) - acos(I / radius)
@@ -239,6 +355,7 @@ def circular(radius, angle, res, jamb_w, full):
         temp3 += [(x, y + bevelY, 2 * I + bevelXZ)]
         
         inner_face, outer_face = sort_window_verts(temp1, temp2, temp3, verts)  # sort vertices lists
+        glass_indices += [len(faces), len(faces) + 1]
         faces.append(inner_face)
         faces.append(outer_face)
         
@@ -249,111 +366,7 @@ def circular(radius, angle, res, jamb_w, full):
             p += 6
         faces += [(p, p+2, p2+2, p2), (p+2, p+3, p2+3, p2+2), (p2+1, p2+5, p+5, p+1), (p2+5, p2+4, p+4, p+5)]
 
-    return verts, faces
-
-
-# roundness refers to what percentage of height that arch is
-def arch(width, height, roundness, res, is_slider, jamb_w):
-    verts, faces = [], []
-    
-    arch_h = height * (1 / (100/roundness))
-    arch_h2 = arch_h + I
-    h = height - arch_h  # height to bottom of arch
-    hw = width/2
-    hw2 = width/2 + I
-    w = jamb_w/2      
-    y = -t/2   
-    
-    # jamb base
-    verts += [(-hw - I, -w, 0.0), (hw + I, -w, 0.0), (hw + I, w, 0.0), (-hw - I, w, 0.0), (-hw, -w, I), (hw, -w, I),
-              (hw, w, I), (-hw, w, I), (-hw - I, -w, h + I), (-hw, -w, h + I), (-hw, w, h + I), (-hw - I, w, h + I),
-              (hw, -w, h + I), (hw + I, -w, h + I), (hw + I, w, h + I), (hw, w, h + I)]
-    
-    faces += [(0, 3, 2, 1), (0, 1, 5, 4), (2, 3, 7, 6), (4, 5, 6, 7), (0, 4, 9, 8), (0, 8, 11, 3), (3, 11, 10, 7),
-              (4, 7, 10, 9), (1, 2, 14, 13), (1, 13, 12, 5), (5, 12, 15, 6), (2, 6, 15, 14)]
-    
-    p = len(verts)
-    p2 = len(verts)
-    
-    # jamb arch        
-    for i in arch_function(hw, arch_h, res):
-        verts += [(i[0], -w, i[1] + h + I), (i[0], w, i[1] + h + I)]
-
-    off = len(verts) - p
-    for i in arch_function(hw2, arch_h2, res):
-        verts += [(i[0], -w, i[1] + h + I), (i[0], w, i[1] + h + I)]
-    
-    # jamb faces        
-    for i in range(res - 2):  # arch faces
-        faces += [(p, p+1, p+3, p+2), (p, p+2, p+off+2, p+off),
-                  (p+off, p+off+2, p+off+3, p+off+1), (p+1, p+off+1, p+off+3, p+3)]
-        p += 2
-    
-    # connecting faces
-    faces += [(p2-8, p2-7, p2, p2+off), (p2-7, p2-6, p2+1, p2), (p2-6, p2-5, p2+off+1, p2+1),
-              (p2-8, p2+off, p2+off+1, p2-5), (p2-4, p2-3, p+off, p), (p2-3, p2-2, p+off+1, p+off),
-              (p2-2, p2-1, p+1, p+off+1), (p2-1, p2-4, p, p+1)]  # right side
-    
-    # if slide add extra pane
-    sz, ph = I, h
-    if is_slider:
-        create_rectangle_pane(verts, faces, width, (h + I) / 2, 0.0, 0.0, I + (h + I) / 4, [0.0, 0.0, 0.0, 0.0])
-        sz = (h + I) / 2
-        ph = h - (h - I) / 2
-        y = 0.0
-     
-    p = len(verts)
-    # border bottom
-    verts += [(-hw, y, sz), (hw, y, sz), (hw, y+t, sz), (-hw, y+t, sz), (-hw + I, y, sz + I), (hw - I, y, sz + I),
-              (hw - I, y + t, sz + I), (-hw + I, y + t, sz + I), (-hw + I + bevelXZ, y + bevelY, sz + I + bevelXZ),
-              (hw - I - bevelXZ, y + bevelY, sz + I + bevelXZ), (hw - I, y + t - ei, sz + I),
-              (-hw + I, y + t - ei, sz + I)]
-            
-    # border middle
-    sz += ph    
-    p3 = len(verts)
-    verts += [(-hw, y, sz), (hw, y, sz), (hw, y+t, sz), (-hw, y+t, sz), (-hw + I, y, sz), (hw - I, y, sz),
-              (hw - I, y + t, sz), (-hw + I, y + t, sz), (-hw + I + bevelXZ, y + bevelY, sz),
-              (hw - I - bevelXZ, y + bevelY, sz), (hw - I, y + t - ei, sz), (-hw + I, y + t - ei, sz)]
-             
-    # border arch
-    temp1 = []
-    p2 = len(verts)
-    for i in arch_function(hw, arch_h, res):
-        temp1 += [(i[0], y, i[1] + h + I), (i[0], y + t, i[1] + h + I)]
-    temp2 = []     
-    for i in arch_function(hw - I, arch_h - I, res):
-        temp2 += [(i[0], y, i[1] + h + I), (i[0], y + t - ei, i[1] + h + I), (i[0], y + t, i[1] + h + I)]
-    temp3 = []  
-    for i in arch_function(hw - I - bevelXZ, arch_h - I - bevelXZ, res):
-        temp3 += [(i[0], y + bevelY, i[1] + h + I)]
-        
-    # bottom and side faces for border
-    faces += [(p, p+1, p+5, p+4), (p+4, p+5, p+9, p+8), (p, p+3, p+2, p+1), (p+2, p+3, p+7, p+6),
-              (p+6, p+7, p+11, p+10), (p, p+4, p+16, p+12), (p+4, p+8, p+20, p+16), (p+1, p+13, p+17, p+5),
-              (p+5, p+17, p+21, p+9), (p+2, p+6, p+18, p+14), (p+6, p+10, p+22, p+18), (p+11, p+7, p+19, p+23),
-              (p+7, p+3, p+15, p+19), (p+8, p+9, p+21, p+20), (p+10, p+11, p+23, p+22)]
-    
-    # combine vert lists with correct indexs for easier indexing
-    inner_face, outer_face = sort_window_verts(temp1, temp2, temp3, verts)
-    p4 = len(verts) 
-    
-    # faces for arch
-    p = p2   
-    for i in range(res - 2):
-        faces += [(p, p+2, p+8, p+6), (p+2, p+3, p+9, p+8), (p+4, p+5, p+11, p+10), (p+1, p+7, p+11, p+5),
-                  (p, p+1, p+7, p+6)]
-        p += 6
-    faces.append(inner_face)
-    faces.append(outer_face)
-        
-    # extra faces
-    faces += [(p3, p3+4, p3+14, p3+12), (p3+4, p3+8, p3+15, p3+14), (p3+7, p3+3, p3+13, p3+17),
-              (p3+11, p3+7, p3+17, p3+16), (p3, p3+3, p3+13, p3+12), (p3+1, p4-6, p4-4, p3+5), (p3+5, p4-4, p4-3, p3+9),
-              (p3+6, p3+10, p4-2, p4-1), (p3+2, p3+6, p4-1, p4-5), (p3+1, p4-6, p4-5, p3+2), (p3+8, p3+9, p4-3, p3+15),
-              (p3+10, p3+11, p3+16, p4-2)]
-    
-    return verts, faces
+    return verts, faces, glass_indices
 
 
 # creates jamb, startX define the bottom center of the window
@@ -397,8 +410,8 @@ def create_rectangle_jamb(verts, faces, width, height, jamb, full_jamb, start_x)
 # add faces and verts to (verts and faces)
 # start_y and start_z need to be center of window pane at inside on y
 # wide_frame is extra [bottom, right, top, left]
-def create_rectangle_pane(verts, faces, width, height, sx, sy, sz, wide_frame):
-    p = len(verts)    
+def create_rectangle_pane(verts, faces, glass_indices, width, height, sx, sy, sz, wide_frame):
+    p, f = len(verts), len(faces)
     w, h = width / 2, height / 2
 
     # loops allow just one corner to be done, and then all the rest is done by just inverting values    
@@ -430,9 +443,11 @@ def create_rectangle_pane(verts, faces, width, height, sx, sy, sz, wide_frame):
               (p+2, p+3, p+17, p+16), (p+3, p+4, p+17, p+18), (p+11, p+10, p+24, p+25), (p+10, p+9, p+23, p+24),
               (p+4, p+5, p+12, p+11), (p+18, p+19, p+26, p+25)]
 
+    glass_indices += [f + 16, f + 17]
+
 
 def double_hung(width, height, jamb, num):
-    verts, faces = [], []             
+    verts, faces, glass_indices = [], [], []
     sx = -(num - 1) / 2 * width - (num - 1) * HI
     full_jamb = True
     
@@ -440,33 +455,34 @@ def double_hung(width, height, jamb, num):
         create_rectangle_jamb(verts, faces, width, height, jamb, full_jamb, sx)
         
         # panes
-        create_rectangle_pane(verts, faces, width, (height + I) / 2, sx, 0.0, I + (height + I) / 4, [HI, 0.0, 0.0, 0.0])
-        create_rectangle_pane(verts, faces, width, (height + I) / 2, sx, (1.5 / METRIC_INCH), I + (height + I) / 4 +
-                              (height - I) / 2, [0.0, 0.0, 0.0, 0.0])
+        create_rectangle_pane(verts, faces, glass_indices, width, (height + I) / 2, sx, 0.0, I + (height + I) / 4,
+                              [HI, 0.0, 0.0, 0.0])
+        create_rectangle_pane(verts, faces, glass_indices, width, (height + I) / 2, sx, (1.5 / METRIC_INCH),
+                              I + (height + I) / 4 + (height - I) / 2, [0.0, 0.0, 0.0, 0.0])
         
         sx += width + I
         full_jamb = False
                                         
-    return verts, faces 
+    return verts, faces, glass_indices
 
 
 def gliding(width, height, slide_right, jamb_w):
-    verts, faces = [], []
+    verts, faces, glass_indices = [], [], []
     
     create_rectangle_jamb(verts, faces, width, height, jamb_w, True, 0.0)
     
     if slide_right:
-        create_rectangle_pane(verts, faces, (width + I) / 2, height, -(width - I) / 4, 0.0, (height + 2 * I) / 2,
-                              [0.0, HI, 0.0, I])
-        create_rectangle_pane(verts, faces, (width + 2 * I) / 2, height, (width - 2 * I) / 4, I + HI,
+        create_rectangle_pane(verts, faces, glass_indices, (width + I) / 2, height, -(width - I) / 4, 0.0,
+                              (height + 2 * I) / 2, [0.0, HI, 0.0, I])
+        create_rectangle_pane(verts, faces, glass_indices, (width + 2 * I) / 2, height, (width - 2 * I) / 4, I + HI,
                               (height + 2 * I) / 2, [0.0, 0.0, 0.0, HI])
     else:
-        create_rectangle_pane(verts, faces, (width + I) / 2, height, -(width - I) / 4, I + HI, (height + 2 * I) / 2,
-                              [0.0, 0.0, 0.0, HI])
-        create_rectangle_pane(verts, faces, (width + I) / 2, height, (width - I) / 4, 0.0, (height + 2 * I) / 2,
-                              [0.0, HI, 0.0, I])
+        create_rectangle_pane(verts, faces, glass_indices, (width + I) / 2, height, -(width - I) / 4, I + HI,
+                              (height + 2 * I) / 2, [0.0, 0.0, 0.0, HI])
+        create_rectangle_pane(verts, faces, glass_indices, (width + I) / 2, height, (width - I) / 4, 0.0,
+                              (height + 2 * I) / 2, [0.0, HI, 0.0, I])
     
-    return verts, faces 
+    return verts, faces, glass_indices
 
 
 def gothic(width, height, res, is_slider, jamb_w):
@@ -474,7 +490,7 @@ def gothic(width, height, res, is_slider, jamb_w):
     if res % 2 != 0:
         res += 1
         
-    verts, faces = [], []    
+    verts, faces, glass_indices = [], [], []
     hw, w = width / 2, jamb_w / 2
     hres = int(res / 2)
 
@@ -549,9 +565,10 @@ def gothic(width, height, res, is_slider, jamb_w):
               (p2+2, p+2, p+3, p2+3)]
 
     if is_slider:
-        create_rectangle_pane(verts, faces, width, h_off + t, 0.0, y, h_off / 2 + I + t / 2, [t - I for i in range(4)])
+        create_rectangle_pane(verts, faces, glass_indices, width, h_off + t, 0.0, y, h_off / 2 + I + t / 2,
+                              [t - I for i in range(4)])
           
-    return verts, faces
+    return verts, faces, glass_indices
 
 
 def oval(width, height, res, jamb_w):
@@ -559,7 +576,7 @@ def oval(width, height, res, jamb_w):
     if res % 2 != 0:
         res += 1
         
-    verts, faces = [], []
+    verts, faces, glass_indices = [], [], []
     
     hw = width / 2
     hh = height / 2
@@ -627,7 +644,8 @@ def oval(width, height, res, jamb_w):
     
     # put all vertices in correct order into main list 
     inner_face, outer_face = sort_window_verts(temp1, temp2, temp3, verts)
-    p = e + 1 
+    p = e + 1
+    glass_indices += [len(faces), len(faces) + 1]
     faces += [inner_face, outer_face]
     for i in range(res - 1):
         faces += [(p, p+2, p+8, p+6), (p+2, p+3, p+9, p+8), (p+4, p+5, p+11, p+10), (p+1, p+7, p+11, p+5),
@@ -635,11 +653,11 @@ def oval(width, height, res, jamb_w):
         p += 6
     faces += [(e+1, p, p+2, e+3), (p+2, p+3, e+4, e+3), (p+4, p+5, e+5, e+6), (p+5, p+1, e+2, e+6), (e+1, p, p+1, e+2)]
         
-    return verts, faces         
+    return verts, faces, glass_indices
 
 
 def polygon(radius, sides, jamb_w):
-    verts, faces = [], []   
+    verts, faces, glass_indices = [], [], []
     
     ang = 360 / sides  
     w = jamb_w / 2    
@@ -683,6 +701,7 @@ def polygon(radius, sides, jamb_w):
     outer_face.reverse()
     
     # pane faces
+    glass_indices += [len(faces), len(faces) + 1]
     faces.append(inner_face)
     faces.append(outer_face)
     p += off+2
@@ -694,7 +713,7 @@ def polygon(radius, sides, jamb_w):
     faces += [(p2, p2+2, p+2, p), (p2, p, p+1, p2+1), (p+1, p+5, p2+5, p2+1), (p2+5, p+5, p+4, p2+4),
               (p2+2, p2+3, p+3, p+2)]
     
-    return verts, faces
+    return verts, faces, glass_indices
 
 
 # takes separate groups of vertices that compose the window pane and adds them into verts in a manner that makes it easy
@@ -718,60 +737,70 @@ def sort_window_verts(temp1, temp2, temp3, verts):
     return inner_face, outer_face   
 
 
-def stationary(width, height, jamb_w):
-    verts, faces = [], []
+def stationary(width, height, jamb_w, num):
+    verts, faces, glass_indices = [], [], []
+    sx = -(num - 1) / 2 * width - (num - 1) * HI
+    full_jamb = True
+
+    for i in range(num):
+        create_rectangle_jamb(verts, faces, width, height, jamb_w, full_jamb, sx)
+        create_rectangle_pane(verts, faces, glass_indices, width, height, sx, 0.75 / METRIC_INCH, (height + 2 * I) / 2,
+                              [0.0, 0.0, 0.0, 0.0])
+
+        sx += width + I
+        full_jamb = False
     
-    create_rectangle_jamb(verts, faces, width, height, jamb_w, True, 0.0)
-    create_rectangle_pane(verts, faces, width, height, 0.0, 0.75 / METRIC_INCH, (height + 2 * I) / 2,
-                          [0.0, 0.0, 0.0, 0.0])
-    
-    return verts, faces   
+    return verts, faces, glass_indices
 
 
 # create window based off of parameters
-def create_window(context, types, sub_type, jamb_w, dh_width, dh_height, dh_num, gl_width, gl_height, gl_slide_right,
+def create_window(context, types, sub_type, jamb_w, dh_width, dh_height, gang_num, gl_width, gl_height, gl_slide_right,
                   so_width, so_height, so_height_tall, sides, radius, is_full_circle, angle, roundness, res, is_slider,
                   ba_width, ba_height, is_bay, bay_angle, segments, is_split_center, is_double_hung, depth):
      
-    verts, faces, ob_to_join = [], [], []     
+    verts, faces, ob_to_join, glass_indices = [], [], [], []
 
     if types == "1":
-        verts, faces = double_hung(dh_width, dh_height, jamb_w, dh_num)
+        verts, faces, glass_indices = double_hung(dh_width, dh_height, jamb_w, gang_num)
     elif types == "2":
-        verts, faces = gliding(gl_width, gl_height, gl_slide_right, jamb_w)
+        verts, faces, glass_indices = gliding(gl_width, gl_height, gl_slide_right, jamb_w)
     elif types == "3":
-        verts, faces = stationary(so_width, so_height, jamb_w)
+        verts, faces, glass_indices = stationary(so_width, so_height, jamb_w, gang_num)
     # odd-shaped
     elif types == "4":
         if sub_type == "1": 
-            verts, faces = polygon(radius, sides, jamb_w)
+            verts, faces, glass_indices = polygon(radius, sides, jamb_w)
         elif sub_type == "2":
-            verts, faces = circular(radius, angle, res, jamb_w, is_full_circle)
+            verts, faces, glass_indices = circular(radius, angle, res, jamb_w, is_full_circle)
         elif sub_type == "3":
-            verts, faces = arch(so_width, so_height, roundness, res, is_slider, jamb_w)
+            verts, faces, glass_indices = arch(so_width, so_height, roundness, res, is_slider, jamb_w)
         elif sub_type == "4":
-            verts, faces = gothic(so_width, so_height_tall, res, is_slider, jamb_w)
+            verts, faces, glass_indices = gothic(so_width, so_height_tall, res, is_slider, jamb_w)
         elif sub_type == "5":
-            verts, faces = oval(so_width, so_height, res, jamb_w)
+            verts, faces, glass_indices = oval(so_width, so_height, res, jamb_w)
     elif types == "5":
-        verts, faces = bay(ba_width, ba_height, is_bay, bay_angle, segments, is_split_center, is_double_hung, jamb_w,
-                           depth)
+        verts, faces, glass_indices = bay(ba_width, ba_height, is_bay, bay_angle, segments, is_split_center,
+                                          is_double_hung, jamb_w, depth)
     
-    return verts, faces, ob_to_join
+    return verts, faces, ob_to_join, glass_indices
 
 
 # update window
 def update_window(self, context):
     ob = context.object
+
+    mats = []
+    for mat in ob.data.materials:
+        mats.append(mat.name)
     
-    verts, faces, ob_to_join = create_window(context, ob.jv_w_types, ob.jv_odd_types, ob.jv_jamb_width, ob.jv_dh_width,
-                                             ob.jv_dh_height, ob.jv_dh_num, ob.jv_gl_width, ob.jv_gl_height,
-                                             ob.jv_gl_slide_right, ob.jv_so_width, ob.jv_so_height,
-                                             ob.jv_so_height_tall, ob.jv_sides, ob.jv_o_radius, ob.jv_full_circle,
-                                             ob.jv_w_angle, ob.jv_roundness, ob.jv_resolution, ob.jv_is_slider,
-                                             ob.jv_ba_width, ob.jv_ba_height, ob.jv_is_bay, ob.jv_bay_angle,
-                                             ob.jv_bow_segments, ob.jv_is_split_center, ob.jv_is_double_hung,
-                                             ob.jv_depth)
+    verts, faces, ob_to_join, gl_is = create_window(context, ob.jv_w_types, ob.jv_odd_types, ob.jv_jamb_width,
+                                                    ob.jv_dh_width, ob.jv_dh_height, ob.jv_gang_num, ob.jv_gl_width,
+                                                    ob.jv_gl_height, ob.jv_gl_slide_right, ob.jv_so_width,
+                                                    ob.jv_so_height, ob.jv_so_height_tall, ob.jv_sides, ob.jv_o_radius,
+                                                    ob.jv_full_circle, ob.jv_w_angle, ob.jv_roundness, ob.jv_resolution,
+                                                    ob.jv_is_slider, ob.jv_ba_width, ob.jv_ba_height, ob.jv_is_bay,
+                                                    ob.jv_bay_angle, ob.jv_bow_segments, ob.jv_is_split_center,
+                                                    ob.jv_is_double_hung, ob.jv_depth)
             
     old_mesh = ob.data
     mesh = bpy.data.meshes.new(name="window")
@@ -787,15 +816,79 @@ def update_window(self, context):
     old_mesh.user_clear()
     bpy.data.meshes.remove(old_mesh)
 
+    # assign materials to correct faces, first material is frame, second is glass
+    if len(mats) >= 1:
+        ob.data.materials.append(bpy.data.materials[mats[0]])
+    else:
+        mat = bpy.data.materials.new(ob.name + "_frame")
+        mat.use_nodes = True
+        ob.data.materials.append(mat)
 
-# TODO: materials not completed
+    if len(mats) >= 2:
+        ob.data.materials.append(bpy.data.materials[mats[1]])
+    else:
+        mat = bpy.data.materials.new(ob.name + "_glass")
+        mat.use_nodes = True
+        ob.data.materials.append(mat)
+
+    assign_glass_faces(context, gl_is)
+
+    if ob.jv_is_unwrap:
+        unwrap_object(self, context)
+        if ob.jv_is_random_uv:
+            random_uvs(self, context)
+
+
+def assign_glass_faces(context, indices):
+    o = context.object
+
+    for i in indices:
+        o.data.polygons[i].material_index = 1
+
+
+def window_materials(self, context):
+    o, mat = context.object, None
+
+    if o.jv_color_image == "rgba":
+        mat = glossy_diffuse_material(bpy, o.jv_rgba_color, (1, 1, 1), 0.05, 0.1, o.name + "_frame")
+    else:
+        if o.jv_col_image == "":
+            self.report({"ERROR"}, "JARCH Vis: No Color Image Filepath")
+            return
+        if o.jv_is_bump and o.jv_norm_image == "":
+            self.report({"ERROR"}, "JARCH VIs: No Normal Image Filepath")
+            return
+
+        mat = image_material(bpy, o.jv_im_scale, o.jv_col_image, o.jv_norm_image, o.jv_bump_amo, o.jv_is_bump,
+                             o.name + "_frame", True, 0.1, 0.05, o.jv_is_rotate, None)
+
+    if mat is None:
+        self.report({"ERROR"}, "JARCH Vis: Invalid Filepath Found When Creating Material")
+        return
+    elif len(o.data.materials) >= 1:
+        o.data.materials[0] = mat
+    elif len(o.data.materials) == 0:
+        o.data.materials.append(mat)
+
+    mat2 = architectural_glass_material(bpy, (1, 1, 1, 1), o.name + "_glass")
+    if len(o.data.materials) >= 2:
+        o.data.materials[1] = mat2
+    else:
+        o.data.materials.append(mat2)
+
+    for i in bpy.data.materials:
+        if i.users == 0:
+            bpy.data.materials.remove(i)
+
+
 class WindowMaterials(bpy.types.Operator):
     bl_idname = "mesh.jv_window_materials"
     bl_label = "Generate\\Update Materials"
     bl_options = {"UNDO", "INTERNAL"}
     
-    def execute(self, context):      
-        return {"FINISHED", "INTERNAL"}
+    def execute(self, context):
+        window_materials(self, context)
+        return {"FINISHED"}
 
 
 class WindowPanel(bpy.types.Panel):
@@ -809,98 +902,134 @@ class WindowPanel(bpy.types.Panel):
         layout = self.layout
         if bpy.context.mode == "EDIT_MESH":
             layout.label("JARCH Vis Doesn't Work In Edit Mode", icon="ERROR")
-        else:
+        elif context.object is None:
+            layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
+        elif context.object.jv_internal_type == "window":
             o = context.object
-            if o is not None and o.jv_internal_type == "window":
-                layout.label("Window Type:")
-                layout.prop(o, "jv_w_types", icon="OBJECT_DATAMODE")
-                
-                if o.jv_w_types == "4":
-                    layout.label("Shape:")
-                    layout.prop(o, "jv_odd_types", icon="SPACE2")
-                    
-                # parameters
-                layout.separator()
-                layout.prop(o, "jv_jamb_width")
-                    
-                # double hung
-                layout.separator()
-                if o.jv_w_types == "1":
-                    layout.prop(o, "jv_dh_width")
-                    layout.prop(o, "jv_dh_height")
-                    layout.prop(o, "jv_dh_num")
-                # gliding
-                elif o.jv_w_types == "2":
-                    layout.prop(o, "jv_gl_width")
-                    layout.prop(o, "jv_gl_height")
-                    layout.prop(o, "jv_gl_slide_right", icon="FORWARD")
-                # stationary 
-                elif o.jv_w_types == "3":
-                    layout.prop(o, "jv_so_width")
-                    layout.prop(o, "jv_so_height")
-                # odd-shaped
-                elif o.jv_w_types == "4":
-                    # polygon
-                    if o.jv_odd_types == "1":
-                        layout.prop(o, "jv_o_radius")
-                        layout.prop(o, "jv_sides")
-                    # circular
-                    elif o.jv_odd_types == "2":
-                        layout.prop(o, "jv_o_radius")
-                        layout.prop(o, "jv_resolution")
-                        layout.prop(o, "jv_full_circle", icon="MESH_CIRCLE")
-                        if not o.jv_full_circle:
-                            layout.prop(o, "jv_w_angle")
-                    
-                    else:
-                        layout.prop(o, "jv_so_width")
-                        
-                        if o.jv_odd_types == "4":  # gothic
-                            layout.prop(o, "jv_so_height_tall")                                
-                            layout.prop(o, "jv_is_slider", icon="SETTINGS")
-                        else:
-                            layout.prop(o, "jv_so_height")
-                            
-                        layout.separator()                    
-                        layout.prop(o, "jv_resolution")
-                        
-                        # arch
-                        if o.jv_odd_types == "3":
-                            layout.prop(o, "jv_roundness")                            
-                            layout.prop(o, "jv_is_slider", icon="SETTINGS")
-                            
-                # bay
-                elif o.jv_w_types == "5":
-                    layout.prop(o, "jv_ba_width")
-                    layout.prop(o, "jv_ba_height")
-                    layout.separator()
+            layout.label("Window Type:")
+            layout.prop(o, "jv_w_types", icon="OBJECT_DATAMODE")
 
-                    layout.prop(o, "jv_is_bay", icon="NOCURVE")
-                    if o.jv_is_bay:
-                        layout.prop(o, "jv_bay_angle", icon="MAN_ROT")
-                        layout.prop(o, "jv_depth")
-                        layout.separator()
-                        layout.prop(o, "jv_is_split_center", icon="PAUSE")
+            if o.jv_w_types == "4":
+                layout.label("Shape:")
+                layout.prop(o, "jv_odd_types", icon="SPACE2")
+
+            # parameters
+            layout.separator()
+            layout.prop(o, "jv_jamb_width")
+
+            # double hung
+            layout.separator()
+            if o.jv_w_types == "1":
+                layout.prop(o, "jv_dh_width")
+                layout.prop(o, "jv_dh_height")
+                layout.prop(o, "jv_gang_num")
+            # gliding
+            elif o.jv_w_types == "2":
+                layout.prop(o, "jv_gl_width")
+                layout.prop(o, "jv_gl_height")
+                layout.prop(o, "jv_gl_slide_right", icon="FORWARD")
+            # stationary
+            elif o.jv_w_types == "3":
+                layout.prop(o, "jv_so_width")
+                layout.prop(o, "jv_so_height")
+                layout.prop(o, "jv_gang_num")
+            # odd-shaped
+            elif o.jv_w_types == "4":
+                # polygon
+                if o.jv_odd_types == "1":
+                    layout.prop(o, "jv_o_radius")
+                    layout.prop(o, "jv_sides")
+                # circular
+                elif o.jv_odd_types == "2":
+                    layout.prop(o, "jv_o_radius")
+                    layout.prop(o, "jv_resolution")
+                    layout.prop(o, "jv_full_circle", icon="MESH_CIRCLE")
+                    if not o.jv_full_circle:
+                        layout.prop(o, "jv_w_angle")
+
+                else:
+                    layout.prop(o, "jv_so_width")
+
+                    if o.jv_odd_types == "4":  # gothic
+                        layout.prop(o, "jv_so_height_tall")
+                        layout.prop(o, "jv_is_slider", icon="SETTINGS")
                     else:
-                        layout.prop(o, "jv_bow_segments")
-                    layout.prop(o, "jv_is_double_hung", icon="SPLITSCREEN")
-                                              
-                # operators
+                        layout.prop(o, "jv_so_height")
+
+                    layout.separator()
+                    layout.prop(o, "jv_resolution")
+
+                    # arch
+                    if o.jv_odd_types == "3":
+                        layout.prop(o, "jv_roundness")
+                        layout.prop(o, "jv_is_slider", icon="SETTINGS")
+
+            # bay
+            elif o.jv_w_types == "5":
+                layout.prop(o, "jv_ba_width")
+                layout.prop(o, "jv_ba_height")
                 layout.separator()
-                layout.separator()
-                layout.operator("mesh.jv_window_update", icon="FILE_REFRESH")
-                layout.operator("mesh.jv_window_delete", icon="CANCEL")
-                layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
-            
+
+                layout.prop(o, "jv_is_bay", icon="NOCURVE")
+                if o.jv_is_bay:
+                    layout.prop(o, "jv_bay_angle", icon="MAN_ROT")
+                    layout.prop(o, "jv_depth")
+                    layout.separator()
+                    layout.prop(o, "jv_is_split_center", icon="PAUSE")
+                else:
+                    layout.prop(o, "jv_bow_segments")
+                layout.prop(o, "jv_is_double_hung", icon="SPLITSCREEN")
+
+            layout.separator()
+            layout.prop(o, "jv_is_unwrap", icon="GROUP_UVS")
+            if o.jv_is_unwrap:
+                layout.prop(o, "jv_is_random_uv", icon="RNDCURVE")
+
+            # materials
+            layout.separator()
+            if context.scene.render.engine == "CYCLES":
+                layout.prop(o, "jv_is_material", icon="MATERIAL")
             else:
-                if o.jv_internal_type != "window":
-                    layout.label("This Is Already A JARCH Vis Object", icon="INFO")
-                layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
+                layout.label("Materials Only Supported With Cycles", icon="POTATO")
+
+            if o.jv_is_material and context.scene.render.engine == "CYCLES":
+                layout.separator()
+                layout.label("Frame Material:")
+                layout.prop(o, "jv_color_image")
+
+                if o.jv_color_image == "rgba":
+                    layout.prop(o, "jv_rgba_color")
+                else:
+                    layout.prop(o, "jv_col_image", icon="COLOR")
+                    layout.prop(o, "jv_is_bump", icon="SMOOTHCURVE")
+
+                    if o.jv_is_bump:
+                        layout.prop(o, "jv_norm_image", icon="TEXTURE")
+                        layout.prop(o, "jv_bump_amo")
+
+                    layout.prop(o, "jv_im_scale")
+                    layout.prop(o, "jv_is_rotate", icon="MAN_ROT")
+
+                layout.separator()
+                layout.operator("mesh.jv_window_materials", icon="MATERIAL")
+                layout.prop(o, "jv_is_preview", icon="SCENE")
+
+            # operators
+            layout.separator()
+            layout.separator()
+            layout.operator("mesh.jv_window_update", icon="FILE_REFRESH")
+            layout.operator("mesh.jv_window_delete", icon="CANCEL")
+            layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
+
+        else:
+            if context.object.jv_internal_type != "window":
+                layout.label("This Is Already A JARCH Vis Object", icon="INFO")
+            layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
 
 
 class WindowAdd(bpy.types.Operator):
     bl_idname = "mesh.jv_window_add"
-    bl_label = "JARCH Vis: Add Window"
+    bl_label = "Add Window"
     bl_description = "JARCH Vis: Window Generator"
     
     @classmethod
@@ -911,6 +1040,7 @@ class WindowAdd(bpy.types.Operator):
         bpy.ops.mesh.primitive_cube_add()
         o = context.object
         o.jv_internal_type = "window"
+        o.jv_object_add = "add"
         return {"FINISHED"}
 
 
