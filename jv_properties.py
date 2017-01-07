@@ -1,3 +1,18 @@
+# This file is part of JARCH Vis
+#
+# JARCH Vis is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# JARCH Vis is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with JARCH Vis.  If not, see <http://www.gnu.org/licenses/>.
+
 import bpy
 from bpy.props import FloatProperty, IntProperty, EnumProperty, StringProperty, BoolProperty, FloatVectorProperty
 from . jv_utils import METRIC_INCH, METRIC_FOOT, delete_materials, preview_materials, update_roofing_facegroup_selection
@@ -5,11 +20,11 @@ from math import radians
 
 
 def jv_update_object(self, context):
-    from jv_flooring import update_flooring
-    from jv_roofing import update_roofing
-    from jv_siding import update_siding
-    from jv_stairs import update_stairs
-    from jv_windows import update_window
+    from . jv_flooring import update_flooring
+    from . jv_roofing import update_roofing
+    from . jv_siding import update_siding
+    from . jv_stairs import update_stairs
+    from . jv_windows import update_window
 
     o = context.object
     updates = {"flooring": update_flooring, "siding": update_siding, "roofing": update_roofing, "stair": update_stairs,

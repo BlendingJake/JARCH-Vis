@@ -1021,7 +1021,7 @@ class WindowPanel(bpy.types.Panel):
             layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
 
         else:
-            if context.object.jv_internal_type != "window":
+            if context.object.jv_internal_type != "":
                 layout.label("This Is Already A JARCH Vis Object", icon="INFO")
             layout.operator("mesh.jv_window_add", icon="OUTLINER_OB_LATTICE")
 

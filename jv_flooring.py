@@ -1133,6 +1133,7 @@ class FlooringPanel(bpy.types.Panel):
                         layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                 else:
                     layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
+                    layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
             else:
                 layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
 

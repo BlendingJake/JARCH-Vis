@@ -1182,7 +1182,8 @@ class StairsPanel(bpy.types.Panel):
                     else:
                         layout.operator("mesh.jv_stairs_add", icon="MOD_ARRAY")
                 else:
-                    layout.label("This Is Already A JARCH Vis Object", icon="INFO")
+                    if o.jv_internal_type != "":
+                        layout.label("This Is Already A JARCH Vis Object", icon="INFO")
                     layout.operator("mesh.jv_stairs_add", icon="MOD_ARRAY")
             else:
                 layout.operator("mesh.jv_stairs_add", icon="MOD_ARRAY")

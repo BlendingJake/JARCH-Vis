@@ -1656,6 +1656,8 @@ class SidingDelete(bpy.types.Operator):
             bpy.ops.object.move_to_layer(layers=[i == al for i in range(20)])
             cutter.name = o.name
 
+            cutter.jv_object_add = "none"
+            cutter.jv_internal_type = ""
             cutter.select = False
             context.scene.layers = pre_layers
 
@@ -1957,7 +1959,7 @@ class SidingConvert(bpy.types.Operator):
 class OBJECT_UL_jv_cutout_groups(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
-        row.label(str(index), icon="FULLSCREEN")
+        row.label(str(index + 1), icon="FULLSCREEN")
         row.label("X: " + str(round(item.x_dist, 2)))
         row.label("Z: " + str(round(item.z_dist, 2)))
         row.label("Width: " + str(round(item.width, 2)))

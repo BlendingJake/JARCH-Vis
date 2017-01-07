@@ -1113,7 +1113,7 @@ class RoofingPanel(bpy.types.Panel):
         
         # if in edit mode layout UIlist
         if ob is not None:
-            if ob.jv_internal_type in ("roofing", ""):
+            if ob.jv_internal_type in ("roofing", "") and ob.type == "MESH":
                 if context.mode == "EDIT_MESH" and ob.jv_object_add == "none":                
                     layout.template_list("OBJECT_UL_jv_face_groups", "", ob, "jv_face_groups", ob,
                                          "jv_face_group_index")
@@ -1195,7 +1195,10 @@ class RoofingPanel(bpy.types.Panel):
                     layout.operator("mesh.jv_roofing_convert", icon="FILE_REFRESH")
                     layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
             else:
-                layout.label("This Is Already A JARCH Vis Object", icon="INFO")
+                if ob.type != "MESH":
+                    layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
+                else:
+                    layout.label("This Is Already A JARCH Vis Object", icon="INFO")
                 layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
         else:
             layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
