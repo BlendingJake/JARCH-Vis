@@ -17,8 +17,8 @@ import bpy
 from bpy.props import *
 from mathutils import Vector, Euler
 from math import atan, degrees, cos, tan, sin, radians
-from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_INCH, METRIC_FOOT, HI, I, \
-    rot_from_normal
+from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_INCH, HI, I, rot_from_normal, \
+    unwrap_object, random_uvs
 from . jv_materials import glossy_diffuse_material, image_material
 import jv_properties
 from random import uniform
@@ -930,9 +930,9 @@ def update_roofing(self, context):
             
         # uvs and materials
         if m_ob.jv_is_unwrap:
-            unwrap_roofing(self, context)
+            unwrap_object(self, context)
             if m_ob.jv_is_random_uv:
-                random_uv()
+                random_uvs(self, context)
                 
         for i in materials:
             mat = bpy.data.materials[i]
@@ -964,9 +964,9 @@ def update_roofing(self, context):
             m_ob.data.materials.append(mat)
 
         if m_ob.jv_is_unwrap:
-            unwrap_roofing(self, context)
+            unwrap_object(self, context)
             if m_ob.jv_is_random_uv:
-                random_uv()
+                random_uvs(self, context)
         
         # create mirrored object
         if m_ob.jv_is_mirrored:
@@ -978,37 +978,6 @@ def update_roofing(self, context):
     # reselect objects
     for i in sel:
         bpy.data.objects[i].select = True
-
-
-def unwrap_roofing(self, context):
-    bpy.ops.object.editmode_toggle()
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.cube_project()
-    bpy.ops.object.editmode_toggle()
-
-
-def random_uv():
-    for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        bpy.ops.object.editmode_toggle()
-                        bpy.ops.mesh.select_all(action="SELECT")
-                        obj = bpy.context.object
-                        me = obj.data
-                        bm = bmesh.from_edit_mesh(me)      
-
-                        uv_layer = bm.loops.layers.uv.verify()
-                        bm.faces.layers.tex.verify()
-                        # adjust UVs                        
-                        for f in bm.faces:
-                            offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
-                            for v in f.loops:
-                                luv = v[uv_layer]   
-                                luv.uv = (luv.uv+offset).xy
-
-                        bmesh.update_edit_mesh(me)
-                        bpy.ops.object.editmode_toggle()
 
 
 def roofing_material(self):
@@ -1042,43 +1011,6 @@ def roofing_material(self):
     for i in bpy.data.materials:
         if i.users == 0:
             bpy.data.materials.remove(i)
-
-
-def update_selection(self, context):
-    # updates which faces are selected based on which face group is selcted in the UI##
-    ob = context.object
-    bpy.ops.object.editmode_toggle()
-    
-    if len(ob.jv_face_groups) >= 1:
-        fg = ob.jv_face_groups[ob.jv_group_index]        
-        
-        # deselect all faces and edges
-        for f in ob.data.polygons:          
-            f.select = False
-        for e in ob.data.edges:
-            e.select = False            
-        
-        # get info from face group and use to define selection
-        st = fg.data.split(",")
-        del st[len(st)-1]
-        
-        temp_l = []
-        for i in st:
-            st2 = i.split("+")
-            tl = (float(st2[0]), float(st2[1]), float(st2[2]))
-            temp_l.append(tl)            
-        
-        # select correct faces
-        for f in temp_l:
-            for face_in_obj in ob.data.polygons:
-                if round_tuple(tuple(face_in_obj.center), 4) == f:                    
-                    face_in_obj.select = True
-                    
-        # make sure selection list is up to date
-        bpy.ops.object.editmode_toggle()
-        bpy.ops.object.editmode_toggle()
-        
-    bpy.ops.object.editmode_toggle()
 
 
 # the obj to look through, faces centers that can be used if they are selected
@@ -1215,6 +1147,7 @@ class RoofingPanel(bpy.types.Panel):
                     if ob.jv_roof_types == "3":
                         layout.prop(ob, "jv_tile_radius")
                         layout.prop(ob, "jv_terra_cotta_res")
+                        layout.separator()
                     
                     # uv stuff
                     layout.prop(ob, "jv_is_unwrap", icon="GROUP_UVS")
