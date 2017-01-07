@@ -1113,13 +1113,15 @@ class RoofingPanel(bpy.types.Panel):
         
         # if in edit mode layout UIlist
         if ob is not None:
-            if ob.jv_internal_type == "roofing":
+            if ob.jv_internal_type in ("roofing", ""):
                 if context.mode == "EDIT_MESH" and ob.jv_object_add == "none":                
-                    layout.template_list("OBJECT_UL_jv_face_groups", "", ob, "jv_face_groups", ob, "jv_face_group_index")
+                    layout.template_list("OBJECT_UL_jv_face_groups", "", ob, "jv_face_groups", ob,
+                                         "jv_face_group_index")
                     layout.separator()
-                    layout.operator("mesh.jv_add_face_group_item", icon="ZOOMIN")
-                    layout.operator("mesh.jv_remove_face_group_item", icon="ZOOMOUT")
-                    layout.operator("mesh.jv_update_face_group_item", icon="FILE_REFRESH")
+                    row = layout.row()
+                    row.operator("mesh.jv_add_face_group_item", icon="ZOOMIN")
+                    row.operator("mesh.jv_remove_face_group_item", icon="ZOOMOUT")
+                    row.operator("mesh.jv_update_face_group_item", icon="FILE_REFRESH")
                 elif context.mode == "EDIT_MESH" and ob.jv_object_add != "none":
                     layout.label("This Object Is Already A JARCH Vis: Roofing Object", icon="INFO")
                     
@@ -1188,8 +1190,10 @@ class RoofingPanel(bpy.types.Panel):
                     layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
                 elif ob.jv_object_add == "none" and context.mode == "OBJECT" and len(ob.jv_face_groups) == 0:
                     layout.label("Enter Edit Mode And Create Face Groups", icon="ERROR")
+                    layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
                 elif ob.jv_object_add == "none" and context.mode == "OBJECT" and len(ob.jv_face_groups) >= 1:                
-                    layout.operator("mesh.jv_roofing_convert")
+                    layout.operator("mesh.jv_roofing_convert", icon="FILE_REFRESH")
+                    layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
             else:
                 layout.label("This Is Already A JARCH Vis Object", icon="INFO")
                 layout.operator("mesh.jv_roofing_add", icon="LINCURVE")
@@ -1250,6 +1254,7 @@ class RoofingDelete(bpy.types.Operator):
                 bpy.context.scene.layers = first_layers
                 
                 second_obj.jv_object_add = "none"
+                second_obj.jv_internal_type = ""
                 # remove "_cutter" from name
                 if second_obj.name[len(second_obj.name)-7:len(second_obj.name)] == "_cutter":
                     second_obj.name = second_obj.name[0:len(second_obj.name)-7]

@@ -1697,235 +1697,231 @@ class SidingPanel(bpy.types.Panel):
             layout.label("JARCH Vis: Siding Doesn't Work In Edit Mode", icon="ERROR")
         else:
             o = context.object
-            if o is not None and o.jv_internal_type == "siding":
-                if o.type == "MESH":
-                    if o.jv_object_add in ("convert", "add"):
-                        layout.label("Material:")
-                        layout.prop(o, "jv_siding_types", icon="MATERIAL")
-                        layout.label("Type(s):")
+            if o is not None and o.jv_internal_type == "siding" and o.type == "MESH":
+                layout.label("Material:")
+                layout.prop(o, "jv_siding_types", icon="MATERIAL")
+                layout.label("Type(s):")
 
-                        if o.jv_siding_types == "1":
-                            layout.prop(o, "jv_wood_siding_types", icon="OBJECT_DATA")
-                        elif o.jv_siding_types == "2":
-                            layout.prop(o, "jv_vinyl_siding_types", icon="OBJECT_DATA")
-                        elif o.jv_siding_types == "3":
-                            layout.prop(o, "jv_tin_siding_types", icon="OBJECT_DATA")
-                        elif o.jv_siding_types == "4":
-                            layout.label("Horizontal: Lap", icon="OBJECT_DATA")
-                        elif o.jv_siding_types == "5":
-                            layout.label("Bricks", icon="OBJECT_DATA")
-                        elif o.jv_siding_types == "6":
-                            layout.label("Stone", icon="OBJECT_DATA")
+                if o.jv_siding_types == "1":
+                    layout.prop(o, "jv_wood_siding_types", icon="OBJECT_DATA")
+                elif o.jv_siding_types == "2":
+                    layout.prop(o, "jv_vinyl_siding_types", icon="OBJECT_DATA")
+                elif o.jv_siding_types == "3":
+                    layout.prop(o, "jv_tin_siding_types", icon="OBJECT_DATA")
+                elif o.jv_siding_types == "4":
+                    layout.label("Horizontal: Lap", icon="OBJECT_DATA")
+                elif o.jv_siding_types == "5":
+                    layout.label("Bricks", icon="OBJECT_DATA")
+                elif o.jv_siding_types == "6":
+                    layout.label("Stone", icon="OBJECT_DATA")
+                layout.separator()
+
+                if o.jv_object_add == "add":
+                    layout.prop(o, "jv_over_width")
+                    layout.prop(o, "jv_over_height")
+                    layout.separator()
+
+                if o.jv_siding_types not in ("3", "5", "6"):
+                    layout.prop(o, "jv_b_width")
+                elif o.jv_siding_types == "3":
+                    layout.label("Sheet Lays: 36 (in)", icon="ARROW_LEFTRIGHT")
+                    layout.prop(o, "jv_is_screws", icon="PLUS")
+
+                if o.jv_siding_types not in ("5", "6"):  # if not bricks or stone
+                    if o.jv_siding_types == "1" and o.jv_wood_siding_types in ("1", "2"):
+                        layout.prop(o, "jv_spacing")
                         layout.separator()
-
-                        if o.jv_object_add == "add":
-                            layout.prop(o, "jv_over_width")
-                            layout.prop(o, "jv_over_height")
-                            layout.separator()
-
-                        if o.jv_siding_types not in ("3", "5", "6"):
-                            layout.prop(o, "jv_b_width")
-                        elif o.jv_siding_types == "3":
-                            layout.label("Sheet Lays: 36 (in)", icon="ARROW_LEFTRIGHT")
-                            layout.prop(o, "jv_is_screws", icon="PLUS")
-
-                        if o.jv_siding_types not in ("5", "6"):  # if not bricks or stone
-                            if o.jv_siding_types == "1" and o.jv_wood_siding_types in ("1", "2"):
-                                layout.prop(o, "jv_spacing")
-                                layout.separator()
-                            if o.jv_siding_types in ("1", "2") and ((o.jv_vinyl_siding_types == "1" and
-                                                                     o.jv_siding_types == "2")
-                                                                    or (o.jv_wood_siding_types == "3"
-                                                                        and o.jv_siding_types == "1")):
-                                layout.prop(o, "jv_batten_width")
-                                if o.jv_batten_width / 2 > (o.jv_b_width / 2) - (0.125 / METRIC_INCH):
-                                    layout.label("Max Width: " + str(round(2 * ((o.jv_b_width / 2) -
-                                                                                (0.125 / METRIC_INCH)), 3)) +
-                                                 " in", icon="ERROR")
-                        elif o.jv_siding_types == "5":  # bricks
-                            layout.prop(o, "jv_br_width")
-                            layout.prop(o, "jv_br_height")
-                            layout.separator()
-                            if o.jv_object_add == "add":
-                                layout.prop(o, "jv_is_corner", icon="VIEW3D")
-                            if not o.jv_is_corner:
-                                layout.separator()
-                                layout.prop(o, "jv_br_ran_offset", icon="NLA")
-                                if not o.jv_br_ran_offset:
-                                    layout.prop(o, "jv_br_offset")
-                                else:
-                                    layout.prop(o, "jv_br_vary")
-                            else:
-                                layout.separator()
-                                layout.prop(o, "jv_is_left", icon="TRIA_LEFT")
-                                layout.prop(o, "jv_is_right", icon="TRIA_RIGHT")
-                                layout.prop(o, "jv_is_invert", icon="FILE_REFRESH")
-                                layout.separator()
-                            layout.prop(o, "jv_br_gap")
-                            layout.separator()
-                            layout.prop(o, "jv_br_m_depth")
-                            layout.separator()
-
-                        if o.jv_object_add == "convert":
-                            layout.prop(o, "jv_x_offset")
-                            layout.separator()
-
-                        if o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and
-                                                               o.jv_wood_siding_types == "1"):
-                            layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
-                            if o.jv_is_bevel and o.jv_siding_types != "1":
-                                layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
-                                layout.separator()
-                            elif o.jv_siding_types == "1" and o.jv_is_bevel:
-                                layout.prop(o, "jv_bevel_width")
-
-                        if o.jv_siding_types == "6":  # stone
-                            layout.prop(o, "jv_av_width")
-                            layout.prop(o, "jv_av_height")
-                            layout.separator()
-                            layout.prop(o, "jv_random_size")
-                            layout.prop(o, "jv_random_bump")
-                            layout.separator()
-                            layout.prop(o, "jv_br_gap")
-                            layout.prop(o, "jv_st_m_depth")
+                    if o.jv_siding_types in ("1", "2") and ((o.jv_vinyl_siding_types == "1" and
+                                                             o.jv_siding_types == "2")
+                                                            or (o.jv_wood_siding_types == "3"
+                                                                and o.jv_siding_types == "1")):
+                        layout.prop(o, "jv_batten_width")
+                        if o.jv_batten_width / 2 > (o.jv_b_width / 2) - (0.125 / METRIC_INCH):
+                            layout.label("Max Width: " + str(round(2 * ((o.jv_b_width / 2) -
+                                                                        (0.125 / METRIC_INCH)), 3)) +
+                                         " in", icon="ERROR")
+                elif o.jv_siding_types == "5":  # bricks
+                    layout.prop(o, "jv_br_width")
+                    layout.prop(o, "jv_br_height")
+                    layout.separator()
+                    if o.jv_object_add == "add":
+                        layout.prop(o, "jv_is_corner", icon="VIEW3D")
+                    if not o.jv_is_corner:
                         layout.separator()
-
-                        if o.jv_object_add == "add":
-                            layout.prop(o, "jv_is_slope", icon="TRIA_UP")
-                            if o.jv_is_slope:
-                                layout.label("Pitch x/12", icon="LINCURVE")
-                                layout.prop(o, "jv_slope")
-                                units = " m"
-                                if o.jv_is_corner:
-                                    ht = round(o.jv_over_height - ((o.jv_slope * (o.jv_over_width / 2)) / 12), 2)
-                                    if ht <= 0:
-                                        slope = round(((24 * o.jv_over_height) / o.jv_over_width) - 0.01, 2)
-                                        ht = round(o.jv_over_height - ((slope * (o.jv_over_width / 2)) / 12), 2)
-                                        layout.label("Max Slope: " + str(slope), icon="ERROR")
-                                else:
-                                    ht = round(o.jv_over_height - ((o.jv_slope * ((o.jv_over_width +
-                                                                                   (2 * o.jv_br_width)) / 2)) / 12), 2)
-                                    if ht <= 0:
-                                        slope = round(((24 * o.jv_over_height) / o.jv_over_width + (2 * o.jv_br_width))
-                                                      - 0.01, 2)
-                                        ht = round(o.jv_over_height - ((slope * ((o.jv_over_width +
-                                                                                  (2 * o.jv_br_width)) / 2)) / 12), 2)
-                                        layout.label("Max Slope: " + str(slope), icon="ERROR")
-                                if context.scene.unit_settings.system == "IMPERIAL":
-                                    ht = round(METRIC_FOOT * ht, 2)
-                                    units = " ft"
-                                layout.label("Height At Edges: " + str(ht) + units, icon="TEXT")
-
-                        if o.jv_siding_types not in ("5", "6"):
-                            if o.jv_siding_types == "1" and o.jv_wood_siding_types == "1":
-                                layout.prop(o, "jv_is_width_vary", icon="UV_ISLANDSEL")
-                                if o.jv_is_width_vary:
-                                    layout.prop(o, "jv_width_vary")
-                            if o.jv_siding_types != "3":
-                                layout.prop(o, "jv_is_length_vary", icon="NLA")
-                            if o.jv_is_length_vary:
-                                layout.prop(o, "jv_length_vary")
-                                layout.prop(o, "jv_max_boards")
-                            if o.jv_siding_types == "2":
-                                layout.separator()
-                                layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
-                                layout.separator()
-
-                        if o.jv_object_add == "add":
-                            layout.prop(o, "jv_is_cutout", icon="MOD_BOOLEAN")
-                            if o.jv_is_cutout:
-                                if o.jv_siding_types == "5":
-                                    layout.separator()
-                                    layout.prop(o, "jv_is_soldier", icon="DOTSUP")
-
-                                layout.separator()
-                                layout.template_list("OBJECT_UL_jv_cutout_groups", "", o, "jv_cutout_groups", o,
-                                                     "jv_cutout_group_index")
-                                row = layout.row()
-                                row.prop(o, "jv_cutout_x")
-                                row.prop(o, "jv_cutout_z")
-                                row = layout.row()
-                                row.prop(o, "jv_cutout_width")
-                                row.prop(o, "jv_cutout_height")
-                                row = layout.row()
-                                row.operator("mesh.jv_add_cutout_item", icon="ZOOMIN")
-                                row.operator("mesh.jv_remove_cutout_item", icon="ZOOMOUT")
-                                row.operator("mesh.jv_update_cutout_item", icon="FILE_REFRESH")
-
-                        layout.separator()
-                        layout.prop(o, "jv_is_unwrap", icon="GROUP_UVS")
-                        if o.jv_is_unwrap:
-                            layout.prop(o, "jv_is_random_uv", icon="RNDCURVE")
-                        layout.separator()
-
-                        # materials
-                        if context.scene.render.engine == "CYCLES":
-                            layout.prop(o, "jv_is_material", icon="MATERIAL")
+                        layout.prop(o, "jv_br_ran_offset", icon="NLA")
+                        if not o.jv_br_ran_offset:
+                            layout.prop(o, "jv_br_offset")
                         else:
-                            layout.label("Materials Only Supported With Cycles", icon="POTATO")
-                        layout.separator()
-
-                        if o.jv_is_material and context.scene.render.engine == "CYCLES":
-                            if o.jv_siding_types == "6":
-                                layout.prop(o, "jv_sb_mat_type")
-                                layout.separator()
-                            if o.jv_siding_types in ("2", "3", "4"):
-                                layout.prop(o, "jv_rgba_color", icon="COLOR")  # vinyl and tin
-                            # wood and fiber cement
-                            elif o.jv_siding_types == "1" or (o.jv_siding_types == "6" and o.jv_sb_mat_type == "1"):
-                                layout.prop(o, "jv_col_image", icon="COLOR")
-                                layout.prop(o, "jv_is_bump", icon="SMOOTHCURVE")
-
-                                if o.jv_is_bump:
-                                    layout.prop(o, "jv_norm_image", icon="TEXTURE")
-                                    layout.prop(o, "jv_bump_amo")
-
-                                layout.prop(o, "jv_im_scale", icon="MAN_SCALE")
-                                layout.prop(o, "jv_is_rotate", icon="MAN_ROT")
-                            # bricks or stone
-                            elif o.jv_siding_types == "5" or (o.jv_siding_types == "6" and o.jv_sb_mat_type == "2"):
-                                layout.prop(o, "jv_color_style", icon="COLOR")
-                                layout.prop(o, "jv_rgba_color", icon="COLOR")
-
-                                if o.jv_color_style != "constant":
-                                    layout.prop(o, "jv_color2", icon="COLOR")
-                                if o.jv_color_style == "extreme":
-                                    layout.prop(o, "jv_color3", icon="COLOR")
-
-                                layout.prop(o, "jv_color_sharp")
-                                layout.prop(o, "jv_color_scale")
-                                layout.separator()
-                                layout.prop(o, "jv_mortar_color", icon="COLOR")
-                                layout.prop(o, "jv_mortar_bump")
-                                layout.prop(o, "jv_bump_type", icon="SMOOTHCURVE")
-
-                                if o.jv_bump_type != "4":
-                                    layout.prop(o, "jv_brick_bump")
-                                    layout.prop(o, "jv_bump_scale")
-
-                            if o.jv_siding_types == "6":
-                                layout.separator()
-                                layout.prop(o, "jv_mortar_color", icon="COLOR")
-                                layout.prop(o, "jv_mortar_bump")
-                                layout.prop(o, "jv_bump_scale")
-
-                            layout.separator()
-                            layout.operator("mesh.jv_siding_materials", icon="MATERIAL")
-                            layout.prop(o, "jv_is_preview", icon="SCENE")
-
-                        layout.separator()
-                        layout.separator()
-                        layout.operator("mesh.jv_siding_update", icon="FILE_REFRESH")
-                        layout.operator("mesh.jv_siding_delete", icon="CANCEL")
-                        layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
+                            layout.prop(o, "jv_br_vary")
                     else:
-                        layout.operator("mesh.jv_siding_convert", icon="FILE_REFRESH")
-                        layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
+                        layout.separator()
+                        layout.prop(o, "jv_is_left", icon="TRIA_LEFT")
+                        layout.prop(o, "jv_is_right", icon="TRIA_RIGHT")
+                        layout.prop(o, "jv_is_invert", icon="FILE_REFRESH")
+                        layout.separator()
+                    layout.prop(o, "jv_br_gap")
+                    layout.separator()
+                    layout.prop(o, "jv_br_m_depth")
+                    layout.separator()
+
+                if o.jv_object_add == "convert":
+                    layout.prop(o, "jv_x_offset")
+                    layout.separator()
+
+                if o.jv_siding_types in ("5", "6") or (o.jv_siding_types == "1" and
+                                                       o.jv_wood_siding_types == "1"):
+                    layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
+                    if o.jv_is_bevel and o.jv_siding_types != "1":
+                        layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
+                        layout.separator()
+                    elif o.jv_siding_types == "1" and o.jv_is_bevel:
+                        layout.prop(o, "jv_bevel_width")
+
+                if o.jv_siding_types == "6":  # stone
+                    layout.prop(o, "jv_av_width")
+                    layout.prop(o, "jv_av_height")
+                    layout.separator()
+                    layout.prop(o, "jv_random_size")
+                    layout.prop(o, "jv_random_bump")
+                    layout.separator()
+                    layout.prop(o, "jv_br_gap")
+                    layout.prop(o, "jv_st_m_depth")
+                layout.separator()
+
+                if o.jv_object_add == "add":
+                    layout.prop(o, "jv_is_slope", icon="TRIA_UP")
+                    if o.jv_is_slope:
+                        layout.label("Pitch x/12", icon="LINCURVE")
+                        layout.prop(o, "jv_slope")
+                        units = " m"
+                        if o.jv_is_corner:
+                            ht = round(o.jv_over_height - ((o.jv_slope * (o.jv_over_width / 2)) / 12), 2)
+                            if ht <= 0:
+                                slope = round(((24 * o.jv_over_height) / o.jv_over_width) - 0.01, 2)
+                                ht = round(o.jv_over_height - ((slope * (o.jv_over_width / 2)) / 12), 2)
+                                layout.label("Max Slope: " + str(slope), icon="ERROR")
+                        else:
+                            ht = round(o.jv_over_height - ((o.jv_slope * ((o.jv_over_width +
+                                                                           (2 * o.jv_br_width)) / 2)) / 12), 2)
+                            if ht <= 0:
+                                slope = round(((24 * o.jv_over_height) / o.jv_over_width + (2 * o.jv_br_width))
+                                              - 0.01, 2)
+                                ht = round(o.jv_over_height - ((slope * ((o.jv_over_width +
+                                                                          (2 * o.jv_br_width)) / 2)) / 12), 2)
+                                layout.label("Max Slope: " + str(slope), icon="ERROR")
+                        if context.scene.unit_settings.system == "IMPERIAL":
+                            ht = round(METRIC_FOOT * ht, 2)
+                            units = " ft"
+                        layout.label("Height At Edges: " + str(ht) + units, icon="TEXT")
+
+                if o.jv_siding_types not in ("5", "6"):
+                    if o.jv_siding_types == "1" and o.jv_wood_siding_types == "1":
+                        layout.prop(o, "jv_is_width_vary", icon="UV_ISLANDSEL")
+                        if o.jv_is_width_vary:
+                            layout.prop(o, "jv_width_vary")
+                    if o.jv_siding_types != "3":
+                        layout.prop(o, "jv_is_length_vary", icon="NLA")
+                    if o.jv_is_length_vary:
+                        layout.prop(o, "jv_length_vary")
+                        layout.prop(o, "jv_max_boards")
+                    if o.jv_siding_types == "2":
+                        layout.separator()
+                        layout.prop(o, "jv_bevel_res", icon="OUTLINER_DATA_CURVE")
+                        layout.separator()
+
+                if o.jv_object_add == "add":
+                    layout.prop(o, "jv_is_cutout", icon="MOD_BOOLEAN")
+                    if o.jv_is_cutout:
+                        if o.jv_siding_types == "5":
+                            layout.separator()
+                            layout.prop(o, "jv_is_soldier", icon="DOTSUP")
+
+                        layout.separator()
+                        layout.template_list("OBJECT_UL_jv_cutout_groups", "", o, "jv_cutout_groups", o,
+                                             "jv_cutout_group_index")
+                        layout.separator()
+                        row = layout.row()
+                        row.prop(o, "jv_cutout_x")
+                        row.prop(o, "jv_cutout_z")
+                        row = layout.row()
+                        row.prop(o, "jv_cutout_width")
+                        row.prop(o, "jv_cutout_height")
+                        row = layout.row()
+                        row.operator("mesh.jv_add_cutout_item", icon="ZOOMIN")
+                        row.operator("mesh.jv_remove_cutout_item", icon="ZOOMOUT")
+                        row.operator("mesh.jv_update_cutout_item", icon="FILE_REFRESH")
+
+                layout.separator()
+                layout.prop(o, "jv_is_unwrap", icon="GROUP_UVS")
+                if o.jv_is_unwrap:
+                    layout.prop(o, "jv_is_random_uv", icon="RNDCURVE")
+                layout.separator()
+
+                # materials
+                if context.scene.render.engine == "CYCLES":
+                    layout.prop(o, "jv_is_material", icon="MATERIAL")
                 else:
-                    layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
+                    layout.label("Materials Only Supported With Cycles", icon="POTATO")
+                layout.separator()
+
+                if o.jv_is_material and context.scene.render.engine == "CYCLES":
+                    if o.jv_siding_types == "6":
+                        layout.prop(o, "jv_sb_mat_type")
+                        layout.separator()
+                    if o.jv_siding_types in ("2", "3", "4"):
+                        layout.prop(o, "jv_rgba_color", icon="COLOR")  # vinyl and tin
+                    # wood and fiber cement
+                    elif o.jv_siding_types == "1" or (o.jv_siding_types == "6" and o.jv_sb_mat_type == "1"):
+                        layout.prop(o, "jv_col_image", icon="COLOR")
+                        layout.prop(o, "jv_is_bump", icon="SMOOTHCURVE")
+
+                        if o.jv_is_bump:
+                            layout.prop(o, "jv_norm_image", icon="TEXTURE")
+                            layout.prop(o, "jv_bump_amo")
+
+                        layout.prop(o, "jv_im_scale", icon="MAN_SCALE")
+                        layout.prop(o, "jv_is_rotate", icon="MAN_ROT")
+                    # bricks or stone
+                    elif o.jv_siding_types == "5" or (o.jv_siding_types == "6" and o.jv_sb_mat_type == "2"):
+                        layout.prop(o, "jv_color_style", icon="COLOR")
+                        layout.prop(o, "jv_rgba_color", icon="COLOR")
+
+                        if o.jv_color_style != "constant":
+                            layout.prop(o, "jv_color2", icon="COLOR")
+                        if o.jv_color_style == "extreme":
+                            layout.prop(o, "jv_color3", icon="COLOR")
+
+                        layout.prop(o, "jv_color_sharp")
+                        layout.prop(o, "jv_color_scale")
+                        layout.separator()
+                        layout.prop(o, "jv_mortar_color", icon="COLOR")
+                        layout.prop(o, "jv_mortar_bump")
+                        layout.prop(o, "jv_bump_type", icon="SMOOTHCURVE")
+
+                        if o.jv_bump_type != "4":
+                            layout.prop(o, "jv_brick_bump")
+                            layout.prop(o, "jv_bump_scale")
+
+                    if o.jv_siding_types == "6":
+                        layout.separator()
+                        layout.prop(o, "jv_mortar_color", icon="COLOR")
+                        layout.prop(o, "jv_mortar_bump")
+                        layout.prop(o, "jv_bump_scale")
+
+                    layout.separator()
+                    layout.operator("mesh.jv_siding_materials", icon="MATERIAL")
+                    layout.prop(o, "jv_is_preview", icon="SCENE")
+
+                layout.separator()
+                layout.separator()
+                layout.operator("mesh.jv_siding_update", icon="FILE_REFRESH")
+                layout.operator("mesh.jv_siding_delete", icon="CANCEL")
+                layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
             else:
-                if o is not None and o.jv_internal_type != "siding":
+                if o is not None and o.jv_internal_type not in ("siding", ""):
                     layout.label("This Is Already A JARCH Vis Object", icon="INFO")
+                elif o is not None and o.jv_internal_type == "" and o.type == "MESH":
+                    layout.operator("mesh.jv_siding_convert", icon="FILE_REFRESH")
                 layout.operator("mesh.jv_siding_add", icon="UV_ISLANDSEL")
 
 

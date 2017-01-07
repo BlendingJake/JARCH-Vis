@@ -566,7 +566,7 @@ def wood_regular(ow, ol, bw, bl, s_l, s_w, is_length_vary, length_vary, is_width
 
     while cur_x < ow:
         if is_width_vary:
-            v = bw * width_vary * 0.0048
+            v = bw * (width_vary / 100) * 0.99
             bw2 = uniform(bw - v, bw + v)
         else:
             bw2 = bw
@@ -579,11 +579,11 @@ def wood_regular(ow, ol, bw, bl, s_l, s_w, is_length_vary, length_vary, is_width
         while cur_y < ol:
             z = zt
             if is_r_h:
-                v = z * 0.0045 * r_h
+                v = z * 0.99 * (r_h / 100)
                 z = uniform(z - v, z + v)
             bl2 = bl
             if is_length_vary:
-                v = bl * length_vary * 0.0048
+                v = bl * (length_vary / 100) * 0.99
                 bl2 = uniform(bl - v, bl + v)
             if (counter >= max_boards and is_length_vary) or cur_y + bl2 > ol:
                 bl2 = ol - cur_y         
@@ -642,7 +642,7 @@ def update_flooring(self, context):
     if tuple(o.scale.copy()) != (1.0, 1.0, 1.0) and o.jv_object_add == "convert":
         bpy.ops.object.transform_apply(scale=True)
 
-    dim = [(i + 0.1) * METRIC_FOOT for i in tuple(o.dimensions.copy())]
+    dim = [i + 0.1 for i in tuple(o.dimensions)]
     coords = [0, 0, 0]
     verts, faces = [], []
 
@@ -758,7 +758,7 @@ def update_flooring(self, context):
             cutter.select = True
             bpy.context.scene.objects.active = cutter
             bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
-            bpy.ops.object.move_to_layer(layers=[False for i in range(19)].append(True))
+            bpy.ops.object.move_to_layer(layers=[i >= 19 for i in range(20)])
             cutter.select = False
             o.jv_is_cut = "cut"
 
@@ -1003,7 +1003,7 @@ class FlooringPanel(bpy.types.Panel):
             o = context.object
             if o is not None:
                 if o.type == "MESH":
-                    if o.jv_internal_type == "flooring":
+                    if o.jv_internal_type in ("flooring", ""):
                         if o.jv_object_add in ("convert", "add"):
                             layout.label("Material:")
                             layout.prop(o, "jv_flooring_types", icon="MATERIAL")
@@ -1126,7 +1126,7 @@ class FlooringPanel(bpy.types.Panel):
                             layout.operator("mesh.jv_flooring_delete", icon="CANCEL")
                             layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                         else:
-                            layout.operator("mesh.jv_flooring_convert")
+                            layout.operator("mesh.jv_flooring_convert", icon="FILE_REFRESH")
                             layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                     else:
                         layout.label("This Is Already A JARCH Vis Object", icon="INFO")
@@ -1189,36 +1189,20 @@ class FlooringDelete(bpy.types.Operator):
         if o.jv_internal_type == "flooring" and o.jv_object_add == "convert" and o.jv_cut_name in bpy.data.objects:
             cutter = bpy.data.objects[o.jv_cut_name]
             o.select = False
-            layers = [i for i in bpy.context.scene.layers]
-            counter = 1
-            true = []
+            pre_layers = list(context.scene.layers)
+            al = context.scene.active_layer
 
-            for i in layers:
-                if i:
-                    true.append(counter)
-                counter += 1
-
-            o_layers = [i for i in bpy.context.object.layers]
-            for area in bpy.context.screen.areas:
-                if area.type == 'VIEW_3D':
-                    override = bpy.context.copy()
-                    override['area'] = area
-                    bpy.ops.view3d.layers(override, nr=20, toggle=True)
-
+            context.scene.layers = [i >= 19 for i in range(20)]
             cutter.select = True
-            bpy.context.scene.objects.active = cutter
+            context.scene.objects.active = cutter
             bpy.ops.object.modifier_remove(modifier="Solidify")
-            bpy.ops.object.move_to_layer(layers=o_layers)
+            bpy.ops.object.move_to_layer(layers=[i == al for i in range(20)])
             convert = True
             cutter.select = False
+            cutter.jv_object_add = "none"
+            cutter.jv_internal_type = ""
 
-            for area in bpy.context.screen.areas:
-                if area.type == 'VIEW_3D':
-                    override = bpy.context.copy()
-                    override['area'] = area           
-                    for i in true:
-                        bpy.ops.view3d.layers(override, nr=i, extend=True, toggle=True)
-                    bpy.ops.view3d.layers(override, nr=20, extend=True, toggle=True)
+            context.scene.layers = pre_layers
 
         m_name = o.name
         c_name = o.jv_cut_name
