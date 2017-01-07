@@ -20,7 +20,7 @@ from mathutils import Euler, Vector
 import bmesh
 from . jv_materials import image_material
 from . jv_utils import point_rotation, METRIC_INCH, I, unwrap_object, random_uvs
-import jv_properties
+# import jv_properties
 
 
 def custom_tread_placement(context, custom_tread_pos, custom_tread):

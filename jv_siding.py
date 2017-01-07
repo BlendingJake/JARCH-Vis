@@ -21,11 +21,11 @@ from math import sqrt, atan, asin, sin, cos, tan
 from random import uniform, choice
 from mathutils import Euler, Vector
 from . jv_materials import *
-import jv_properties
 import bmesh
 from . jv_utils import rot_from_normal, object_dimensions, point_rotation, METRIC_INCH, METRIC_FOOT, I, HI, \
     unwrap_object, random_uvs
 from ast import literal_eval
+# import jv_properties
 
 
 # manages sorting out which type of siding needs to be create, gets corner data for cutout objects
@@ -2018,11 +2018,11 @@ class CGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class CutoutGroup(bpy.types.PropertyGroup):
-    x_dist = FloatProperty(subtype="DISTANCE")
-    z_dist = FloatProperty(subtype="DISTANCE")
-    width = FloatProperty(subtype="DISTANCE")
-    height = FloatProperty(subtype="DISTANCE")
+# class CutoutGroup(bpy.types.PropertyGroup):
+#     x_dist = FloatProperty(subtype="DISTANCE")
+#     z_dist = FloatProperty(subtype="DISTANCE")
+#     width = FloatProperty(subtype="DISTANCE")
+#     height = FloatProperty(subtype="DISTANCE")
 
 
 def register():

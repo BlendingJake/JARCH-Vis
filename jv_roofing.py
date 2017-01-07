@@ -20,9 +20,9 @@ from math import atan, degrees, cos, tan, sin, radians
 from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_INCH, HI, I, rot_from_normal, \
     unwrap_object, random_uvs
 from . jv_materials import glossy_diffuse_material, image_material
-import jv_properties
 from random import uniform
 import bmesh
+# import jv_properties
 
 con = METRIC_INCH
 
@@ -1344,11 +1344,11 @@ class FGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class FaceGroup(bpy.types.PropertyGroup):
-    data = StringProperty()
-    num_faces = IntProperty()
-    face_slope = FloatProperty()
-    rot = FloatProperty(unit="ROTATION")
+# class FaceGroup(bpy.types.PropertyGroup):
+#     data = StringProperty()
+#     num_faces = IntProperty()
+#     face_slope = FloatProperty()
+#     rot = FloatProperty(unit="ROTATION")
 
 
 def register():

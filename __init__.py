@@ -26,19 +26,19 @@ bl_info = {
 if "bpy" in locals():
     import importlib
 
+    importlib.reload(jv_properties)
     importlib.reload(jv_siding)
     importlib.reload(jv_flooring)
     importlib.reload(jv_stairs)
     importlib.reload(jv_roofing)
     importlib.reload(jv_windows)
-    importlib.reload(jv_properties)
-else: 
+else:
+    from . import jv_properties
     from . import jv_siding
     from . import jv_flooring
     from . import jv_stairs
     from . import jv_roofing
     from . import jv_windows
-    from . import jv_properties
 
 import bpy
 from bpy.props import StringProperty, CollectionProperty, IntProperty, FloatProperty
@@ -49,6 +49,13 @@ class FaceGroup(bpy.types.PropertyGroup):
     num_faces = IntProperty()
     face_slope = FloatProperty()
     rot = FloatProperty(unit="ROTATION")
+
+
+class CutoutGroup(bpy.types.PropertyGroup):
+    x_dist = FloatProperty(subtype="DISTANCE")
+    z_dist = FloatProperty(subtype="DISTANCE")
+    width = FloatProperty(subtype="DISTANCE")
+    height = FloatProperty(subtype="DISTANCE")
 
 
 class INFO_MT_mesh_jv_menu_add(bpy.types.Menu):
@@ -72,11 +79,13 @@ def register():
     bpy.utils.register_module(__name__)   
     bpy.types.INFO_MT_mesh_add.append(menu_add)
     bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
+    bpy.types.Object.jv_cutout_groups = CollectionProperty(type=CutoutGroup)
 
 
 def unregister():
     bpy.utils.unregister_module(__name__)
     del bpy.types.Object.jv_face_groups
+    del bpy.types.Object.jv_cutout_groups
     
 if __name__ == "__main__":
     register()

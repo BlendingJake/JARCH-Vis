@@ -18,9 +18,9 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty,
 from random import uniform
 from mathutils import Vector
 from math import tan, sin, cos, radians, sqrt
-import jv_properties
 from . jv_materials import image_material, mortar_material
 from . jv_utils import METRIC_FOOT, append_all, apply_modifier_boolean, unwrap_object, random_uvs
+# import jv_properties
 
 
 def create_flooring(mat, if_wood, if_tile, over_width, over_length, b_width, b_length, b_length2, is_length_vary,
