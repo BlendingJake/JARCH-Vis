@@ -26,17 +26,17 @@ bl_info = {
 if "bpy" in locals():
     import importlib
 
-    importlib.reload(jarch_siding)
-    importlib.reload(jarch_flooring)
-    importlib.reload(jarch_stairs)
-    importlib.reload(jarch_roofing)
-    importlib.reload(jarch_windows)
+    importlib.reload(jv_siding)
+    importlib.reload(jv_flooring)
+    importlib.reload(jv_stairs)
+    importlib.reload(jv_roofing)
+    importlib.reload(jv_windows)
 else: 
-    from . import jarch_siding
+    from . import jv_siding
     from . import jv_flooring
-    from . import jarch_stairs
-    from . import jarch_roofing
-    from . import jarch_windows
+    from . import jv_stairs
+    from . import jv_roofing
+    from . import jv_windows
 
 import bpy
 from bpy.props import StringProperty, CollectionProperty, IntProperty, FloatProperty
@@ -69,12 +69,12 @@ def menu_add(self, context):
 def register():
     bpy.utils.register_module(__name__)   
     bpy.types.INFO_MT_mesh_add.append(menu_add)
-    bpy.types.Object.face_groups = CollectionProperty(type=FaceGroup)
+    bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
 
 
 def unregister():
     bpy.utils.unregister_module(__name__)
-    del bpy.types.Object.face_groups
+    del bpy.types.Object.jv_face_groups
     
 if __name__ == "__main__":
     register()

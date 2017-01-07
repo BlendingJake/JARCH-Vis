@@ -19,8 +19,9 @@ from random import uniform
 from mathutils import Vector
 from math import tan, sin, cos, radians, sqrt
 import bmesh
-from . jarch_materials import image_material, mortar_material
-from . jarch_utils import METRIC_INCH, METRIC_FOOT, append_all, apply_modifier_boolean
+import jv_properties
+from . jv_materials import image_material, mortar_material
+from . jv_utils import METRIC_FOOT, append_all, apply_modifier_boolean
 
 
 def create_flooring(mat, if_wood, if_tile, over_width, over_length, b_width, b_length, b_length2, is_length_vary,
@@ -945,7 +946,7 @@ def random_uv(self, context):
                 for region in area.regions:
                     if region.type == 'WINDOW':
                         bpy.ops.object.editmode_toggle()
-                        bpy.ops.mesh.select_all(action = "SELECT")
+                        bpy.ops.mesh.select_all(action="SELECT")
                         obj = bpy.context.object
                         me = obj.data
                         bm = bmesh.from_edit_mesh(me)      
@@ -961,28 +962,6 @@ def random_uv(self, context):
 
                         bmesh.update_edit_mesh(me)
                         bpy.ops.object.editmode_toggle()
-
-
-def delete_materials(self, context):
-    o = context.object
-    if not o.jv_is_material and o.jv_mat != "2":
-        for i in o.data.materials:
-            bpy.ops.object.material_slot_remove()
-
-        for i in bpy.data.materials:
-            if i.users == 0:
-                bpy.data.materials.remove(i)
-
-
-def preview_materials(self, context):
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for space in area.spaces:
-                if space.type == 'VIEW_3D':
-                    if bpy.context.object.jv_is_preview:
-                        space.viewport_shade = 'RENDERED'
-                    else:
-                        space.viewport_shade = "SOLID"
 
 
 def vertex_group(self, context):
@@ -1046,109 +1025,6 @@ def flooring_material(self, context):
         if i.users == 0:
             bpy.data.materials.remove(i)
 
-# properties
-tp = bpy.types.Object
-tp.jv_object_add = StringProperty(default="none", update=update_flooring)
-tp.jv_cut_name = StringProperty(default="none")
-tp.jv_is_cut = StringProperty(default="none")
-# type/material
-tp.jv_mat = EnumProperty(items=(("1", "Wood", ""), ("2", "Tile", "")), default="1", description="Material",
-                         update=update_flooring, name="")
-tp.jv_wood_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Parquet", ""), ("3", "Herringbone Parquet", ""),
-                                       ("4", "Herringbone", "")), default="1", description="Wood Type",
-                                update=update_flooring, name="")
-tp.jv_tile_types = EnumProperty(items=(("1", "Regular", ""), ("2", "Large + Small", ""), ("3", "Large + Many Small", ""),
-                                       ("4", "Hexagonal", "")), default="1", description="Tile Type",
-                                update=update_flooring, name="")
-# measurements
-tp.jv_over_width = FloatProperty(name="Overall Width", min=2.00 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
-                                 default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Overall Width",
-                                 update=update_flooring)
-tp.jv_over_length = FloatProperty(name="Overall Length", min=2.0 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
-                                  default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Overall Length",
-                                  update=update_flooring)
-tp.jv_b_width = FloatProperty(name="Board Width", min=2.00 / METRIC_INCH, max=14.00 / METRIC_INCH,
-                              default=6.00 / METRIC_INCH, subtype="DISTANCE", description="Board Width",
-                              update=update_flooring)
-tp.jv_b_length = FloatProperty(name="Board Length", min=4.00 / METRIC_FOOT, max=20.00 / METRIC_FOOT,
-                               default=8.00 / METRIC_FOOT, subtype="DISTANCE", description="Board Length",
-                               update=update_flooring)
-tp.jv_b_length_s = FloatProperty(name="Board Length", min=1.00 / METRIC_FOOT, max=4.00 / METRIC_FOOT,
-                                 default=1.5 / METRIC_FOOT, subtype="DISTANCE", description="Board Length",
-                                 update=update_flooring)
-tp.jv_hb_direction = EnumProperty(items=(("1", "Forwards (+y)", ""), ("2", "Backwards (-y)", ""),
-                                         ("3", "Right (+x)", ""), ("4", "Left (-x)", "")), name="Direction",
-                                  description="Herringbone Direction", update=update_flooring)
-tp.jv_thickness = FloatProperty(name="Floor Thickness", min=0.75 / METRIC_INCH, max=1.5 / METRIC_INCH,
-                                default=1 / METRIC_INCH, subtype="DISTANCE", description="Thickness Of Flooring",
-                                update=update_flooring)
-tp.jv_is_length_vary = BoolProperty(name="Vary Length?", default=False, description="Vary Lengths?",
-                                    update=update_flooring)
-tp.jv_length_vary = FloatProperty(name="Length Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                  description="Length Variance", update=update_flooring)
-tp.jv_max_boards = IntProperty(name="Max # Of Boards", min=2, max=10, default=2,
-                               description="Maximum Number Of Boards Possible In One Length", update=update_flooring)
-tp.jv_is_width_vary = BoolProperty(name="Vary Width?", default=False, description="Vary Widths?", update=update_flooring)
-tp.jv_width_vary = FloatProperty(name="Width Variance", min=1.00, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                 description="Width Variance", update=update_flooring)
-tp.jv_num_boards = IntProperty(name="# Of Boards", min=2, max=6, default=4, description="Number Of Boards In Square",
-                               update=update_flooring)
-tp.jv_space_l = FloatProperty(name="Length Spacing", min=0.001 / METRIC_INCH, max=0.5 / METRIC_INCH,
-                              default=0.125 / METRIC_INCH, subtype="DISTANCE",
-                              description="Space Between Boards Length Ways", update=update_flooring)
-tp.jv_space_w = FloatProperty(name="Width Spacing", min=0.001 / METRIC_INCH, max=0.5 / METRIC_INCH,
-                              default=0.125 / METRIC_INCH, subtype="DISTANCE",
-                              description="Space Between Boards Width Ways", update=update_flooring)
-tp.jv_spacing = FloatProperty(name="Spacing", min=0.001 / METRIC_INCH, max=1.0 / METRIC_INCH,
-                              default=0.25 / METRIC_INCH, subtype="DISTANCE", description="Space Between Tiles",
-                              update=update_flooring)
-tp.jv_is_bevel = BoolProperty(name="Bevel?", default=False, update=update_flooring)
-tp.jv_res = IntProperty(name="Bevel Resolution", min=1, max=5, default=1, update=update_flooring)
-tp.jv_bevel_amo = FloatProperty(name="Bevel Amount", min=0.001 / METRIC_INCH, max=0.5 / METRIC_INCH,
-                                default=0.15 / METRIC_INCH, subtype="DISTANCE", description="Bevel Amount",
-                                update=update_flooring)
-tp.jv_is_ran_thickness = BoolProperty(name="Random Thickness?", default=False, update=update_flooring)
-tp.jv_ran_thickness = FloatProperty(name="Thickness Variance", min=0.1, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                    update=update_flooring)
-# tile specific
-tp.jv_t_width = FloatProperty(name="Tile Width", min=2.00 / METRIC_INCH, max=24.00 / METRIC_INCH,
-                              default=8.00 / METRIC_INCH, subtype="DISTANCE", description="Tile Width",
-                              update=update_flooring)
-tp.jv_t_length = FloatProperty(name="Tile Length", min=2.00 / METRIC_INCH, max=24.00 / METRIC_INCH,
-                               default=8.00 / METRIC_INCH, subtype="DISTANCE", description="Tile Length",
-                               update=update_flooring)
-tp.jv_grout_depth = FloatProperty(name="Grout Depth", min=0.01 / METRIC_INCH, max=0.40 / 39.701,
-                                  default=0.10 / METRIC_INCH, subtype="DISTANCE", description="Grout Depth",
-                                  update=update_flooring)
-tp.jv_is_offset = BoolProperty(name="Offset Tiles?", default=False, description="Offset Tile Rows",
-                               update=update_flooring)
-tp.jv_offset = FloatProperty(name="Offset", min=0.001, max=100.0, default=50.0, subtype="PERCENTAGE",
-                             description="Tile Offset Amount", update=update_flooring)
-tp.jv_is_random_offset = BoolProperty(name="Random Offset?", default=False, description="Offset Tile Rows Randomly",
-                                      update=update_flooring)
-tp.jv_offset_vary = FloatProperty(name="Offset Variance", min=0.001, max=100.0, default=50.0, subtype="PERCENTAGE",
-                                  description="Offset Variance", update=update_flooring)
-tp.jv_t_width_s = FloatProperty(name="Small Tile Width", min=2.00 / METRIC_INCH, max=10.00 / METRIC_INCH,
-                                default=6.00 / METRIC_INCH, subtype="DISTANCE", description="Small Tile Width",
-                                update=update_flooring)
-# materials
-tp.jv_is_material = BoolProperty(name="Cycles Materials?", default=False, description="Adds Cycles Materials",
-                                 update=delete_materials)
-tp.jv_is_preview = BoolProperty(name="Preview Material?", default=False, description="Preview Material On Object",
-                                update=preview_materials)
-tp.jv_im_scale = FloatProperty(name="Image Scale", max=10.0, min=0.1, default=1.0, description="Change Image Scaling")
-tp.jv_col_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Color Image")
-tp.jv_is_bump = BoolProperty(name="Normal Map?", default=False, description="Add Normal To Material?")
-tp.jv_norm_image = StringProperty(name="", subtype="FILE_PATH", description="File Path For Normal Map Image")
-tp.jv_bump_amo = FloatProperty(name="Normal Strength", min=0.001, max=2.000, default=0.250,
-                               description="Normal Map Strength")
-tp.jv_is_unwrap = BoolProperty(name="UV Unwrap?", default=True, description="UV Unwraps Siding", update=unwrap_flooring)
-tp.jv_mortar_color = FloatVectorProperty(name="Mortar Color", subtype="COLOR", default=(1.0, 1.0, 1.0), min=0.0,
-                                         max=1.0, description="Color For Mortar")
-tp.jv_mortar_bump = FloatProperty(name="Mortar Bump", min=0.0, max=1.0, default=0.25, description="Mortar Bump Amount")
-tp.jv_is_rotate = BoolProperty(name="Rotate Image?", default=False, description="Rotate Image 90 Degrees")
-tp.jv_is_random_uv = BoolProperty(name="Random UV's?", default=True, description="Random UV's", update=update_flooring)
-
 
 class FlooringMaterials(bpy.types.Operator):
     bl_idname = "mesh.jv_flooring_materials"
@@ -1175,7 +1051,7 @@ class FlooringPanel(bpy.types.Panel):
             o = context.object
             if o is not None:
                 if o.type == "MESH":
-                    #if o.object_add == "none" and o.s_object_add == "none" and o.ro_object_add == "none":
+                    if o.jv_internal_type == "flooring":
                         if o.jv_object_add in ("convert", "add"):
                             layout.label("Material:")
                             layout.prop(o, "jv_mat", icon="MATERIAL")
@@ -1301,13 +1177,11 @@ class FlooringPanel(bpy.types.Panel):
                             layout.operator("mesh.jv_flooring_delete", icon="CANCEL")
                             layout.oeprator("mesh.jv_flooring_add", icon="MESH_GRID")
                         else:
-                            if o.jv_object_add != "mesh":
-                                layout.operator("mesh.jv_flooring_convert")
-                                layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
-                            elif o.jv_object_add == "mesh":
-                                layout.label("This Is A Mesh JARCH Vis Object", icon="INFO")
-                    #else:
-                        #layout.label("This Is Already A JARCH Vis Object", icon="POTATO")
+                            layout.operator("mesh.jv_flooring_convert")
+                            layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
+                    else:
+                        layout.label("This Is Already A JARCH Vis Object", icon="INFO")
+                        layout.operator("mesh.jv_flooring_add", text="Add Flooring", icon="MESH_GRID")
                 else:
                     layout.label("Only Mesh Objects Can Be Used", icon="ERROR")
             else:
@@ -1326,6 +1200,7 @@ class FlooringAdd(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.mesh.primitive_cube_add()
         o = bpy.context.scene.objects.active
+        o.jv_internal_type = "flooring"
         o.jv_object_add = "add"
         return {"FINISHED"}
 
@@ -1337,6 +1212,7 @@ class FlooringConvert(bpy.types.Operator):
     
     def execute(self, context):
         o = context.object
+        o.jv_internal_type = "flooring"
         o.jv_object_add = "convert"
         return {"FINISHED"}
 
@@ -1360,7 +1236,8 @@ class FlooringDelete(bpy.types.Operator):
         o = context.object
         convert = False
 
-        if o.jv_object_add == "convert" and o.jv_cut_name in bpy.data.objects:  # if converted mesh, then deal with cutter
+        # delete cutter if converted mesh
+        if o.jv_internal_type == "flooring" and o.jv_object_add == "convert" and o.jv_cut_name in bpy.data.objects:
             cutter = bpy.data.objects[o.jv_cut_name]
             o.select = False
             layers = [i for i in bpy.context.scene.layers]
