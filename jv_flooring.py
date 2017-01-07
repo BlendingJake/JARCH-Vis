@@ -18,16 +18,15 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty,
 from random import uniform
 from mathutils import Vector
 from math import tan, sin, cos, radians, sqrt
-import bmesh
 import jv_properties
 from . jv_materials import image_material, mortar_material
-from . jv_utils import METRIC_FOOT, append_all, apply_modifier_boolean
+from . jv_utils import METRIC_FOOT, append_all, apply_modifier_boolean, unwrap_object, random_uvs
 
 
 def create_flooring(mat, if_wood, if_tile, over_width, over_length, b_width, b_length, b_length2, is_length_vary,
-                    length_vary, num_boards, space_l, space_w,
-                    spacing, t_width, t_length, is_offset, offset, is_ran_offset, offset_vary, t_width2, is_width_vary,
-                    width_vary, max_boards, is_ran_thickness, ran_thickness, th, hb_dir):
+                    length_vary, num_boards, space_l, space_w, spacing, t_width, t_length, is_offset, offset,
+                    is_ran_offset, offset_vary, t_width2, is_width_vary, width_vary, max_boards, is_ran_thickness,
+                    ran_thickness, th, hb_dir):
 
     verts = []
     faces = []
@@ -649,18 +648,18 @@ def update_flooring(self, context):
 
     # generate faces and vertices
     if o.jv_object_add == "add":
-        verts, faces = create_flooring(o.jv_mat, o.jv_wood_types, o.jv_tile_types, o.jv_over_width, o.jv_over_length,
+        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_types, o.jv_tile_types, o.jv_over_width,
+                                       o.jv_over_length, o.jv_b_width, o.jv_b_length, o.jv_b_length_s,
+                                       o.jv_is_length_vary, o.jv_length_vary, o.jv_num_boards, o.jv_space_l,
+                                       o.jv_space_w, o.jv_spacing, o.jv_t_width, o.jv_t_length, o.jv_is_offset,
+                                       o.jv_offset, o.jv_is_random_offset, o.jv_offset_vary, o.jv_t_width_s,
+                                       o.jv_is_width_vary, o.jv_width_vary, o.jv_max_boards, o.jv_is_ran_thickness,
+                                       o.jv_ran_thickness, o.jv_thickness, o.jv_hb_direction)
+    elif o.jv_object_add == "convert":
+        verts, faces = create_flooring(o.jv_flooring_types, o.jv_wood_types, o.jv_tile_types, dim[0], dim[1],
                                        o.jv_b_width, o.jv_b_length, o.jv_b_length_s, o.jv_is_length_vary,
                                        o.jv_length_vary, o.jv_num_boards, o.jv_space_l, o.jv_space_w, o.jv_spacing,
                                        o.jv_t_width, o.jv_t_length, o.jv_is_offset, o.jv_offset, o.jv_is_random_offset,
-                                       o.jv_offset_vary, o.jv_t_width_s, o.jv_is_width_vary, o.jv_width_vary,
-                                       o.jv_max_boards, o.jv_is_ran_thickness, o.jv_ran_thickness, o.jv_thickness,
-                                       o.jv_hb_direction)
-    elif o.jv_object_add == "convert":
-        verts, faces = create_flooring(o.jv_mat, o.jv_wood_types, o.jv_tile_types, dim[0], dim[1], o.jv_b_width,
-                                       o.jv_b_length, o.jv_b_length_s, o.jv_is_length_vary, o.jv_length_vary,
-                                       o.jv_num_boards, o.jv_space_l, o.jv_space_w, o.jv_spacing, o.jv_t_width,
-                                       o.jv_t_length, o.jv_is_offset, o.jv_offset, o.jv_is_random_offset,
                                        o.jv_offset_vary, o.jv_t_width_s, o.jv_is_width_vary, o.jv_width_vary,
                                        o.jv_max_boards, o.jv_is_ran_thickness, o.jv_ran_thickness,  o.jv_thickness,
                                        o.jv_hb_direction)
@@ -734,7 +733,7 @@ def update_flooring(self, context):
     bpy.data.meshes.remove(emesh)
     
     # modifiers
-    if o.jv_is_bevel and o.jv_mat == "1":
+    if o.jv_is_bevel and o.jv_flooring_types == "1":
         bpy.ops.object.modifier_add(type="BEVEL")
         pos = len(o.modifiers) - 1
         o.modifiers[pos].segments = o.jv_res
@@ -808,7 +807,7 @@ def update_flooring(self, context):
    
     # create grout
     grout_ob = None
-    if o.jv_mat == "2":
+    if o.jv_flooring_types == "2":
         if o.jv_object_add == "add":
             verts2, faces2 = tile_grout(o.jv_over_width, o.jv_over_length, o.jv_grout_depth, o.jv_thickness)
         else:
@@ -834,8 +833,8 @@ def update_flooring(self, context):
             context.scene.objects.active = o
     
     # cut tile or herringbone wood
-    if o.jv_object_add == "add" and (o.jv_mat == "2" and o.jv_tile_types in ("2", "4")) or \
-            (o.jv_mat == "1" and o.jv_wood_types in ("3", "4")):
+    if o.jv_object_add == "add" and (o.jv_flooring_types == "2" and o.jv_tile_types in ("2", "4")) or \
+            (o.jv_flooring_types == "1" and o.jv_wood_types in ("3", "4")):
         verts3, faces3 = tile_cutter(o.jv_over_width, o.jv_over_length)
 
         cutter_me = bpy.data.meshes.new("cutter")
@@ -855,7 +854,7 @@ def update_flooring(self, context):
         o.select = False
         
         # cut grout if needed
-        if o.jv_mat == "2":
+        if o.jv_flooring_types == "2":
             grout_ob.select = True
             context.scene.objects.active = grout_ob
             apply_modifier_boolean(bpy, grout_ob, cutter_ob.name)
@@ -868,7 +867,7 @@ def update_flooring(self, context):
         context.scene.objects.active = o
     
     # add materials
-    if o.jv_mat == "2":  # grout material
+    if o.jv_flooring_types == "2":  # grout material
         enter = True
         for i in mats:
             if "grout_" in i.name or len(mats) >= 2:
@@ -881,7 +880,7 @@ def update_flooring(self, context):
             mat = bpy.data.materials.get(mats[1].name)
             grout_ob.data.materials.append(mat)
     
-    if o.jv_is_material or o.jv_mat == "2":
+    if o.jv_is_material or o.jv_flooring_types == "2":
         enter = True
         for i in mats:
             if "flooring_" in i.name or len(mats) >= 2:
@@ -895,7 +894,7 @@ def update_flooring(self, context):
             o.data.materials.append(mat)
             
     # join grout
-    if o.jv_mat == "2":
+    if o.jv_flooring_types == "2":
         vertex_group(self, context)
         for ob in bpy.data.objects:
             ob.select = False
@@ -912,56 +911,9 @@ def update_flooring(self, context):
     
     # uv unwrap
     if o.jv_is_unwrap:
-        unwrap_flooring(self, context)
+        unwrap_object(self, context)
         if o.jv_is_random_uv:
-            random_uv(self, context)
-
-
-def unwrap_flooring(self, context):
-    o = context.object
-    # uv unwrap
-    for i in bpy.data.objects:
-        i.select = False
-
-    o.select = True
-    bpy.context.scene.objects.active = o
-
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for region in area.regions:
-                if region.type == 'WINDOW':
-                    bpy.ops.object.editmode_toggle()
-                    override = bpy.context.copy()
-                    override["area"] = area
-                    override["region"] = region
-                    override["active_object"] = bpy.context.selected_objects[0]
-                    bpy.ops.mesh.select_all(action="SELECT")
-                    bpy.ops.uv.cube_project(override)
-                    bpy.ops.object.editmode_toggle()
-
-
-def random_uv(self, context):
-    for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        bpy.ops.object.editmode_toggle()
-                        bpy.ops.mesh.select_all(action="SELECT")
-                        obj = bpy.context.object
-                        me = obj.data
-                        bm = bmesh.from_edit_mesh(me)      
-
-                        uv_layer = bm.loops.layers.uv.verify()
-                        bm.faces.layers.tex.verify()
-                        # adjust UVs                        
-                        for f in bm.faces:
-                            offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
-                            for v in f.loops:
-                                luv = v[uv_layer]   
-                                luv.uv = (luv.uv + offset).xy
-
-                        bmesh.update_edit_mesh(me)
-                        bpy.ops.object.editmode_toggle()
+            random_uvs(self, context)
 
 
 def vertex_group(self, context):
@@ -999,7 +951,7 @@ def flooring_material(self, context):
         return
 
     extra_rot = None
-    if o.jv_mat == "1" and o.jv_wood_types in ("3", "4"):
+    if o.jv_flooring_types == "1" and o.jv_wood_types in ("3", "4"):
         extra_rot = 45
 
     mat = image_material(bpy, o.jv_im_scale, o.jv_col_image, o.jv_norm_image, o.jv_bump_amo, o.jv_is_bump,
@@ -1015,7 +967,7 @@ def flooring_material(self, context):
         self.report({"ERROR"}, "Images Not Found, Make Sure Path Is Correct")
         return
 
-    if o.jv_mat == "2" and len(o.data.materials) >= 2:
+    if o.jv_flooring_types == "2" and len(o.data.materials) >= 2:
         mat2 = mortar_material(bpy, o.jv_mortar_color, o.jv_mortar_bump, o.data.materials[1].name)
         o.data.materials[1] = mat2.copy()
         o.data.materials[1].name = "mortar_" + o.name
@@ -1054,12 +1006,12 @@ class FlooringPanel(bpy.types.Panel):
                     if o.jv_internal_type == "flooring":
                         if o.jv_object_add in ("convert", "add"):
                             layout.label("Material:")
-                            layout.prop(o, "jv_mat", icon="MATERIAL")
+                            layout.prop(o, "jv_flooring_types", icon="MATERIAL")
                             layout.label("Types:")
 
-                            if o.jv_mat == "1":
+                            if o.jv_flooring_types == "1":
                                 layout.prop(o, "jv_wood_types", icon="OBJECT_DATA")
-                            elif o.jv_mat == "2":
+                            elif o.jv_flooring_types == "2":
                                 layout.prop(o, "jv_tile_types", icon="OBJECT_DATA")
                             layout.separator()
                             if o.jv_object_add == "add":
@@ -1069,9 +1021,8 @@ class FlooringPanel(bpy.types.Panel):
 
                             # width and lengths
                             layout.prop(o, "jv_thickness")
-                            layout.separator()
                             
-                            if o.jv_mat == "1":
+                            if o.jv_flooring_types == "1":
                                 layout.prop(o, "jv_b_width")
                                 
                                 if o.jv_wood_types == "1":
@@ -1105,11 +1056,9 @@ class FlooringPanel(bpy.types.Panel):
                                 
                                 if o.jv_wood_types != "1":
                                     layout.prop(o, "jv_spacing")
-                                    layout.separator()
 
                                 if o.jv_wood_types == "2":
                                     layout.prop(o, "jv_num_boards")
-                                    layout.separator()
                                 
                                 # bevel
                                 layout.prop(o, "jv_is_bevel", icon="MOD_BEVEL")
@@ -1118,7 +1067,7 @@ class FlooringPanel(bpy.types.Panel):
                                     layout.prop(o, "jv_bevel_amo")
                                     layout.separator()
                             
-                            elif o.jv_mat == "2":
+                            elif o.jv_flooring_types == "2":
                                 if o.jv_tile_types != "4":
                                     layout.prop(o, "jv_t_width")
                                     layout.prop(o, "jv_t_length")
@@ -1162,7 +1111,7 @@ class FlooringPanel(bpy.types.Panel):
                                 layout.prop(o, "jv_im_scale", icon="MAN_SCALE")
                                 layout.prop(o, "jv_is_rotate", icon="MAN_ROT")
 
-                                if o.jv_mat == "2":
+                                if o.jv_flooring_types == "2":
                                     layout.separator()
                                     layout.prop(o, "jv_mortar_color", icon="COLOR")
                                     layout.prop(o, "jv_mortar_bump")
@@ -1175,7 +1124,7 @@ class FlooringPanel(bpy.types.Panel):
                             layout.separator()
                             layout.operator("mesh.jv_flooring_update", icon="FILE_REFRESH")
                             layout.operator("mesh.jv_flooring_delete", icon="CANCEL")
-                            layout.oeprator("mesh.jv_flooring_add", icon="MESH_GRID")
+                            layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
                         else:
                             layout.operator("mesh.jv_flooring_convert")
                             layout.operator("mesh.jv_flooring_add", icon="MESH_GRID")
@@ -1194,7 +1143,7 @@ class FlooringAdd(bpy.types.Operator):
     bl_description = "JARCH Vis: Flooring Generator"
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         return context.mode == "OBJECT"
 
     def execute(self, context):
