@@ -90,7 +90,7 @@ def update_roofing_facegroup_selection(self, context):
     bpy.ops.object.editmode_toggle()
 
     if len(ob.jv_face_groups) >= 1:
-        fg = ob.jv_face_groups[ob.jv_group_index]
+        fg = ob.jv_face_groups[ob.jv_face_group_index]
 
         # deselect all faces and edges
         for f in ob.data.polygons:

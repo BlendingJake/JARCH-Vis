@@ -15,7 +15,8 @@
 
 from itertools import permutations
 import bpy
-from bpy.props import FloatVectorProperty, BoolProperty, FloatProperty, StringProperty, IntProperty, EnumProperty
+from bpy.props import FloatVectorProperty, BoolProperty, FloatProperty, StringProperty, IntProperty, EnumProperty,\
+    CollectionProperty
 from math import sqrt, atan, asin, sin, cos, tan
 from random import uniform, choice
 from mathutils import Euler, Vector
@@ -29,56 +30,22 @@ from ast import literal_eval
 
 # manages sorting out which type of siding needs to be create, gets corner data for cutout objects
 def create_siding(context, mat, jv_tin_siding_types, wood_types, vinyl_types, sloped, ow, oh, bw, slope, is_width_vary,
-                  width_vary, is_cutout, num_cutouts, nc1, nc2, nc3, nc4, nc5, baw, spacing, is_length_vary,
-                  length_vary, max_boards, b_w, b_h, b_offset, b_gap, b_ran_offset, b_vary, is_corner, is_invert,
-                  is_soldier, is_left, is_right, avw, avh, s_random, b_random, x_off):
+                  width_vary, is_cutout, baw, spacing, is_length_vary, length_vary, max_boards, b_w, b_h, b_offset,
+                  b_gap, b_ran_offset, b_vary, is_corner, is_invert, is_soldier, is_left, is_right, avw, avh, s_random,
+                  b_random, x_off):
 
     # percentages
     width_vary = 1 / (100 / width_vary)
     length_vary = 1 / (100 / length_vary)
-
-    # evaluate cutouts
-    cutouts = []
-    if is_cutout:
-        if nc1 != "" and num_cutouts >= 1:
-            add = nc1.split(",")
-            cutouts.append(add)
-        if nc2 != "" and num_cutouts >= 2:
-            add = nc2.split(",")
-            cutouts.append(add)
-        if nc3 != "" and num_cutouts >= 3:
-            add = nc3.split(",")
-            cutouts.append(add)
-        if nc4 != "" and num_cutouts >= 4:
-            add = nc4.split(",")
-            cutouts.append(add)
-        if nc5 != "" and num_cutouts >= 5:
-            add = nc5.split(",")
-            cutouts.append(add)
-
-    cuts = []  # create list of data if cutout has correct info and is numbers
-    for i in cutouts:
-        pre = []
-        skip = False
-        if len(i) == 4:
-            for i2 in i:
-                try:
-                    if context.scene.unit_settings.system == "IMPERIAL":
-                        i2 = round(float(i2) / METRIC_FOOT, 5)
-                    else:
-                        i2 = float(i2)
-                    pre.append(i2)
-                except ValueError:
-                    skip = True
-        if not skip and pre != []:
-            cuts.append(pre)
+    o = context.object
 
     # determine corner points
     corner_data, corner_data_l = [], []
-    for i in cuts:
-        corner_data.append([i[0], i[1], i[0] + i[3], i[1] + i[2]])
-        if is_soldier:
-            corner_data_l.append([i[0], i[1], i[0] + i[3], i[1] + i[2] + b_w + b_gap])
+    if is_cutout:
+        for g in o.jv_cutout_groups:
+            corner_data.append([g.x_dist, g.z_dist, g.x_dist + g.width, g.z_dist + g.height])
+            if is_soldier:
+                corner_data_l.append([g.x_dist, g.z_dist, g.x_dist + g.width, g.z_dist + g.height + b_w + b_gap])
 
     # verts and faces
     verts, faces = [], []
@@ -1154,9 +1121,7 @@ def update_siding(self, context):
                                                                        o.jv_vinyl_siding_types, o.jv_is_slope,
                                                                        o.jv_over_width, o.jv_over_height, o.jv_b_width,
                                                                        o.jv_slope, o.jv_is_width_vary, o.jv_width_vary,
-                                                                       o.jv_is_cutout, o.jv_num_cutouts, o.jv_nc1,
-                                                                       o.jv_nc2, o.jv_nc3, o.jv_nc4, o.jv_nc5,
-                                                                       o.jv_batten_width, o.jv_spacing,
+                                                                       o.jv_is_cutout, o.jv_batten_width, o.jv_spacing,
                                                                        o.jv_is_length_vary, o.jv_length_vary,
                                                                        o.jv_max_boards, o.jv_br_width, o.jv_br_height,
                                                                        o.jv_br_offset, o.jv_br_gap, o.jv_br_ran_offset,
@@ -1173,10 +1138,9 @@ def update_siding(self, context):
                                                                        o.jv_vinyl_siding_types, o.jv_is_slope, ow, oh,
                                                                        o.jv_b_width, o.jv_slope, o.jv_is_width_vary,
                                                                        o.jv_width_vary, o.jv_is_cutout,
-                                                                       o.jv_num_cutouts, o.jv_nc1, o.jv_nc2, o.jv_nc3,
-                                                                       o.jv_nc4, o.jv_nc5, o.jv_batten_width,
-                                                                       o.jv_spacing, o.jv_is_length_vary,
-                                                                       o.jv_length_vary, o.jv_max_boards, o.jv_br_width,
+                                                                       o.jv_batten_width, o.jv_spacing,
+                                                                       o.jv_is_length_vary, o.jv_length_vary,
+                                                                       o.jv_max_boards, o.jv_br_width,
                                                                        o.jv_br_height, o.jv_br_offset, o.jv_br_gap,
                                                                        o.jv_br_ran_offset, o.jv_br_vary, o.jv_is_corner,
                                                                        o.jv_is_invert, o.jv_is_soldier, o.jv_is_left,
@@ -1869,18 +1833,24 @@ class SidingPanel(bpy.types.Panel):
 
                         if o.jv_object_add == "add":
                             layout.prop(o, "jv_is_cutout", icon="MOD_BOOLEAN")
-                            units = " ft" if context.scene.unit_settings.system == "IMPERIAL" else " m"
                             if o.jv_is_cutout:
                                 if o.jv_siding_types == "5":
                                     layout.separator()
                                     layout.prop(o, "jv_is_soldier", icon="DOTSUP")
-                                    layout.separator()
-                                layout.prop(o, "jv_num_cutouts")
+
                                 layout.separator()
-                                layout.label("X, Z, Height, Width in" + units)
-                                for i in range(1, o.jv_num_cutouts + 1):
-                                    layout.label("Cutout " + str(i) + ":", icon="MOD_BOOLEAN")
-                                    layout.prop(o, "jv_nc" + str(i))
+                                layout.template_list("OBJECT_UL_jv_cutout_groups", "", o, "jv_cutout_groups", o,
+                                                     "jv_cutout_group_index")
+                                row = layout.row()
+                                row.prop(o, "jv_cutout_x")
+                                row.prop(o, "jv_cutout_z")
+                                row = layout.row()
+                                row.prop(o, "jv_cutout_width")
+                                row.prop(o, "jv_cutout_height")
+                                row = layout.row()
+                                row.operator("mesh.jv_add_cutout_item", icon="ZOOMIN")
+                                row.operator("mesh.jv_remove_cutout_item", icon="ZOOMOUT")
+                                row.operator("mesh.jv_update_cutout_item", icon="FILE_REFRESH")
 
                         layout.separator()
                         layout.prop(o, "jv_is_unwrap", icon="GROUP_UVS")
@@ -1988,12 +1958,85 @@ class SidingConvert(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class OBJECT_UL_jv_cutout_groups(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row = layout.row(align=True)
+        row.label(str(index), icon="FULLSCREEN")
+        row.label("X: " + str(round(item.x_dist, 2)))
+        row.label("Z: " + str(round(item.z_dist, 2)))
+        row.label("Width: " + str(round(item.width, 2)))
+        row.label("Height: " + str(round(item.height, 2)))
+
+
+class CGAddItem(bpy.types.Operator):
+    bl_idname = "mesh.jv_add_cutout_item"
+    bl_label = "Add"
+    bl_options = {"UNDO", "INTERNAL"}
+
+    def execute(self, context):
+        o = context.object
+        cutout = o.jv_cutout_groups.add()
+        cutout.x_dist = o.jv_cutout_x
+        cutout.z_dist = o.jv_cutout_z
+        cutout.width = o.jv_cutout_width
+        cutout.height = o.jv_cutout_height
+        o.jv_cutout_group_ct += 1
+        o.jv_cutout_group_index = len(o.jv_cutout_groups) - 1
+        update_siding(self, context)
+        return {"FINISHED"}
+
+
+class CGRemoveItem(bpy.types.Operator):
+    bl_idname = "mesh.jv_remove_cutout_item"
+    bl_label = "Remove"
+    bl_options = {"UNDO", "INTERNAL"}
+
+    def execute(self, context):
+        ob = context.object
+        if len(ob.jv_cutout_groups) > 0:
+            ob.jv_cutout_groups.remove(context.object.jv_cutout_group_index)
+            ob.jv_cutout_group_ct = len(ob.jv_cutout_groups)
+
+            if len(ob.jv_cutout_groups) == 0:
+                ob.jv_cutout_group_index = 0
+            else:
+                ob.jv_cutout_group_index = len(ob.jv_cutout_groups) - 1
+            update_siding(self, context)
+        return {"FINISHED"}
+
+
+class CGUpdateItem(bpy.types.Operator):
+    bl_idname = "mesh.jv_update_cutout_item"
+    bl_label = "Update"
+    bl_options = {"UNDO", "INTERNAL"}
+
+    def execute(self, context):
+        o = context.object
+        if len(o.jv_cutout_groups) > 0 and 0 <= o.jv_cutout_group_index < len(o.jv_cutout_groups):
+            cutout = o.jv_cutout_groups[o.jv_cutout_group_index]
+            cutout.x_dist = o.jv_cutout_x
+            cutout.z_dist = o.jv_cutout_z
+            cutout.width = o.jv_cutout_width
+            cutout.height = o.jv_cutout_height
+            update_siding(self, context)
+        return {"FINISHED"}
+
+
+class CutoutGroup(bpy.types.PropertyGroup):
+    x_dist = FloatProperty(subtype="DISTANCE")
+    z_dist = FloatProperty(subtype="DISTANCE")
+    width = FloatProperty(subtype="DISTANCE")
+    height = FloatProperty(subtype="DISTANCE")
+
+
 def register():
     bpy.utils.register_module(__name__)
+    bpy.types.Object.jv_cutout_groups = CollectionProperty(type=CutoutGroup)
 
 
 def unregister():
     bpy.utils.unregister_module(__name__)
+    del bpy.types.Object.jv_cutout_groups
 
 if __name__ == "__main__":
     register()

@@ -54,9 +54,9 @@ tp.jv_wood_siding_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Vert
                                               ("3", "Vertical: Board & Batten", ""), ("4", "Horizontal: Lap", ""),
                                               ("5", "Horizontal: Lap Bevel", "")), default="1", name="",
                                        update=jv_update_object)
-tp.vinyl_siding_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Horizontal: Lap", ""),
-                                            ("3", "Horizontal: Dutch Lap", "")), default="1", name="",
-                                     update=jv_update_object)
+tp.jv_vinyl_siding_types = EnumProperty(items=(("1", "Vertical", ""), ("2", "Horizontal: Lap", ""),
+                                               ("3", "Horizontal: Dutch Lap", "")), default="1", name="",
+                                        update=jv_update_object)
 
 # shared measurements
 tp.jv_over_width = FloatProperty(name="Overall Width", min=2.00 / METRIC_FOOT, max=100.00 / METRIC_FOOT,
@@ -202,7 +202,7 @@ tp.jv_t_width_s = FloatProperty(name="Small Tile Width", min=2.00 / METRIC_INCH,
 
 # roofing specific
 tp.jv_face_group_ct = IntProperty(default=0)
-tp.jv_group_index = IntProperty(default=0, update=update_roofing_facegroup_selection)
+tp.jv_face_group_index = IntProperty(default=0, update=update_roofing_facegroup_selection)
 tp.jv_pl_z_rot = FloatProperty(unit="ROTATION", name="Object Z Rotation")
 tp.jv_pl_pitch = FloatProperty(min=1.0, max=24.0, default=4.0, name="Pitch X/12")
 tp.jv_main_name = StringProperty(default="none")
@@ -215,6 +215,14 @@ tp.jv_tin_color = FloatVectorProperty(name="Tin Color", subtype="COLOR", default
                                       description="Color For Tin")
 
 # siding specific
+# cutout groups
+tp.jv_cutout_group_ct = IntProperty(default=0)
+tp.jv_cutout_group_index = IntProperty(default=0)
+tp.jv_cutout_x = FloatProperty(name="X Distance", subtype="DISTANCE", description="X Distance From Left Side")
+tp.jv_cutout_z = FloatProperty(name="Z Distance", subtype="DISTANCE", description="Z Distance From Bottom")
+tp.jv_cutout_width = FloatProperty(name="Width", subtype="DISTANCE", description="Width Of Cutout")
+tp.jv_cutout_height = FloatProperty(name="Height", subtype="DISTANCE", description="Height Of Cutout")
+
 tp.jv_pre_jv_dims = StringProperty(default="none")
 tp.jv_previous_rotation = StringProperty(default="none")
 tp.jv_dims = StringProperty(default="none")
@@ -227,7 +235,6 @@ tp.jv_batten_width = FloatProperty(name="Batten Width", min=0.5 / METRIC_INCH, m
 
 tp.jv_is_cutout = BoolProperty(name="Cutouts?", default=False, description="Cut Rectangles Out (Slower)",
                                update=jv_update_object)
-tp.jv_num_cutouts = IntProperty(name="# Cutouts", min=1, max=6, default=1, update=jv_update_object)
 tp.jv_is_screws = BoolProperty(name="Screw Heads?", default=False, description="Add Screw Heads?",
                                update=jv_update_object)
 tp.jv_bevel_width = FloatProperty(name="Bevel Width", min=0.05 / METRIC_INCH, max=0.5 / METRIC_INCH,
@@ -294,14 +301,6 @@ tp.jv_st_m_depth = FloatProperty(name="Mortar Depth", default=1.5 / METRIC_INCH,
                                  update=jv_update_object)
 tp.jv_sb_mat_type = EnumProperty(name="", items=(("1", "Image", ""), ("2", "Procedural", "")), default="1",
                                  description="Stone Material Type")
-desc = "X, Y, Height, Width In (ft/m)"
-tp.jv_nc1 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-tp.jv_nc2 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-tp.jv_nc3 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-tp.jv_nc4 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-tp.jv_nc5 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-tp.jv_nc6 = StringProperty(name="", default="", description=desc, update=jv_update_object)
-
 # stair specific
 tp.jv_overhang_style = EnumProperty(items=(("1", "Normal", ""), ("2", "Right", ""), ("3", "Left", ""),
                                            ("4", "Both", "")), default="1", description="Overhang Style",

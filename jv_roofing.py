@@ -1066,18 +1066,18 @@ def add_item(context):
         
         item.name = "Group " + str(ob.jv_face_group_ct)
         
-        ob.jv_group_index = len(ob.jv_face_groups) - 1
+        ob.jv_face_group_index = len(ob.jv_face_groups) - 1
         ob.jv_face_group_ct = len(ob.jv_face_groups) 
 
 
 def update_item(context):
     ob = context.object
     if len(ob.jv_face_groups) >= 1:
-        fg = ob.jv_face_groups[ob.jv_group_index]
+        fg = ob.jv_face_groups[ob.jv_face_group_index]
         counter = 0
         fa_str = ""
         
-        # toggle editmode to update which edges are selected
+        # toggle edit-mode to update which edges are selected
         bpy.ops.object.editmode_toggle()
         bpy.ops.object.editmode_toggle()
     
@@ -1115,11 +1115,11 @@ class RoofingPanel(bpy.types.Panel):
         if ob is not None:
             if ob.jv_internal_type == "roofing":
                 if context.mode == "EDIT_MESH" and ob.jv_object_add == "none":                
-                    layout.template_list("OBJECT_UL_jv_face_groups", "", ob, "jv_face_groups", ob, "jv_group_index")
+                    layout.template_list("OBJECT_UL_jv_face_groups", "", ob, "jv_face_groups", ob, "jv_face_group_index")
                     layout.separator()
-                    layout.operator("mesh.jv_add_item", icon="ZOOMIN")
-                    layout.operator("mesh.jv_remove_item", icon="ZOOMOUT")
-                    layout.operator("mesh.jv_update_item", icon="FILE_REFRESH")
+                    layout.operator("mesh.jv_add_face_group_item", icon="ZOOMIN")
+                    layout.operator("mesh.jv_remove_face_group_item", icon="ZOOMOUT")
+                    layout.operator("mesh.jv_update_face_group_item", icon="FILE_REFRESH")
                 elif context.mode == "EDIT_MESH" and ob.jv_object_add != "none":
                     layout.label("This Object Is Already A JARCH Vis: Roofing Object", icon="INFO")
                     
@@ -1302,8 +1302,8 @@ class RoofingConvert(bpy.types.Operator):
 
 
 class FGAddItem(bpy.types.Operator):
-    bl_idname = "mesh.jv_add_item"
-    bl_label = "Add Group"
+    bl_idname = "mesh.jv_add_face_group_item"
+    bl_label = "Add"
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
@@ -1312,26 +1312,26 @@ class FGAddItem(bpy.types.Operator):
 
 
 class FGRemoveItem(bpy.types.Operator):
-    bl_idname = "mesh.jv_remove_item"
-    bl_label = "Remove Group"
+    bl_idname = "mesh.jv_remove_face_group_item"
+    bl_label = "Remove"
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
         ob = context.object
         if len(ob.jv_face_groups) > 0:
-            ob.jv_face_groups.remove(context.object.jv_group_index)
+            ob.jv_face_groups.remove(context.object.jv_face_group_index)
             ob.jv_face_group_ct = len(ob.jv_face_groups)
            
             if len(ob.jv_face_groups) == 0:
-                ob.jv_group_index = 0
+                ob.jv_face_group_index = 0
             else:
-                ob.jv_group_index = len(ob.jv_face_groups)-1
+                ob.jv_face_group_index = len(ob.jv_face_groups)-1
         return {"FINISHED"}
 
 
 class FGUpdateItem(bpy.types.Operator):
-    bl_idname = "mesh.jv_update_item"
-    bl_label = "Update Group"
+    bl_idname = "mesh.jv_update_face_group_item"
+    bl_label = "Update"
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
