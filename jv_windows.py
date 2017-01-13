@@ -553,7 +553,8 @@ def gothic(width, height, res, is_slider, jamb_w):
     temp3 += [(hw - I - bevelXZ, y + bevelY, 2 * I + bevelXZ + h_off)]
 
     inner_face, outer_face = sort_window_verts(temp1, temp2, temp3, verts)
-    p2 = p+off+2  
+    p2 = p+off+2
+    glass_indices += [len(faces), len(faces) + 1]
     faces.append(inner_face)
     faces.append(outer_face)
     
