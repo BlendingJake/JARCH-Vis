@@ -18,7 +18,7 @@ from math import radians, sqrt, acos, cos, sin, asin
 from . jv_utils import METRIC_INCH, I, HI, point_rotation, random_uvs, unwrap_object
 from . jv_materials import glossy_diffuse_material, image_material, architectural_glass_material
 from mathutils import Vector, Matrix
-import jv_properties
+# import jv_properties
 
 # variables for pane size
 t = 1.5 / METRIC_INCH
