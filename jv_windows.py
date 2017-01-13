@@ -18,7 +18,7 @@ from math import radians, sqrt, acos, cos, sin, asin
 from . jv_utils import METRIC_INCH, I, HI, point_rotation, random_uvs, unwrap_object
 from . jv_materials import glossy_diffuse_material, image_material, architectural_glass_material
 from mathutils import Vector, Matrix
-# import jv_properties
+import jv_properties
 
 # variables for pane size
 t = 1.5 / METRIC_INCH
@@ -79,7 +79,7 @@ def arch(width, height, roundness, res, is_slider, jamb_w):
     faces += [(p2 - 8, p2 - 7, p2, p2 + off), (p2 - 7, p2 - 6, p2 + 1, p2), (p2 - 6, p2 - 5, p2 + off + 1, p2 + 1),
               (p2 - 8, p2 + off, p2 + off + 1, p2 - 5), (p2 - 4, p2 - 3, p + off, p),
               (p2 - 3, p2 - 2, p + off + 1, p + off),
-              (p2 - 2, p2 - 1, p + 1, p + off + 1), (p2 - 1, p2 - 4, p, p + 1)]  # right side
+              (p2 - 2, p2 - 1, p + 1, p + off + 1), (p2 - 1, p2 - 4, p, p + 1)]
 
     # if slide add extra pane
     sz, ph = I, h
@@ -117,6 +117,7 @@ def arch(width, height, roundness, res, is_slider, jamb_w):
     for i in arch_function(hw - I - bevelXZ, arch_h - I - bevelXZ, res):
         temp3 += [(i[0], y + bevelY, i[1] + h + I)]
 
+    glass_indices += [len(faces) + 13, len(faces) + 14]
     # bottom and side faces for border
     faces += [(p, p + 1, p + 5, p + 4), (p + 4, p + 5, p + 9, p + 8), (p, p + 3, p + 2, p + 1),
               (p + 2, p + 3, p + 7, p + 6),
@@ -141,6 +142,7 @@ def arch(width, height, roundness, res, is_slider, jamb_w):
     faces.append(inner_face)
     faces.append(outer_face)
 
+    glass_indices += [len(faces) + 10, len(faces) + 11]
     # extra faces
     faces += [(p3, p3 + 4, p3 + 14, p3 + 12), (p3 + 4, p3 + 8, p3 + 15, p3 + 14),
               (p3 + 7, p3 + 3, p3 + 13, p3 + 17),
