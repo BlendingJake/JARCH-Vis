@@ -15,17 +15,16 @@
 
 from itertools import permutations
 import bpy
-from bpy.props import FloatVectorProperty, BoolProperty, FloatProperty, StringProperty, IntProperty, EnumProperty,\
-    CollectionProperty
 from math import sqrt, atan, asin, sin, cos, tan
 from random import uniform, choice
 from mathutils import Euler, Vector
 from . jv_materials import *
-import bmesh
+# import bmesh
 from . jv_utils import rot_from_normal, object_dimensions, point_rotation, METRIC_INCH, METRIC_FOOT, I, HI, \
     unwrap_object, random_uvs, round_rad
 from ast import literal_eval
-import jv_properties
+# import jv_properties
+# from bpy.props import FloatProperty, CollectionProperty
 
 
 # manages sorting out which type of siding needs to be create, gets corner data for cutout objects
@@ -1185,7 +1184,6 @@ def update_siding(self, context):
             rot = list(rot_from_normal(o.data.polygons[0].normal))
             rot[2] = round(rot[2] - radians(270), 4)
             rot[1] = round(rot[1] - radians(90), 4)
-            print(rot)
 
             # rotation and vertices to find corner
             x, y, z = None, None, None
@@ -2039,21 +2037,21 @@ class CGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class CutoutGroup(bpy.types.PropertyGroup):
-    x_dist = FloatProperty(subtype="DISTANCE")
-    z_dist = FloatProperty(subtype="DISTANCE")
-    width = FloatProperty(subtype="DISTANCE")
-    height = FloatProperty(subtype="DISTANCE")
+# class CutoutGroup(bpy.types.PropertyGroup):
+#     x_dist = FloatProperty(subtype="DISTANCE")
+#     z_dist = FloatProperty(subtype="DISTANCE")
+#     width = FloatProperty(subtype="DISTANCE")
+#     height = FloatProperty(subtype="DISTANCE")
 
 
-def register():
-    bpy.utils.register_module(__name__)
-    bpy.types.Object.jv_cutout_groups = CollectionProperty(type=CutoutGroup)
-
-
-def unregister():
-    bpy.utils.unregister_module(__name__)
-    del bpy.types.Object.jv_cutout_groups
-
-if __name__ == "__main__":
-    register()
+# def register():
+#     bpy.utils.register_module(__name__)
+#     bpy.types.Object.jv_cutout_groups = CollectionProperty(type=CutoutGroup)
+#
+#
+# def unregister():
+#     bpy.utils.unregister_module(__name__)
+#     del bpy.types.Object.jv_cutout_groups
+#
+# if __name__ == "__main__":
+#     register()
