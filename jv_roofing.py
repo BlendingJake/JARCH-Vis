@@ -1013,67 +1013,82 @@ def roofing_materials(self):
             bpy.data.materials.remove(i)
 
 
-def add_item(context):
-    ob = context.object
+def collect_item_data(self, context, ignore):
     face_indices = []
-    counter = 0
-    
-    # toggle editmode to update which edges are selected
+    ob = context.object
+
+    # toggle edit-mode to update which edges are selected
     bpy.ops.object.editmode_toggle()
     bpy.ops.object.editmode_toggle()
-    
+
     selected_faces = []
     # create list of selected edges
     for fa in ob.data.polygons:
         if fa.select:
+            # make sure there are not duplicate faces
+            for fg in ob.jv_face_groups:
+                if str(fa.index) not in ignore and str(fa.index) in fg.data.split(","):
+                    self.report({"WARNING"}, "JARCH Vis: Face Is Already In Another Group")
+                    return [], []
+
             selected_faces.append(fa)
             face_indices.append(str(fa.index))
-            counter += 1
+
+    return selected_faces, face_indices
+
+
+def add_item(self, context):
+    ob = context.object
+    selected_faces, face_indices = collect_item_data(self, context, [])
                                 
-    if counter != 0:  # make sure a face is selected
+    if len(face_indices) > 0:  # make sure a face is selected
         item = ob.jv_face_groups.add()
         
         # set collection object item data
-        # item.data = fa_str
         item.data = ",".join(face_indices)
-        item.num_faces = counter
+        item.num_faces = len(face_indices)
         
         # calculate slope and rotation
         rot = rot_from_normal(selected_faces[0].normal)
         item.face_slope = 12 * tan(rot[1])
         item.rot = rot[2] - radians(270)
         
-        item.name = "Group " + str(ob.jv_face_group_ct)
+        item.name = "Group " + str(ob.jv_face_group_ct + 1)
         
         ob.jv_face_group_index = len(ob.jv_face_groups) - 1
-        ob.jv_face_group_ct = len(ob.jv_face_groups) 
+        ob.jv_face_group_ct = len(ob.jv_face_groups)
+    else:
+        self.report({"ERROR"}, "JARCH Vis: At Least One Face Must Be Selected")
 
 
-def update_item(context):
+def update_item(self, context):
     ob = context.object
-    if len(ob.jv_face_groups) >= 1:
+
+    if len(ob.jv_face_groups) > 0:
         fg = ob.jv_face_groups[ob.jv_face_group_index]
-        counter = 0
-        face_indices = []
-        
-        # toggle edit-mode to update which edges are selected
-        bpy.ops.object.editmode_toggle()
-        bpy.ops.object.editmode_toggle()
-    
-        selected_faces = []
-        # create list of selected edges
-        for fa in ob.data.polygons:
-            if fa.select:
-                selected_faces.append(fa)
-                face_indices.append(str(fa.index))
-                counter += 1
-                
-        # set collection object item data
-        fg.data = ",".join(face_indices)
-        fg.num_faces = counter
-        
-        # get slope and rot
-        rot = rot_from_normal(selected_faces[0].normal)
+        selected_faces, face_indices = collect_item_data(self, context, fg.data.split(","))
+
+        if len(face_indices) > 0:
+            # set collection object item data
+            fg.data = ",".join(face_indices)
+            fg.num_faces = len(face_indices)
+
+            # get slope and rot
+            rot = rot_from_normal(selected_faces[0].normal)
+            fg.face_slope = 12 * tan(rot[1])
+            fg.rot = rot[2] - radians(270)
+        else:
+            self.report({"ERROR"}, "JARCH Vis: At Least One Face Must Be Selected")
+
+
+def update_all_items(self, context):
+    ob = context.object
+    bpy.ops.object.editmode_toggle()
+    bpy.ops.object.editmode_toggle()
+
+    for fg in ob.jv_face_groups:
+        fa = ob.data.polygons[int(fg.data.split(",")[0])]
+        rot = rot_from_normal(fa.normal)
         fg.face_slope = 12 * tan(rot[1])
         fg.rot = rot[2] - radians(270)
 
@@ -1099,7 +1114,9 @@ class RoofingPanel(bpy.types.Panel):
                     row = layout.row()
                     row.operator("mesh.jv_add_face_group_item", icon="ZOOMIN")
                     row.operator("mesh.jv_remove_face_group_item", icon="ZOOMOUT")
+                    row = layout.row()
                     row.operator("mesh.jv_update_face_group_item", icon="FILE_REFRESH")
+                    row.operator("mesh.jv_update_face_group_items", icon="FILE_REFRESH")
                 elif context.mode == "EDIT_MESH" and ob.jv_object_add != "none":
                     layout.label("This Object Is Already A JARCH Vis: Roofing Object", icon="INFO")
                     
@@ -1293,7 +1310,7 @@ class FGAddItem(bpy.types.Operator):
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
-        add_item(context)
+        add_item(self, context)
         return {"FINISHED"}
 
 
@@ -1321,7 +1338,17 @@ class FGUpdateItem(bpy.types.Operator):
     bl_options = {"UNDO", "INTERNAL"}
     
     def execute(self, context):
-        update_item(context)
+        update_item(self, context)
+        return {"FINISHED"}
+
+
+class FGUpdateAllItems(bpy.types.Operator):
+    bl_idname = "mesh.jv_update_face_group_items"
+    bl_label = "Update All"
+    bl_options = {"UNDO", "INTERNAL"}
+
+    def execute(self, context):
+        update_all_items(self, context)
         return {"FINISHED"}
 
 

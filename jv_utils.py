@@ -103,6 +103,8 @@ def update_roofing_facegroup_selection(self, context):
                 f.select = False
             for e in ob.data.edges:
                 e.select = False
+            for v in ob.data.vertices:
+                v.select = False
 
             temp_l = []
             for i in fg.data.split(","):
