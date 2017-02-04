@@ -14,7 +14,6 @@
 # along with JARCH Vis.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
-from bpy.props import *
 from mathutils import Vector, Euler
 from math import atan, degrees, cos, tan, sin, radians
 from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_INCH, HI, I, rot_from_normal, \
@@ -22,7 +21,8 @@ from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_IN
 from . jv_materials import glossy_diffuse_material, image_material
 from random import uniform
 import bmesh
-# import jv_properties
+import jv_properties
+from bpy.props import *
 
 con = METRIC_INCH
 
@@ -769,15 +769,13 @@ def update_roofing(self, context):
         fg = []        
         # create groups of face centers for cutting use the data in ob.jv_face_groups
         for f_g in use_ob.jv_face_groups:
-            st = f_g.data.split(",")
-            del st[len(st)-1]
-            
             temp_l = []
-            for i in st:
-                st2 = i.split("+")
-                tl = (float(st2[0]), float(st2[1]), float(st2[2]))
-                temp_l.append(tl)
-            
+            for i in f_g.data.split(","):
+                if int(i) < len(use_ob.data.polygons):
+                    temp_l.append(round_tuple(tuple(use_ob.data.polygons[int(i)].center), 4))
+                else:
+                    self.report({"ERROR"}, "JARCH Vis: Cannot Find Face, Please Update Roof Face Groups")
+
             temp_m = [temp_l, f_g.face_slope, f_g.rot]
             fg.append(temp_m)           
             
@@ -1015,28 +1013,9 @@ def roofing_materials(self):
             bpy.data.materials.remove(i)
 
 
-# the obj to look through, faces centers that can be used if they are selected
-def find_face_center(obj: bpy.types.Object, allowed_faces: list, selected: bool) -> Vector:
-    center = Vector((0, 0, 0))
-    cc = 0
-    
-    for fa in obj.data.polygons:  # for all the faces in the object
-        if (allowed_faces is None and selected) or (allowed_faces is None and fa.select and not selected) or \
-                (allowed_faces is not None and round_tuple(fa.center, 4) in allowed_faces):
-
-            for v_index in fa.vertices:  # go through the vertices indices and get x, y, z
-                center += obj.matrix_world * obj.data.vertices[v_index].co
-                cc += 1
-
-    if cc > 0:
-        center /= cc
-    
-    return center
-
-
 def add_item(context):
     ob = context.object
-    fa_str = ""
+    face_indices = []
     counter = 0
     
     # toggle editmode to update which edges are selected
@@ -1048,15 +1027,15 @@ def add_item(context):
     for fa in ob.data.polygons:
         if fa.select:
             selected_faces.append(fa)
-            temp_str = str(round(fa.center[0], 4))+"+"+str(round(fa.center[1], 4))+"+"+str(round(fa.center[2], 4))
-            fa_str += temp_str+", "            
+            face_indices.append(str(fa.index))
             counter += 1
                                 
     if counter != 0:  # make sure a face is selected
         item = ob.jv_face_groups.add()
         
         # set collection object item data
-        item.data = fa_str
+        # item.data = fa_str
+        item.data = ",".join(face_indices)
         item.num_faces = counter
         
         # calculate slope and rotation
@@ -1075,7 +1054,7 @@ def update_item(context):
     if len(ob.jv_face_groups) >= 1:
         fg = ob.jv_face_groups[ob.jv_face_group_index]
         counter = 0
-        fa_str = ""
+        face_indices = []
         
         # toggle edit-mode to update which edges are selected
         bpy.ops.object.editmode_toggle()
@@ -1086,12 +1065,11 @@ def update_item(context):
         for fa in ob.data.polygons:
             if fa.select:
                 selected_faces.append(fa)
-                temp_str = str(round(fa.center[0], 4))+"+"+str(round(fa.center[1], 4))+"+"+str(round(fa.center[2], 4))
-                fa_str += temp_str+", "            
+                face_indices.append(str(fa.index))
                 counter += 1
                 
         # set collection object item data
-        fg.data = fa_str
+        fg.data = ",".join(face_indices)
         fg.num_faces = counter
         
         # get slope and rot
@@ -1347,11 +1325,11 @@ class FGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# class FaceGroup(bpy.types.PropertyGroup):
-#     data = StringProperty()
-#     num_faces = IntProperty()
-#     face_slope = FloatProperty()
-#     rot = FloatProperty(unit="ROTATION")
+class FaceGroup(bpy.types.PropertyGroup):
+    data = StringProperty()
+    num_faces = IntProperty()
+    face_slope = FloatProperty()
+    rot = FloatProperty(unit="ROTATION")
 
 
 def register():

@@ -98,17 +98,14 @@ def update_roofing_facegroup_selection(self, context):
         for e in ob.data.edges:
             e.select = False
 
-            # get info from face group and use to define selection
-        st = fg.data.split(",")
-        del st[len(st) - 1]
-
         temp_l = []
-        for i in st:
-            st2 = i.split("+")
-            tl = (float(st2[0]), float(st2[1]), float(st2[2]))
-            temp_l.append(tl)
+        for i in fg.data.split(","):
+            if int(i) < len(ob.data.polygons):
+                temp_l.append(round_tuple(tuple(ob.data.polygons[int(i)].center), 4))
+            else:
+                self.report({"ERROR"}, "JARCH Vis: Cannot Find Face, Please Update Roof Face Groups")
 
-            # select correct faces
+        # select correct faces
         for f in temp_l:
             for face_in_obj in ob.data.polygons:
                 if round_tuple(tuple(face_in_obj.center), 4) == f:
