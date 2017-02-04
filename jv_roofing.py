@@ -21,8 +21,8 @@ from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_IN
 from . jv_materials import glossy_diffuse_material, image_material
 from random import uniform
 import bmesh
-import jv_properties
-from bpy.props import *
+# import jv_properties
+# from bpy.props import *
 
 con = METRIC_INCH
 
@@ -1325,21 +1325,21 @@ class FGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class FaceGroup(bpy.types.PropertyGroup):
-    data = StringProperty()
-    num_faces = IntProperty()
-    face_slope = FloatProperty()
-    rot = FloatProperty(unit="ROTATION")
-
-
-def register():
-    bpy.utils.register_module(__name__)
-    bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
-
-
-def unregister():
-    bpy.utils.unregister_module(__name__)
-    del bpy.types.Object.jv_face_groups
-
-if __name__ == "__main__":
-    register()
+# class FaceGroup(bpy.types.PropertyGroup):
+#     data = StringProperty()
+#     num_faces = IntProperty()
+#     face_slope = FloatProperty()
+#     rot = FloatProperty(unit="ROTATION")
+#
+#
+# def register():
+#     bpy.utils.register_module(__name__)
+#     bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
+#
+#
+# def unregister():
+#     bpy.utils.unregister_module(__name__)
+#     del bpy.types.Object.jv_face_groups
+#
+# if __name__ == "__main__":
+#     register()
