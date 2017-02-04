@@ -23,9 +23,9 @@ from mathutils import Euler, Vector
 from . jv_materials import *
 import bmesh
 from . jv_utils import rot_from_normal, object_dimensions, point_rotation, METRIC_INCH, METRIC_FOOT, I, HI, \
-    unwrap_object, random_uvs
+    unwrap_object, random_uvs, round_rad
 from ast import literal_eval
-# import jv_properties
+import jv_properties
 
 
 # manages sorting out which type of siding needs to be create, gets corner data for cutout objects
@@ -1180,23 +1180,42 @@ def update_siding(self, context):
 
             o.select = True
             bpy.context.scene.objects.active = o
+
+            # find object rotation
+            rot = list(rot_from_normal(o.data.polygons[0].normal))
+            rot[2] = round(rot[2] - radians(270), 4)
+            rot[1] = round(rot[1] - radians(90), 4)
+            print(rot)
+
+            # rotation and vertices to find corner
             x, y, z = None, None, None
             for i in [vert.co for vert in o.data.vertices]:  # find smallest x, y, and z positions
                 if x is None:
                     x = i[0]
                     y = i[1]
-                elif i[0] < x or (i[0] == x and i[1] < y):
+                # smallest x
+                elif (0 <= rot[2] < round_rad(90) or 0 >= rot[2] > round_rad(-90)) and i[0] < x:
                     x = i[0]
                     y = i[1]
+                # largest x
+                elif (round_rad(90) < rot[2] <= round_rad(180) or round_rad(-90) > rot[2] >= round_rad(-180)) and \
+                        i[0] > x:
+                    x = i[0]
+                    y = i[1]
+                # at 90 degrees, then all x the same so pick smallest y
+                elif rot[2] == round_rad(90) and i[1] < y:
+                    x = i[0]
+                    y = i[1]
+                # at -90 degrees, then all x the same so pick largest y
+                elif rot[2] == round_rad(-90) and i[1] > y:
+                    x = i[0]
+                    y = i[1]
+
                 if z is None:
                     z = i[2]
                 elif i[2] < z:
                     z = i[2]
 
-            # find object rotation
-            rot = list(rot_from_normal(o.data.polygons[0].normal))
-            rot[2] -= radians(270)
-            rot[1] -= radians(90)
             position = o.matrix_world * Vector((x, y, z))  # get world space
             coords = [tuple(position), (rot[1], 0, rot[2])]  # rearrange order of rot
             o.jv_previous_rotation = str(rot)
@@ -2020,11 +2039,11 @@ class CGUpdateItem(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# class CutoutGroup(bpy.types.PropertyGroup):
-#     x_dist = FloatProperty(subtype="DISTANCE")
-#     z_dist = FloatProperty(subtype="DISTANCE")
-#     width = FloatProperty(subtype="DISTANCE")
-#     height = FloatProperty(subtype="DISTANCE")
+class CutoutGroup(bpy.types.PropertyGroup):
+    x_dist = FloatProperty(subtype="DISTANCE")
+    z_dist = FloatProperty(subtype="DISTANCE")
+    width = FloatProperty(subtype="DISTANCE")
+    height = FloatProperty(subtype="DISTANCE")
 
 
 def register():

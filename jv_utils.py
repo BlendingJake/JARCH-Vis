@@ -280,3 +280,8 @@ def apply_modifier_boolean(bpy, ob, bool_name: str):
     bpy.context.object.modifiers[pos].object = bpy.data.objects[bool_name]
     bpy.context.object.modifiers[pos].solver = "CARVE"
     bpy.ops.object.modifier_apply(apply_as="DATA", modifier=ob.modifiers[0].name)
+
+
+def round_rad(deg: float, r=4) -> float:
+    from math import radians
+    return round(radians(deg), r)
