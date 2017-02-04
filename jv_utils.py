@@ -92,28 +92,32 @@ def update_roofing_facegroup_selection(self, context):
     if len(ob.jv_face_groups) >= 1:
         fg = ob.jv_face_groups[ob.jv_face_group_index]
 
-        # deselect all faces and edges
-        for f in ob.data.polygons:
-            f.select = False
-        for e in ob.data.edges:
-            e.select = False
+        if "+" in fg.data:  # older version
+            while len(ob.jv_face_groups):
+                ob.jv_face_groups.remove(len(ob.jv_face_groups) - 1)
+            ob.jv_face_group_index = 0
+            ob.jv_face_group_ct = 0
+        else:
+            # deselect all faces and edges
+            for f in ob.data.polygons:
+                f.select = False
+            for e in ob.data.edges:
+                e.select = False
 
-        temp_l = []
-        for i in fg.data.split(","):
-            if int(i) < len(ob.data.polygons):
-                temp_l.append(round_tuple(tuple(ob.data.polygons[int(i)].center), 4))
-            else:
-                self.report({"ERROR"}, "JARCH Vis: Cannot Find Face, Please Update Roof Face Groups")
+            temp_l = []
+            for i in fg.data.split(","):
+                if int(i) < len(ob.data.polygons):
+                    temp_l.append(round_tuple(tuple(ob.data.polygons[int(i)].center), 4))
 
-        # select correct faces
-        for f in temp_l:
-            for face_in_obj in ob.data.polygons:
-                if round_tuple(tuple(face_in_obj.center), 4) == f:
-                    face_in_obj.select = True
+            # select correct faces
+            for f in temp_l:
+                for face_in_obj in ob.data.polygons:
+                    if round_tuple(tuple(face_in_obj.center), 4) == f:
+                        face_in_obj.select = True
 
-        # make sure selection list is up to date
-        bpy.ops.object.editmode_toggle()
-        bpy.ops.object.editmode_toggle()
+            # make sure selection list is up to date
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.object.editmode_toggle()
 
     bpy.ops.object.editmode_toggle()
 
