@@ -1025,10 +1025,10 @@ def collect_item_data(self, context, ignore):
     # create list of selected edges
     for fa in ob.data.polygons:
         if fa.select:
-            # make sure there are not duplicate faces
+            # make sure there are not duplicate faces, if there are, report error and exit
             for fg in ob.jv_face_groups:
                 if str(fa.index) not in ignore and str(fa.index) in fg.data.split(","):
-                    self.report({"WARNING"}, "JARCH Vis: Face Is Already In Another Group")
+                    self.report({"ERROR"}, "JARCH Vis: Face Is Already In Another Group")
                     return None, None
 
             selected_faces.append(fa)
@@ -1322,8 +1322,12 @@ class FGRemoveItem(bpy.types.Operator):
     def execute(self, context):
         ob = context.object
         if len(ob.jv_face_groups) > 0:
-            ob.jv_face_groups.remove(context.object.jv_face_group_index)
+            ob.jv_face_groups.remove(ob.jv_face_group_index)
             ob.jv_face_group_ct = len(ob.jv_face_groups)
+
+            # update names
+            for i in range(ob.jv_face_group_index, len(ob.jv_face_groups), 1):
+                ob.jv_face_groups[i].name = "Group " + str(i + 1)
            
             if len(ob.jv_face_groups) == 0 or ob.jv_face_group_index <= 0:
                 ob.jv_face_group_index = 0
