@@ -95,7 +95,7 @@ def unregister():
     if wm.keyconfigs.addon:
         for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
             if kmi.idname == "mesh.jv_add_face_group_item":
-                wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
+                wm.keyconfigs.addon.keymaps['3D View'].keymap_items.remove(kmi)
 
 if __name__ == "__main__":
     register()
