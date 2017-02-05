@@ -1385,7 +1385,7 @@ class FGUpdateAllItems(bpy.types.Operator):
 #     wm = bpy.context.window_manager
 #     if wm.keyconfigs.addon:
 #         for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
-#             if kmi.bl_idname == "mesh.jv_add_face_group_item":
+#             if kmi.idname == "mesh.jv_add_face_group_item":
 #                 wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
 #
 # if __name__ == "__main__":
