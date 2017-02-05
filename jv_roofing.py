@@ -1029,7 +1029,7 @@ def collect_item_data(self, context, ignore):
             for fg in ob.jv_face_groups:
                 if str(fa.index) not in ignore and str(fa.index) in fg.data.split(","):
                     self.report({"WARNING"}, "JARCH Vis: Face Is Already In Another Group")
-                    return [], []
+                    return None, None
 
             selected_faces.append(fa)
             face_indices.append(str(fa.index))
@@ -1041,7 +1041,7 @@ def add_item(self, context):
     ob = context.object
     selected_faces, face_indices = collect_item_data(self, context, [])
                                 
-    if len(face_indices) > 0:  # make sure a face is selected
+    if face_indices is not None and len(face_indices) > 0:  # make sure a face is selected
         item = ob.jv_face_groups.add()
         
         # set collection object item data
@@ -1057,7 +1057,7 @@ def add_item(self, context):
         
         ob.jv_face_group_index = len(ob.jv_face_groups) - 1
         ob.jv_face_group_ct = len(ob.jv_face_groups)
-    else:
+    elif face_indices is not None and len(face_indices) == 0:
         self.report({"ERROR"}, "JARCH Vis: At Least One Face Must Be Selected")
 
 
@@ -1325,10 +1325,10 @@ class FGRemoveItem(bpy.types.Operator):
             ob.jv_face_groups.remove(context.object.jv_face_group_index)
             ob.jv_face_group_ct = len(ob.jv_face_groups)
            
-            if len(ob.jv_face_groups) == 0:
+            if len(ob.jv_face_groups) == 0 or ob.jv_face_group_index <= 0:
                 ob.jv_face_group_index = 0
             else:
-                ob.jv_face_group_index = len(ob.jv_face_groups)-1
+                ob.jv_face_group_index = ob.jv_face_grou_index - 1  # shift up one if possible
         return {"FINISHED"}
 
 
