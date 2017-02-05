@@ -1117,6 +1117,14 @@ class RoofingPanel(bpy.types.Panel):
                     row = layout.row()
                     row.operator("mesh.jv_update_face_group_item", icon="FILE_REFRESH")
                     row.operator("mesh.jv_update_face_group_items", icon="FILE_REFRESH")
+
+                    # let user know if all faces are in a group
+                    ct = 0
+                    for fg in ob.jv_face_groups:
+                        ct += fg.num_faces
+                    if ct == len(ob.data.polygons):
+                        layout.label("Every Face Is In A Group", icon="INFO")
+
                 elif context.mode == "EDIT_MESH" and ob.jv_object_add != "none":
                     layout.label("This Object Is Already A JARCH Vis: Roofing Object", icon="INFO")
                     
@@ -1364,6 +1372,9 @@ class FGUpdateAllItems(bpy.types.Operator):
 #
 #
 # def register():
+#     wm = bpy.context.window_manager
+#     km = wm.keyconfigs.addon.keymaps.new(name="3D View", space_type="VIEW_3D")
+#     km.keymap_items.new("mesh.jv_add_face_group_item", "A", "PRESS", ctrl=True)
 #     bpy.utils.register_module(__name__)
 #     bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
 #
@@ -1371,6 +1382,11 @@ class FGUpdateAllItems(bpy.types.Operator):
 # def unregister():
 #     bpy.utils.unregister_module(__name__)
 #     del bpy.types.Object.jv_face_groups
+#     wm = bpy.context.window_manager
+#     if wm.keyconfigs.addon:
+#         for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
+#             if kmi.bl_idname == "mesh.jv_add_face_group_item":
+#                 wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
 #
 # if __name__ == "__main__":
 #     register()
