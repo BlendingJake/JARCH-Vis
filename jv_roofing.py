@@ -1328,7 +1328,7 @@ class FGRemoveItem(bpy.types.Operator):
             if len(ob.jv_face_groups) == 0 or ob.jv_face_group_index <= 0:
                 ob.jv_face_group_index = 0
             else:
-                ob.jv_face_group_index = ob.jv_face_grou_index - 1  # shift up one if possible
+                ob.jv_face_group_index -= 1
         return {"FINISHED"}
 
 
