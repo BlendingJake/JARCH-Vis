@@ -14,15 +14,15 @@
 # along with JARCH Vis.  If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
-from mathutils import Vector, Euler
-from math import atan, degrees, cos, tan, sin, radians
-from . jv_utils import point_rotation, object_dimensions, round_tuple, METRIC_INCH, HI, I, rot_from_normal, \
+from mathutils import Vector, Euler, Matrix
+from math import atan, degrees, cos, tan, radians, sqrt
+from . jv_utils import point_rotation, round_tuple, METRIC_INCH, HI, I, rot_from_normal, \
     unwrap_object, random_uvs
 from . jv_materials import glossy_diffuse_material, image_material
 from random import uniform
 import bmesh
-# import jv_properties
-# from bpy.props import *
+import jv_properties
+from bpy.props import *
 
 con = METRIC_INCH
 
@@ -689,7 +689,34 @@ def create_roofing(context, mode, mat, shingles, tin, length, width, slope, res,
         return_ob = bpy.data.objects.new("roofing", mesh)
         context.scene.objects.link(return_ob)
         
-    return return_ob 
+    return return_ob
+
+
+def object_dimensions(obj, z_rot):
+    matrix = Matrix.Rotation(z_rot, 4, "Z")
+    min_x, min_y, min_z, max_x, max_y, max_z = obj.data.vertices[0].co.to_tuple() * 2
+
+    for i in obj.data.vertices:
+        co = i.co
+        if co[0] < min_x:
+            min_x = co[0]
+        if co[0] > max_x:
+            max_x = co[0]
+
+        if co[1] < min_y:
+            min_y = co[1]
+        if co[1] > max_y:
+            max_y = co[1]
+
+        if co[2] < min_z:
+            min_z = co[2]
+        if co[2] > max_z:
+            max_z = co[2]
+
+    dims = matrix * Vector((max_x - min_x, max_y - min_y, max_z - min_z))
+    width = sqrt(dims[0] ** 2 + dims[2] ** 2)
+    height = dims[1]
+    return width, height
 
 
 def update_roofing(self, context):
@@ -849,19 +876,28 @@ def update_roofing(self, context):
             o = bpy.data.objects[o_name]
             
             # calculate size and then create siding and cut it
-            # TODO: Figure out better way to determine plane dimensions
-            xy_dim, z = object_dimensions(o)
-            ang = atan(o.jv_pl_pitch / 12)
-            z_dim = 2 * z / sin(ang)  # multiplied by two to correct for normally using half width
+            xy_dim, z = object_dimensions(o, o.jv_pl_z_rot)
+            z_dim = 2 * z
             
             # create roofing object
-            new_ob = create_roofing(context, roof_data[0], roof_data[1], roof_data[2], roof_data[3], xy_dim * 1.1,
-                                    z_dim * 1.1, o.jv_pl_pitch, roof_data[4], roof_data[5])
+            new_ob = create_roofing(context, roof_data[0], roof_data[1], roof_data[2], roof_data[3], xy_dim,
+                                    z_dim, o.jv_pl_pitch, roof_data[4], roof_data[5])
             
-            # center o's origin point
+            # center o's origin point, use BMesh method for better results
             o.select = True
             context.scene.objects.active = o
-            bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_MASS")
+            bm = bmesh.new()
+            bm.from_mesh(o.data)
+            bm.faces.ensure_lookup_table()
+
+            center = Vector((0, 0, 0))
+            for face in bm.faces:
+                center += face.calc_center_bounds()
+            center = o.matrix_world * (center / len(bm.faces))
+            cr = context.scene.cursor_location.copy()
+            context.scene.cursor_location = center
+            bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+            context.scene.cursor_location = cr
             
             o.select = False
             # set new object's location and rotation
@@ -1364,29 +1400,29 @@ class FGUpdateAllItems(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# class FaceGroup(bpy.types.PropertyGroup):
-#     data = StringProperty()
-#     num_faces = IntProperty()
-#     face_slope = FloatProperty()
-#     rot = FloatProperty(unit="ROTATION")
-#
-#
-# def register():
-#     wm = bpy.context.window_manager
-#     km = wm.keyconfigs.addon.keymaps.new(name="3D View", space_type="VIEW_3D")
-#     km.keymap_items.new("mesh.jv_add_face_group_item", "A", "PRESS", ctrl=True)
-#     bpy.utils.register_module(__name__)
-#     bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
-#
-#
-# def unregister():
-#     bpy.utils.unregister_module(__name__)
-#     del bpy.types.Object.jv_face_groups
-#     wm = bpy.context.window_manager
-#     if wm.keyconfigs.addon:
-#         for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
-#             if kmi.idname == "mesh.jv_add_face_group_item":
-#                 wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
-#
-# if __name__ == "__main__":
-#     register()
+class FaceGroup(bpy.types.PropertyGroup):
+    data = StringProperty()
+    num_faces = IntProperty()
+    face_slope = FloatProperty()
+    rot = FloatProperty(unit="ROTATION")
+
+
+def register():
+    wm = bpy.context.window_manager
+    km = wm.keyconfigs.addon.keymaps.new(name="3D View", space_type="VIEW_3D")
+    km.keymap_items.new("mesh.jv_add_face_group_item", "A", "PRESS", ctrl=True)
+    bpy.utils.register_module(__name__)
+    bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
+
+
+def unregister():
+    bpy.utils.unregister_module(__name__)
+    del bpy.types.Object.jv_face_groups
+    wm = bpy.context.window_manager
+    if wm.keyconfigs.addon:
+        for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
+            if kmi.idname == "mesh.jv_add_face_group_item":
+                wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
+
+if __name__ == "__main__":
+    register()
