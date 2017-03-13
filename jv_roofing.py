@@ -1407,22 +1407,22 @@ class FGUpdateAllItems(bpy.types.Operator):
 #     rot = FloatProperty(unit="ROTATION")
 #
 #
-# def register():
-#     wm = bpy.context.window_manager
-#     km = wm.keyconfigs.addon.keymaps.new(name="3D View", space_type="VIEW_3D")
-#     km.keymap_items.new("mesh.jv_add_face_group_item", "A", "PRESS", ctrl=True)
-#     bpy.utils.register_module(__name__)
-#     bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
-#
-#
-# def unregister():
-#     bpy.utils.unregister_module(__name__)
-#     del bpy.types.Object.jv_face_groups
-#     wm = bpy.context.window_manager
-#     if wm.keyconfigs.addon:
-#         for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
-#             if kmi.idname == "mesh.jv_add_face_group_item":
-#                 wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
-#
-# if __name__ == "__main__":
-#     register()
+def register():
+    wm = bpy.context.window_manager
+    km = wm.keyconfigs.addon.keymaps.new(name="3D View", space_type="VIEW_3D")
+    km.keymap_items.new("mesh.jv_add_face_group_item", "A", "PRESS", ctrl=True)
+    bpy.utils.register_module(__name__)
+    bpy.types.Object.jv_face_groups = CollectionProperty(type=FaceGroup)
+
+
+def unregister():
+    bpy.utils.unregister_module(__name__)
+    del bpy.types.Object.jv_face_groups
+    wm = bpy.context.window_manager
+    if wm.keyconfigs.addon:
+        for kmi in wm.keyconfigs.addon.keymaps['3D View'].keymap_items:
+            if kmi.idname == "mesh.jv_add_face_group_item":
+                wm.keyconfig.addon.keymaps['3D View'].keymap_items.remove(kmi)
+
+if __name__ == "__main__":
+    register()
