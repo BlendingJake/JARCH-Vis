@@ -6,7 +6,6 @@ class JVPanel(Panel):
     bl_label = "JARCH Vis"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
-    bl_category = "JARCH Vis"
 
     jv_add_operators = [
         ("object.jv_add_flooring", "MESH_GRID")
@@ -21,8 +20,8 @@ class JVPanel(Panel):
         layout = self.layout
         obj = context.object
 
-        if obj.get("jv_builder", None) is not None:
-            obj.jv_builder.draw(layout)
+        if obj is not None and obj.hasattr("jv_properties") and obj.jv_properties.object_type != "":
+            obj.jv_base.draw(layout)
 
             layout.separator()
             for op_name, icon in self.jv_consistent_operators:
@@ -33,3 +32,19 @@ class JVPanel(Panel):
         layout.separator()
         for op_name, icon in self.jv_add_operators:
             layout.operator(op_name, icon=icon)
+
+
+def register():
+    from bpy.utils import register_class
+
+    register_class(JVPanel)
+
+
+def unregister():
+    from bpy.utils import unregister_class
+
+    unregister_class(JVPanel)
+
+
+if __name__ == "__main__":
+    register()

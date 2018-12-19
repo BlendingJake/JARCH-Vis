@@ -1,9 +1,12 @@
 import bpy
-from jv_flooring import JVFlooring
+from jv_types import get_object_type_handler
 
 
+# ---------------------------------------------------------------------------
+# Architecture Specific Operators
+# ---------------------------------------------------------------------------
 class JVFlooringAdd(bpy.types.Operator):
-    bl_idname = "object.jv_flooring_add"
+    bl_idname = "object.jv_add_flooring"
     bl_label = "Add Flooring"
     bl_description = "JARCH Vis: Add Flooring"
 
@@ -13,12 +16,16 @@ class JVFlooringAdd(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.mesh.primitive_cube_add()
-        o = context.objects.active
-        o.jv_builder = JVFlooring(o)
+        o = context.object
+
+        o.jv_properties.object_type = "flooring"
 
         return {"FINISHED"}
 
 
+# ---------------------------------------------------------------------------
+# Generic Operators
+# ---------------------------------------------------------------------------
 class JVDelete(bpy.types.Operator):
     bl_idname = "object.jv_delete"
     bl_label = "Delete Object"
@@ -26,10 +33,13 @@ class JVDelete(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.object and context.object.jv_builder is not None
+        return context.object
 
-    def execute(self, _):
-        bpy.ops.object.delete()
+    def execute(self, context):
+        handler = get_object_type_handler(context.object.jv_properties.object_type)
+
+        if handler is not None:
+            handler.delete(context.object.jv_properties, context.object)
 
 
 class JVUpdate(bpy.types.Operator):
@@ -39,7 +49,36 @@ class JVUpdate(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.object and context.object.jv_builder is not None
+        return context.object and context.object.jv_base is not None
 
     def execute(self, context):
-        context.object.jv_builder.update()
+        handler = get_object_type_handler(context.object.jv_properties.object_type)
+
+        if handler is not None:
+            handler.update(context.object.jv_properties, context.object)
+
+
+classes = (
+    JVFlooringAdd,
+
+    JVDelete,
+    JVUpdate
+)
+
+
+def register():
+    from bpy.utils import register_class
+
+    for cls in classes:
+        register_class(cls)
+
+
+def unregister():
+    from bpy.utils import unregister_class
+
+    for cls in classes:
+        unregister_class(cls)
+
+
+if __name__ == "__main__":
+    register()
