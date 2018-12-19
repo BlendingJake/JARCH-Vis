@@ -39,5 +39,3 @@ class JVBase(PropertyGroup):
             return props[prop_name][0](**props[prop_name][1])
         else:
             return None
-
-# bpy.utils.register_class(JVBase)
