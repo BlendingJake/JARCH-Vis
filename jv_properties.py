@@ -45,6 +45,7 @@ class JVProperties(PropertyGroup):
             ("windmill", "Windmill", ""),  # tile-like
             ("stepping_stone", "Stepping Stone", ""),  # tile-like
             ("hexagons", "Hexagons", ""),  # tile-like
+            ("octagons", "Octagons", ""),  # tile-like
             ("corridor", "Cooridor", "")  # tile-like
         ), default="regular", description="Flooring Pattern", update=jv_on_property_update
     )

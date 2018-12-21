@@ -28,7 +28,7 @@ class JVFlooring(JVBuilderBase):
         # tile-like
         elif props.flooring_pattern == "windmill":
             row.prop(props, "tile_width")
-        elif props.flooring_pattern == "hexagons":
+        elif props.flooring_pattern in ("hexagons", "octagons"):
             row.prop(props, "side_length")
         else:  # hopscotch, stepping_stone, corridor
             row.prop(props, "tile_width")
@@ -96,7 +96,8 @@ class JVFlooring(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # cut if needed
-        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons"):
+        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
+                                      "octagons"):
             JVFlooring._cut_mesh(mesh, [
                 ((0, 0, 0), (1, 0, 0)),  # left
                 ((0, 0, 0), (0, 1, 0)),  # bottom
@@ -476,13 +477,13 @@ class JVFlooring(JVBuilderBase):
         dot_y = ((2*y_leg) + gap - (2*gap_dif)) / 2
 
         start_y = y_leg
-        upper_x, upper_y = props.length, props.width
-        while start_y < upper_y + (2*y_leg):
+        upper_x, upper_y = props.length + d, props.width + (2*y_leg)
+        while start_y < upper_y:
             move_down = True
             x = x_leg
 
             y = start_y
-            while x < upper_x + d:
+            while x < upper_x:
                 verts += [
                     (x-x_leg, y-y_leg, 0),
                     (x+x_leg, y-y_leg, 0),
@@ -522,6 +523,53 @@ class JVFlooring(JVBuilderBase):
                     move_down = not move_down
 
             start_y += (2*y_leg) + gap
+
+    @staticmethod
+    def _octagons(props, verts, faces):  # with dots since octagons cannot fit together otherwise
+        side_length, gap = props.side_length, props.gap_uniform
+        gap_dif = gap * cos(radians(30))
+        x_leg = side_length / 2
+        y_leg = x_leg / tan(radians(22.5))
+
+        dot_s = ((2 * y_leg + gap) - 2*x_leg - 2*gap_dif) / 2
+
+        y = y_leg
+        upper_x, upper_y = props.length + y_leg, props.width + (2*y_leg)
+        while y < upper_y:
+            x = x_leg
+            while x < upper_x:
+                verts += [  # swapping x_leg with y_leg is on purpose
+                    (x-x_leg, y-y_leg, 0),
+                    (x+x_leg, y-y_leg, 0),
+                    (x+y_leg, y-x_leg, 0),
+                    (x+y_leg, y+x_leg, 0),
+
+                    (x+x_leg, y+y_leg, 0),
+                    (x-x_leg, y+y_leg, 0),
+                    (x-y_leg, y+x_leg, 0),
+                    (x-y_leg, y-x_leg, 0)
+                ]
+
+                p = len(verts) - 8
+                faces.append((p, p+1, p+2, p+3, p+4, p+5, p+6, p+7))
+
+                x += y_leg + (gap / 2)
+                y -= x_leg + gap_dif
+
+                verts += [
+                    (x, y, 0),
+                    (x-dot_s, y-dot_s, 0),
+                    (x, y-dot_s-dot_s, 0),
+                    (x+dot_s, y-dot_s, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += y_leg + (gap / 2)
+                y += x_leg + gap_dif
+
+            y += (2*y_leg) + gap
 
     @staticmethod
     def _corridor(props, verts, faces):
