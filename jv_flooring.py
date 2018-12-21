@@ -97,7 +97,7 @@ class JVFlooring(JVBuilderBase):
 
         # cut if needed
         if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
-                                      "octagons"):
+                                      "octagons", "windmill"):
             JVFlooring._cut_mesh(mesh, [
                 ((0, 0, 0), (1, 0, 0)),  # left
                 ((0, 0, 0), (0, 1, 0)),  # bottom
@@ -408,8 +408,8 @@ class JVFlooring(JVBuilderBase):
                 for i in range(p-20, p, 4):
                     faces.append((i, i+1, i+2, i+3))
 
-                x += length + gap + width
-            y += length+gap+width
+                x += length + gap + width + gap
+            y += length + gap + width + gap
 
     @staticmethod
     def _stepping_stone(props, verts, faces):

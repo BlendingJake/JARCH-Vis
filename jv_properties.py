@@ -206,9 +206,9 @@ class JVProperties(PropertyGroup):
     )
 
     side_length: FloatProperty(
-        name="Hexagon Side Length",
+        name="Polygon Side Length",
         min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
-        description="The length of each side in the regular hexagon", update=jv_on_property_update
+        description="The length of each side in the regular polygon", update=jv_on_property_update
     )
 
     alternating_row_width: FloatProperty(
