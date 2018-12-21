@@ -1,5 +1,5 @@
 from bpy.types import PropertyGroup
-from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty
+from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty
 from . jv_utils import Units
 from . jv_types import get_object_type_handler
 
@@ -34,35 +34,42 @@ class JVProperties(PropertyGroup):
     )
 
     # OBJECT STYLES ------------------------------------------------------------------------------
-    flooring_style: EnumProperty(
-        name="Flooring Style",
+    flooring_pattern: EnumProperty(
+        name="Pattern",
         items=(
-            ("wood_regular", "Wood - Regular", ""),
-            ("parquet", "Parquet", ""),
-            ("herringbone_parquet", "Herringbone Parquet", ""),
-            ("herringbone", "Herringbone", ""),
-            ("tile_regular", "Tile - Regular", ""),
-            ("tile_large_small", "Tile - Large + Small", ""),
-            ("tile_large_many_small", "Tile - Large + Many Small", ""),
-            ("hexagons", "Hexagons", "")
-        ), default="wood_regular", description="Flooring Pattern/Style", update=jv_on_property_update
+            ("regular", "Regular", ""),  # wood-like
+            ("checkerboard", "Checkerboard", ""),  # wood-like
+            ("herringbone", "Herringbone", ""),  # wood-like
+            ("chevron", "Chevron", ""),  # wood-like
+            ("hopscotch", "Hopscotch", ""),  # tile-like
+            ("windmill", "Windmill", ""),  # tile-like
+            ("hexagons", "Hexagons", ""),  # tile-like
+            ("stepping_stone", "Stepping Stone", ""),  # tile-like
+            ("corridor", "Cooridor", "")  # tile-like
+        ), default="regular", description="Flooring Pattern", update=jv_on_property_update
     )
 
     # OVERALL DIMENSIONS ------------------------------------------------------------------------
-    width: FloatProperty(
-        name="Total Width",
-        min=0.5 * Units.FOOT, default=20 * Units.FOOT,
-        subtype="DISTANCE", description="Total width of material", update=jv_on_property_update
-    )
-
     length: FloatProperty(
         name="Total Length",
-        min=0.5 * Units.FOOT, default=8 * Units.FOOT,
+        min=0.5 * Units.FOOT, default=20 * Units.FOOT, precision=4,
         subtype="DISTANCE", description="Total length of material", update=jv_on_property_update
     )
 
+    width: FloatProperty(
+        name="Total Width",
+        min=0.5 * Units.FOOT, default=8 * Units.FOOT, precision=4,
+        subtype="DISTANCE", description="Total width of material", update=jv_on_property_update
+    )
+
     # MATERIAL DIMENSIONS -----------------------------------------------------------------------
-    board_width: FloatProperty(
+    board_width_wide: FloatProperty(
+        name="Board Width",
+        min=1 * Units.INCH, default=8 * Units.INCH,
+        subtype="DISTANCE", description="The width of each board", update=jv_on_property_update
+    )
+
+    board_width_medium: FloatProperty(
         name="Board Width",
         min=1 * Units.INCH, default=6 * Units.INCH,
         subtype="DISTANCE", description="The width of each board", update=jv_on_property_update
@@ -85,15 +92,27 @@ class JVProperties(PropertyGroup):
         description="The width of each board will be in width +- width*variance", update=jv_on_property_update
     )
 
-    board_length: FloatProperty(
+    board_length_long: FloatProperty(
         name="Board Length",
-        min=1 * Units.FOOT, default=8 * Units.FOOT,
+        min=1 * Units.FOOT, default=8 * Units.FOOT, precision=4,
+        subtype="DISTANCE", description="The length of each board", update=jv_on_property_update
+    )
+
+    board_length_medium: FloatProperty(
+        name="Board Length",
+        min=1 * Units.FOOT, default=4 * Units.FOOT, precision=4,
         subtype="DISTANCE", description="The length of each board", update=jv_on_property_update
     )
 
     board_length_short: FloatProperty(
         name="Board Length",
-        min=1 * Units.FOOT, default=3 * Units.FOOT,
+        min=1 * Units.FOOT, default=2 * Units.FOOT, precision=4,
+        subtype="DISTANCE", description="The length of each board", update=jv_on_property_update
+    )
+
+    board_length_really_short: FloatProperty(
+        name="Board Length",
+        min=6 * Units.INCH, default=1 * Units.FOOT, precision=4,
         subtype="DISTANCE", description="The length of each board", update=jv_on_property_update
     )
 
@@ -141,7 +160,7 @@ class JVProperties(PropertyGroup):
 
     gap_uniform: FloatProperty(
         name="Gap",
-        min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE",
+        min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE", step=1,
         description="The gap around each board or tile", update=jv_on_property_update
     )
 
@@ -157,21 +176,27 @@ class JVProperties(PropertyGroup):
         description="The length of each tile", update=jv_on_property_update
     )
 
-    tile_row_offset: FloatProperty(
+    row_offset: FloatProperty(
         name="Row Offset",
         min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
-        description="How much alternating rows of tiles are offset", update=jv_on_property_update
+        description="How much alternating rows are offset", update=jv_on_property_update
     )
 
     vary_row_offset: BoolProperty(
         name="Vary Row Offset?",
-        default=False, description="Vary the offset of each row of tile?", update=jv_on_property_update
+        default=False, description="Vary the offset of each row?", update=jv_on_property_update
     )
 
     row_offset_variance: FloatProperty(
         name="Row Offset Variance",
         min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
-        description="Each row will be offset between (tile width / 2) * (1 - variance)", update=jv_on_property_update
+        description="Each row will be offset between (width / 2) * (1 - variance)", update=jv_on_property_update
+    )
+
+    checkerboard_board_count: IntProperty(
+        name="Boards in Square",
+        min=1, default=4, description="Number of boards in each square of checkerboard pattern",
+        update=jv_on_property_update
     )
 
 

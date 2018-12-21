@@ -4,7 +4,7 @@ from . jv_builder_base import JVBuilderBase
 class JVFlooring(JVBuilderBase):
     @staticmethod
     def draw(props, layout):
-        layout.prop(props, "flooring_style", icon="MESH_GRID")
+        layout.prop(props, "flooring_pattern", icon="MESH_GRID")
 
         layout.separator()
         row = layout.row()
@@ -14,21 +14,25 @@ class JVFlooring(JVBuilderBase):
         layout.separator()
         row = layout.row()
 
-        # length and width
-        if props.flooring_style == "wood_regular":
-            row.prop(props, "board_width")
-            row.prop(props, "board_length")
-        elif props.flooring_style in ("parquet", "herringbone_parquet", "herringbone"):
+        # length and width - wood-like
+        if props.flooring_pattern == "regular":
+            row.prop(props, "board_width_medium")
+            row.prop(props, "board_length_medium")
+        elif props.flooring_pattern in ("herringbone", "chevron"):
             row.prop(props, "board_width_narrow")
             row.prop(props, "board_length_short")
-        elif props.flooring_style == "hexagons":
+        elif props.flooring_pattern == "checkerboard":
+            row.prop(props, "board_length_really_short")
+            row.prop(props, "checkerboard_board_count")
+        # tile-like
+        elif props.flooring_pattern == "hexagons":
             row.prop(props, "tile_width")
-        else:  # tile_regular, tile_large_small, tile_large_many_small
+        else:  # hopscotch, windmill, stepping_stone, corridor
             row.prop(props, "tile_width")
             row.prop(props, "tile_length")
 
         # length and width variance
-        if props.flooring_style == "wood_regular":
+        if props.flooring_pattern == "regular":
             layout.separator()
             row = layout.row()
 
@@ -43,6 +47,16 @@ class JVFlooring(JVBuilderBase):
             if props.vary_length:
                 row.prop(props, "length_variance")
 
+            # row offset
+            layout.separator()
+            row = layout.row()
+
+            row.prop(props, "vary_row_offset", icon="RNDCURVE")
+            if props.vary_row_offset:
+                row.prop(props, "row_offset_variance")
+            else:
+                row.prop(props, "row_offset")
+
         # thickness and variance
         layout.separator()
         layout.prop(props, "thickness")
@@ -55,22 +69,7 @@ class JVFlooring(JVBuilderBase):
         # gaps
         layout.separator()
         row = layout.row()
-        if props.flooring_style in ("wood_regular", "tile_regular"):
-            row.prop(props, "gap_widthwise")
-            row.prop(props, "gap_lengthwise")
-        else:
-            row.prop(props, "gap_uniform")
-
-        # row offset
-        if props.flooring_style == "tile_regular":
-            layout.separator()
-            row = layout.row()
-
-            row.prop(props, "vary_row_offset", icon="RNDCURVE")
-            if props.vary_row_offset:
-                row.prop(props, "row_offset_variance")
-            else:
-                row.prop(props, "tile_row_offset")
+        row.prop(props, "gap_uniform")
 
     @staticmethod
     def update(props, context):
@@ -97,54 +96,115 @@ class JVFlooring(JVBuilderBase):
         verts, faces = [], []
 
         # dynamically call correct method as their names will match up with the style name
-        getattr(JVFlooring, "_{}".format(props.flooring_style))(props, verts, faces)
+        getattr(JVFlooring, "_{}".format(props.flooring_pattern))(props, verts, faces)
 
         return verts, faces
 
     @staticmethod
-    def _wood_regular(props, verts, faces):
-        width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width, props.width_variance)
-        length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length,
+    def _regular(props, verts, faces):
+        width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width_narrow,
+                                                              props.width_variance)
+        length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length_medium,
                                                                props.length_variance)
 
-        x = 0
-        while x < props.width:
-            y = 0
+        first_length_for_fixed_offset = props.board_length_medium * (props.row_offset / 100)
+        if first_length_for_fixed_offset == 0:
+            first_length_for_fixed_offset = props.board_length_medium
 
-            width = width_variance()
-            while y < props.length:
-                length = length_variance()
-
-                verts, faces = JVFlooring._create_quad(verts, faces, x, y, width, length, props.width, props.length)
-
-                y += length + props.gap_lengthwise
-            x += width + props.gap_widthwise
-
-    @staticmethod
-    def _tile_regular(props, verts, faces):
-        fixed_offset_width = props.tile_width * (props.tile_row_offset / 100)  # fixed offset
-        width_variance = JVFlooring._create_variance_function(props.vary_row_offset, props.tile_width / 2,
-                                                              props.row_offset_variance)
-
-        # no offset is the same as a full offset
-        if fixed_offset_width == 0:
-            fixed_offset_width = props.tile_width
+        offset_length_variance = JVFlooring._create_variance_function(props.vary_row_offset,
+                                                                      props.board_length_medium / 2,
+                                                                      props.row_offset_variance)
 
         y = 0
         odd = False
-        while y < props.length:
+        upper_x, upper_y = props.length, props.width
+        while y < upper_y:
             x = 0
-            while x < props.width:
-                width = props.tile_width
-                if x == 0:
+
+            width = width_variance()
+            while x < upper_x:
+                length = length_variance()
+                if x == 0:  # first board
                     if props.vary_row_offset:
-                        width = width_variance()
+                        length = offset_length_variance()
                     elif odd:
-                        width = fixed_offset_width
+                        length = first_length_for_fixed_offset
 
-                verts, faces = JVFlooring._create_quad(verts, faces, x, y, width, props.tile_length, props.width,
-                                                       props.length)
+                trimmed_width = min(width, upper_y-y)
+                trimmed_length = min(length, upper_x-x)
 
-                x += width + props.gap_uniform
-            y += props.tile_length + props.gap_uniform
+                verts += [
+                    (x, y, 0),
+                    (x+trimmed_length, y, 0),
+                    (x+trimmed_length, y+trimmed_width, 0),
+                    (x, y+trimmed_width, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += length + props.gap_uniform
+
+            y += width + props.gap_uniform
             odd = not odd
+
+    @staticmethod
+    def _checkerboard(props, verts, faces):
+        length = props.board_length_really_short
+        board_count = props.checkerboard_board_count
+        gap = props.gap_uniform
+
+        # the width of each board so that the total of them is the same as the length
+        width = (length - (gap * (board_count - 1))) / board_count
+
+        y = 0
+        upper_x, upper_y = props.length, props.width
+        start_vertical = False
+        while y < upper_y:
+            x = 0
+
+            vertical = start_vertical
+            while x < upper_x:
+                if vertical:
+                    for _ in range(board_count):
+                        if x < upper_x:
+                            # width is paired with x and length with y because board is rotated
+                            trimmed_width = min(width, upper_x-x)
+                            trimmed_length = min(length, upper_y-y)
+
+                            verts += [
+                                (x, y, 0),
+                                (x+trimmed_width, y, 0),
+                                (x+trimmed_width, y+trimmed_length, 0),
+                                (x, y+trimmed_length, 0)
+                            ]
+
+                            p = len(verts) - 4
+                            faces.append((p, p+1, p+2, p+3))
+
+                            x += width + gap
+                else:
+                    ty = y
+                    for _ in range(board_count):
+                        if ty < upper_y:
+                            # width is paired with x and length with y because board is rotated
+                            trimmed_width = min(width, upper_y - ty)
+                            trimmed_length = min(length, upper_x - x)
+
+                            verts += [
+                                (x, ty, 0),
+                                (x + trimmed_length, ty, 0),
+                                (x + trimmed_length, ty + trimmed_width, 0),
+                                (x, ty + trimmed_width, 0)
+                            ]
+
+                            p = len(verts) - 4
+                            faces.append((p, p + 1, p + 2, p + 3))
+
+                            ty += width + gap
+                    x += length + gap
+
+                vertical = not vertical
+
+            y += length + gap
+            start_vertical = not start_vertical
