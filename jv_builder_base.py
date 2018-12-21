@@ -57,3 +57,32 @@ class JVBuilderBase:
             return lambda: uniform(base_amount * (1 - variance), base_amount * (1 + variance))
         else:
             return lambda: base_amount
+
+    @staticmethod
+    def _create_quad(verts: list, faces: list, x: float, y: float, width: float, length: float, upper_x: float,
+                     upper_y: float):
+        """
+        Create a new quad between [x, x+width] and [y, y+length], cut to start within upper bounds
+        :param verts: the list of verts
+        :param faces: the list of faces
+        :param x: the starting x value
+        :param y: the starting y value
+        :param width: the width of the quad
+        :param length: the length of the quad
+        :param upper_x: the max x value
+        :param upper_y: the max y value
+        """
+        width = min(width, upper_x-x)
+        length = min(length, upper_y-y)
+
+        verts += [
+            (x, y, 0),
+            (x+width, y, 0),
+            (x+width, y+length, 0),
+            (x, y+length, 0)
+        ]
+
+        p = len(verts) - 4
+        faces.append((p, p+1, p+2, p+3))
+
+        return verts, faces

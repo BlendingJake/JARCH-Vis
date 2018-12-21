@@ -35,6 +35,7 @@ class JVProperties(PropertyGroup):
 
     # OBJECT STYLES ------------------------------------------------------------------------------
     flooring_style: EnumProperty(
+        name="Flooring Style",
         items=(
             ("wood_regular", "Wood - Regular", ""),
             ("parquet", "Parquet", ""),
@@ -44,8 +45,7 @@ class JVProperties(PropertyGroup):
             ("tile_large_small", "Tile - Large + Small", ""),
             ("tile_large_many_small", "Tile - Large + Many Small", ""),
             ("hexagons", "Hexagons", "")
-        ),
-        default="wood_regular", description="Flooring Pattern/Style", name="Flooring Style"
+        ), default="wood_regular", description="Flooring Pattern/Style", update=jv_on_property_update
     )
 
     # OVERALL DIMENSIONS ------------------------------------------------------------------------
@@ -155,6 +155,23 @@ class JVProperties(PropertyGroup):
         name="Tile Length",
         min=1 * Units.INCH, default=8 * Units.INCH, subtype="DISTANCE",
         description="The length of each tile", update=jv_on_property_update
+    )
+
+    tile_row_offset: FloatProperty(
+        name="Row Offset",
+        min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
+        description="How much alternating rows of tiles are offset", update=jv_on_property_update
+    )
+
+    vary_row_offset: BoolProperty(
+        name="Vary Row Offset?",
+        default=False, description="Vary the offset of each row of tile?", update=jv_on_property_update
+    )
+
+    row_offset_variance: FloatProperty(
+        name="Row Offset Variance",
+        min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
+        description="Each row will be offset between (tile width / 2) * (1 - variance)", update=jv_on_property_update
     )
 
 

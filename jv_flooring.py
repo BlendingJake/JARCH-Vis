@@ -28,7 +28,7 @@ class JVFlooring(JVBuilderBase):
             row.prop(props, "tile_length")
 
         # length and width variance
-        if props.flooring_style in ("wood_regular", "tile_regular"):
+        if props.flooring_style == "wood_regular":
             layout.separator()
             row = layout.row()
 
@@ -61,6 +61,17 @@ class JVFlooring(JVBuilderBase):
         else:
             row.prop(props, "gap_uniform")
 
+        # row offset
+        if props.flooring_style == "tile_regular":
+            layout.separator()
+            row = layout.row()
+
+            row.prop(props, "vary_row_offset", icon="RNDCURVE")
+            if props.vary_row_offset:
+                row.prop(props, "row_offset_variance")
+            else:
+                row.prop(props, "tile_row_offset")
+
     @staticmethod
     def update(props, context):
         mesh = JVFlooring._start(context)
@@ -85,40 +96,55 @@ class JVFlooring(JVBuilderBase):
     def _geometry(props):
         verts, faces = [], []
 
-        if props.flooring_style == "wood_regular":
-            JVFlooring._wood_regular(props, verts, faces)
+        # dynamically call correct method as their names will match up with the style name
+        getattr(JVFlooring, "_{}".format(props.flooring_style))(props, verts, faces)
 
         return verts, faces
 
     @staticmethod
     def _wood_regular(props, verts, faces):
-        x = 0
         width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width, props.width_variance)
         length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length,
                                                                props.length_variance)
 
+        x = 0
         while x < props.width:
             y = 0
 
             width = width_variance()
-            if x + width > props.width:
-                width = props.width - x
-
             while y < props.length:
                 length = length_variance()
-                if y + length > props.length:
-                    length = props.length - y
 
-                verts += [
-                    (x, y, 0),
-                    (x+width, y, 0),
-                    (x+width, y+length, 0),
-                    (x, y+length, 0)
-                ]
-
-                i = len(verts) - 4
-                faces.append((i, i+1, i+2, i+3))
+                verts, faces = JVFlooring._create_quad(verts, faces, x, y, width, length, props.width, props.length)
 
                 y += length + props.gap_lengthwise
-
             x += width + props.gap_widthwise
+
+    @staticmethod
+    def _tile_regular(props, verts, faces):
+        fixed_offset_width = props.tile_width * (props.tile_row_offset / 100)  # fixed offset
+        width_variance = JVFlooring._create_variance_function(props.vary_row_offset, props.tile_width / 2,
+                                                              props.row_offset_variance)
+
+        # no offset is the same as a full offset
+        if fixed_offset_width == 0:
+            fixed_offset_width = props.tile_width
+
+        y = 0
+        odd = False
+        while y < props.length:
+            x = 0
+            while x < props.width:
+                width = props.tile_width
+                if x == 0:
+                    if props.vary_row_offset:
+                        width = width_variance()
+                    elif odd:
+                        width = fixed_offset_width
+
+                verts, faces = JVFlooring._create_quad(verts, faces, x, y, width, props.tile_length, props.width,
+                                                       props.length)
+
+                x += width + props.gap_uniform
+            y += props.tile_length + props.gap_uniform
+            odd = not odd
