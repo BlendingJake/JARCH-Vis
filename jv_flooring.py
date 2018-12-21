@@ -1,5 +1,5 @@
 from . jv_builder_base import JVBuilderBase
-from math import sqrt
+from math import sqrt, cos, tan, radians
 
 
 class JVFlooring(JVBuilderBase):
@@ -26,11 +26,19 @@ class JVFlooring(JVBuilderBase):
             row.prop(props, "board_length_really_short")
             row.prop(props, "checkerboard_board_count")
         # tile-like
-        elif props.flooring_pattern in ("hexagons", "windmill"):
+        elif props.flooring_pattern == "windmill":
             row.prop(props, "tile_width")
+        elif props.flooring_pattern == "hexagons":
+            row.prop(props, "side_length")
         else:  # hopscotch, stepping_stone, corridor
             row.prop(props, "tile_width")
             row.prop(props, "tile_length")
+
+        if props.flooring_pattern == "corridor":
+            layout.prop(props, "alternating_row_width")
+
+        if props.flooring_pattern == "hexagons":
+            layout.prop(props, "with_dots", icon="ACTION")
 
         # length and width variance
         if props.flooring_pattern == "regular":
@@ -48,6 +56,7 @@ class JVFlooring(JVBuilderBase):
             if props.vary_length:
                 row.prop(props, "length_variance")
 
+        if props.flooring_pattern in ("regular", "corridor"):
             # row offset
             layout.separator()
             row = layout.row()
@@ -87,7 +96,7 @@ class JVFlooring(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # cut if needed
-        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone"):
+        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons"):
             JVFlooring._cut_mesh(mesh, [
                 ((0, 0, 0), (1, 0, 0)),  # left
                 ((0, 0, 0), (0, 1, 0)),  # bottom
@@ -453,3 +462,114 @@ class JVFlooring(JVBuilderBase):
                 y = ty
 
             y += half_width + width + (2*gap)
+
+    @staticmethod
+    def _hexagons(props, verts, faces):
+        side_length, gap = props.side_length, props.gap_uniform
+        x_leg = side_length / 2
+        y_leg = x_leg / tan(radians(30))
+        d = y_leg / cos(radians(30))  # distance from center of hexagon to each vertex
+        gap_dif = (gap / 2) * sqrt(3)
+
+        # if we are doing dots, figure out the difference between the center and points, actual size is 2x values
+        dot_x = d + (gap/2) - x_leg - gap_dif
+        dot_y = ((2*y_leg) + gap - (2*gap_dif)) / 2
+
+        start_y = y_leg
+        upper_x, upper_y = props.length, props.width
+        while start_y < upper_y + (2*y_leg):
+            move_down = True
+            x = x_leg
+
+            y = start_y
+            while x < upper_x + d:
+                verts += [
+                    (x-x_leg, y-y_leg, 0),
+                    (x+x_leg, y-y_leg, 0),
+                    (x+d, y, 0),
+                    (x+x_leg, y+y_leg, 0),
+                    (x-x_leg, y+y_leg, 0),
+                    (x-d, y, 0)
+                ]
+
+                p = len(verts) - 6
+                faces.append((p, p+1, p+2, p+3, p+4, p+5))
+
+                if props.with_dots:
+                    # add cube dot
+                    x += d + (gap/2)
+                    y -= gap_dif
+
+                    verts += [
+                        (x, y, 0),
+                        (x-dot_x, y-dot_y, 0),
+                        (x, y-dot_y-dot_y, 0),
+                        (x+dot_x, y-dot_y, 0),
+                    ]
+
+                    y += gap_dif
+                    x += d + (gap / 2)
+
+                    p = len(verts) - 4
+                    faces.append((p, p+1, p+2, p+3))
+                else:
+                    x += x_leg + gap_dif + d
+                    if move_down:
+                        y -= y_leg + (gap / 2)
+                    else:
+                        y += y_leg + (gap / 2)
+
+                    move_down = not move_down
+
+            start_y += (2*y_leg) + gap
+
+    @staticmethod
+    def _corridor(props, verts, faces):
+        length, width, gap = props.tile_length, props.tile_width, props.gap_uniform
+        half_width = props.alternating_row_width
+
+        first_length_for_fixed_offset = length * (props.row_offset / 100)
+        if first_length_for_fixed_offset == 0:
+            first_length_for_fixed_offset = length
+
+        offset_length_variance = JVFlooring._create_variance_function(props.vary_row_offset,
+                                                                      length / 2,
+                                                                      props.row_offset_variance)
+
+        y = 0
+        large = True
+        upper_x, upper_y = props.length, props.width
+        while y < upper_y:
+            x = 0
+
+            if large:
+                cur_width = width
+            else:
+                cur_width = half_width
+
+            trimmed_width = min(cur_width, upper_y-y)
+            while x < upper_x:
+                cur_length = length
+
+                if x == 0 and not large:
+                    if props.vary_row_offset:
+                        cur_length = offset_length_variance()
+                    else:
+                        cur_length = first_length_for_fixed_offset
+
+                trimmed_length = min(cur_length, upper_x-x)
+
+                verts += [
+                    (x, y, 0),
+                    (x+trimmed_length, y, 0),
+                    (x+trimmed_length, y+trimmed_width, 0),
+                    (x, y+trimmed_width, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += cur_length + gap
+
+            large = not large
+            y += cur_width + gap

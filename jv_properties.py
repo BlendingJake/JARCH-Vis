@@ -16,7 +16,7 @@ def jv_on_property_update(_, context):
 
 class JVProperties(PropertyGroup):
     object_type: EnumProperty(
-        name="Architecture",
+        name="Type",
         items=(
             ("none", "None", ""),
             ("flooring", "Flooring", ""),
@@ -43,8 +43,8 @@ class JVProperties(PropertyGroup):
             ("chevron", "Chevron", ""),  # wood-like
             ("hopscotch", "Hopscotch", ""),  # tile-like
             ("windmill", "Windmill", ""),  # tile-like
-            ("hexagons", "Hexagons", ""),  # tile-like
             ("stepping_stone", "Stepping Stone", ""),  # tile-like
+            ("hexagons", "Hexagons", ""),  # tile-like
             ("corridor", "Cooridor", "")  # tile-like
         ), default="regular", description="Flooring Pattern", update=jv_on_property_update
     )
@@ -197,6 +197,23 @@ class JVProperties(PropertyGroup):
         name="Boards in Square",
         min=1, default=4, description="Number of boards in each square of checkerboard pattern",
         update=jv_on_property_update
+    )
+
+    with_dots: BoolProperty(
+        name="With Dots?",
+        default=True, description="Add cube between corners of hexagons?", update=jv_on_property_update
+    )
+
+    side_length: FloatProperty(
+        name="Hexagon Side Length",
+        min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        description="The length of each side in the regular hexagon", update=jv_on_property_update
+    )
+
+    alternating_row_width: FloatProperty(
+        name="Alternating Row Width",
+        min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        description="The width of the tiles in the alternating rows", update=jv_on_property_update
     )
 
 
