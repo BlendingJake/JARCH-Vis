@@ -57,3 +57,16 @@ class JVBuilderBase:
             return lambda: uniform(base_amount * (1 - variance), base_amount * (1 + variance))
         else:
             return lambda: base_amount
+
+    @staticmethod
+    def _cut_mesh(mesh, planes: list):
+        """
+        Take the bmesh object and bisect it with all the planes given and remove the geometry outside of the planes
+        :param mesh: the mesh to operate on
+        :param planes: a list of tuples, each tuple being (plane position, plane normal). The normals should point
+                        towards the center of the mesh, aka, geometry on the opposite side of the normal will be removed
+        """
+        for plane in planes:
+            pos, normal = plane
+            bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001, plane_co=pos,
+                                   plane_no=normal, clear_inner=True)

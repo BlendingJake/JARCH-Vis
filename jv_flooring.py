@@ -1,4 +1,5 @@
 from . jv_builder_base import JVBuilderBase
+from math import sqrt
 
 
 class JVFlooring(JVBuilderBase):
@@ -84,6 +85,19 @@ class JVFlooring(JVBuilderBase):
         for f in faces:
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
+
+        # cut if needed
+        if props.flooring_pattern in ("herringbone", "chevron"):
+            JVFlooring._cut_mesh(mesh, [
+                ((0, 0, 0), (1, 0, 0)),
+                ((0, 0, 0), (0, 1, 0)),
+                ((props.length, 0, 0), (-1, 0, 0)),
+                ((0, props.width, 0), (0, -1, 0))
+            ])
+
+            mesh.faces.ensure_lookup_table()
+            mesh.edges.ensure_lookup_table()
+            mesh.verts.ensure_lookup_table()
 
         # solidify
         JVFlooring._solidfy(mesh, (0, 0, 1), JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
@@ -208,3 +222,53 @@ class JVFlooring(JVBuilderBase):
 
             y += length + gap
             start_vertical = not start_vertical
+
+    @staticmethod
+    def _herringbone(props, verts, faces):
+        length = props.board_length_short
+        width = props.board_width_narrow
+
+        # boards oriented at 45 degree angle
+        leg_length = length / sqrt(2)
+        leg_width = width / sqrt(2)
+        leg_gap = props.gap_uniform / sqrt(2)
+        long_leg_gap = props.gap_uniform * sqrt(2)
+
+        start_y = -leg_length  # start down some so there are no gaps
+        upper_x, upper_y = props.length, props.width
+        while start_y < upper_y + leg_width:  # go a little further than need to ensure no gaps
+            x = 0
+
+            y = start_y
+            while x < upper_x:
+                # board width positive slope - starting from bottom-most corner
+                verts += [
+                    (x, y, 0),
+                    (x+leg_length, y+leg_length, 0),
+                    (x+leg_length-leg_width, y+leg_length+leg_width, 0),
+                    (x-leg_width, y+leg_width, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                # move to left-most corner of complementary board
+                x += leg_length + leg_gap - leg_width
+                y += leg_length - leg_gap - leg_width
+
+                # board with negative slope - starting from left-most corner
+                verts += [
+                    (x, y, 0),
+                    (x + leg_length, y - leg_length, 0),
+                    (x + leg_length + leg_width, y - leg_length + leg_width, 0),
+                    (x + leg_width, y + leg_width, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p + 1, p + 2, p + 3))
+
+                # move to bottom-most corner of next board
+                x += leg_length + leg_width + leg_gap
+                y += -leg_length + leg_width + leg_gap
+
+            start_y += 2 * leg_width + long_leg_gap
