@@ -14,7 +14,7 @@ class JVBuilderBase:
 
     @staticmethod
     def delete(props, context):
-        pass
+        bpy.ops.object.delete()
 
     @staticmethod
     def _start(context):

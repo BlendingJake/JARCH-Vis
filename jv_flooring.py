@@ -26,9 +26,9 @@ class JVFlooring(JVBuilderBase):
             row.prop(props, "board_length_really_short")
             row.prop(props, "checkerboard_board_count")
         # tile-like
-        elif props.flooring_pattern == "hexagons":
+        elif props.flooring_pattern in ("hexagons", "windmill"):
             row.prop(props, "tile_width")
-        else:  # hopscotch, windmill, stepping_stone, corridor
+        else:  # hopscotch, stepping_stone, corridor
             row.prop(props, "tile_width")
             row.prop(props, "tile_length")
 
@@ -87,12 +87,12 @@ class JVFlooring(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # cut if needed
-        if props.flooring_pattern in ("herringbone", "chevron"):
+        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone"):
             JVFlooring._cut_mesh(mesh, [
-                ((0, 0, 0), (1, 0, 0)),
-                ((0, 0, 0), (0, 1, 0)),
-                ((props.length, 0, 0), (-1, 0, 0)),
-                ((0, props.width, 0), (0, -1, 0))
+                ((0, 0, 0), (1, 0, 0)),  # left
+                ((0, 0, 0), (0, 1, 0)),  # bottom
+                ((props.length, 0, 0), (-1, 0, 0)),  # right
+                ((0, props.width, 0), (0, -1, 0))  # top
             ])
 
             mesh.faces.ensure_lookup_table()
@@ -272,3 +272,184 @@ class JVFlooring(JVBuilderBase):
                 y += -leg_length + leg_width + leg_gap
 
             start_y += 2 * leg_width + long_leg_gap
+
+    @staticmethod
+    def _chevron(props, verts, faces):
+        leg_length = props.board_length_short / sqrt(2)
+        leg_width = props.board_width_narrow * sqrt(2)
+        leg_gap = props.gap_uniform * sqrt(2)
+
+        start_y = -leg_length
+        upper_x, upper_y = props.length, props.width
+        while start_y < upper_y:
+            x = 0
+            y = start_y
+
+            y_leg_length = leg_length
+            while x < upper_x:
+                verts += [
+                    (x, y, 0),
+                    (x+leg_length, y+y_leg_length, 0),
+                    (x+leg_length, y+y_leg_length+leg_width, 0),
+                    (x, y+leg_width, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += leg_length + props.gap_uniform
+                y += y_leg_length
+
+                y_leg_length *= -1  # next board will have opposite slope
+
+            start_y += leg_width + leg_gap
+
+    @staticmethod
+    def _hopscotch(props, verts, faces):
+        """
+        A row consists of every group that is at the same y value. A row is built, then the x offset for the next
+        row is determined and that row is created
+        """
+        length, width, gap = props.tile_length, props.tile_width, props.gap_uniform
+        half_length, half_width = (length - gap) / 2, (width - gap) / 2
+
+        # the actual distance += half_length + gap, but x is moved that much between creating the two tiles
+        distance_between_groups = (2 * gap) + (2 * length)
+
+        x_start_values = [  # there are 5 different rows, each with a different starting x value
+            -gap - length - gap - half_length,  # orange
+            0,  # pink
+            -(length / 2) - gap - half_length - (gap / 2),  # yellow
+            -(2 * gap) - (2*length),  # green
+            -gap - half_length  # blue
+        ]
+
+        row = 0
+        y = -gap - half_width
+        upper_x, upper_y = props.length, props.width
+        while y < upper_y:
+            x = x_start_values[row % len(x_start_values)]
+
+            while x < upper_x:
+                verts += [  # small tile
+                    (x, y, 0),
+                    (x+half_length, y, 0),
+                    (x+half_length, y+half_width, 0),
+                    (x, y+half_width, 0)
+                ]
+
+                x += half_length + gap
+
+                verts += [  # large tile
+                    (x, y, 0),
+                    (x + length, y, 0),
+                    (x + length, y + width, 0),
+                    (x, y + width, 0)
+                ]
+
+                p = len(verts) - 8
+                faces.extend(((p, p+1, p+2, p+3), (p+4, p+5, p+6, p+7)))
+
+                x += distance_between_groups
+
+            # we've finished the row, make sure we start in the right place next time
+            y += half_width + gap
+            row += 1
+
+    @staticmethod
+    def _windmill(props, verts, faces):
+        length = props.tile_width
+        gap = props.gap_uniform
+        width = (length - gap) / 2
+
+        y = 0
+        upper_x, upper_y = props.length, props.width
+        while y < upper_y:
+            x = 0
+            while x < upper_x:
+                verts += [
+                    (x, y, 0),  # bottom - horizontal
+                    (x+length, y, 0),
+                    (x+length, y+width, 0),
+                    (x, y+width, 0),
+
+                    (x, y+width+gap, 0),  # left - vertical
+                    (x+width, y+width+gap, 0),
+                    (x+width, y+width+gap+length, 0),
+                    (x, y+width+gap+length, 0),
+
+                    (x+width+gap, y+length+gap, 0),  # top - horizontal
+                    (x+length+gap+width, y+length+gap, 0),
+                    (x+length+gap+width, y+length+gap+width, 0),
+                    (x+width+gap, y+length+gap+width, 0),
+
+                    (x+length+gap, y, 0),  # right - vertical
+                    (x+length+gap+width, y, 0),
+                    (x+length+gap+width, y+length, 0),
+                    (x+length+gap, y+length, 0),
+
+                    (x+width+gap, y+width+gap, 0),  # center
+                    (x+length, y+width+gap, 0),
+                    (x+length, y+length, 0),
+                    (x+width+gap, y+length, 0)
+                ]
+
+                p = len(verts)
+                for i in range(p-20, p, 4):
+                    faces.append((i, i+1, i+2, i+3))
+
+                x += length + gap + width
+            y += length+gap+width
+
+    @staticmethod
+    def _stepping_stone(props, verts, faces):
+        length, width, gap = props.tile_length, props.tile_width, props.gap_uniform
+        half_length, half_width = (length - gap) / 2, (width - gap) / 2
+
+        y = 0
+        upper_x, upper_y = props.length, props.width
+        while y < upper_y:
+            x = 0
+            while x < upper_x:
+                tx = x
+                ty = y
+                for _ in range(3):  # three tiles along the bottom
+                    verts += [
+                        (x, y, 0),
+                        (x+half_length, y, 0),
+                        (x+half_length, y+half_width, 0),
+                        (x, y+half_width, 0)
+                    ]
+
+                    x += half_length + gap
+
+                x = tx
+                y += half_width + gap
+
+                verts += [
+                    (x, y, 0),
+                    (x+length, y, 0),
+                    (x+length, y+width, 0),
+                    (x, y+width, 0)
+                ]
+
+                x += length + gap
+
+                for _ in range(2):
+                    verts += [
+                        (x, y, 0),
+                        (x + half_length, y, 0),
+                        (x + half_length, y + half_width, 0),
+                        (x, y + half_width, 0)
+                    ]
+
+                    y += half_width + gap
+
+                p = len(verts)
+                for i in range(p-24, p, 4):  # 6 faces, 4 vertices each
+                    faces.append((i, i+1, i+2, i+3))
+
+                x += half_length + gap
+                y = ty
+
+            y += half_width + width + (2*gap)

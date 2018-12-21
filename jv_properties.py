@@ -160,7 +160,7 @@ class JVProperties(PropertyGroup):
 
     gap_uniform: FloatProperty(
         name="Gap",
-        min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE", step=1,
+        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=1, precision=5,
         description="The gap around each board or tile", update=jv_on_property_update
     )
 
