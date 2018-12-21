@@ -1,4 +1,5 @@
 from bpy.types import Panel
+from . jv_types import get_object_type_handler
 
 
 class JVPanel(Panel):
@@ -12,7 +13,6 @@ class JVPanel(Panel):
     ]
 
     jv_consistent_operators = [
-        ("object.jv_update", "FILE_REFRESH"),
         ("object.jv_delete", "CANCEL"),
     ]
 
@@ -20,8 +20,19 @@ class JVPanel(Panel):
         layout = self.layout
         obj = context.object
 
-        if obj is not None and obj.hasattr("jv_properties") and obj.jv_properties.object_type != "":
-            obj.jv_base.draw(layout)
+        if obj is not None and obj.type == "MESH":
+            props = obj.jv_properties
+            layout.prop(props, "object_type", icon="MATERIAL")
+            layout.separator()
+
+            handler = get_object_type_handler(props.object_type)
+            if handler is not None:
+                handler.draw(props, layout)
+
+            layout.separator()
+            layout.prop(props, "update_automatically", icon="FILE_REFRESH")
+            if not props.update_automatically:
+                layout.operator("object.jv_update", icon="FILE_REFRESH")
 
             layout.separator()
             for op_name, icon in self.jv_consistent_operators:

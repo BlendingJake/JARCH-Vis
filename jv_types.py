@@ -1,4 +1,4 @@
-from jv_flooring import JVFlooring
+from . jv_flooring import JVFlooring
 
 
 registered_types = {
