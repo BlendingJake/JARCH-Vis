@@ -39,15 +39,22 @@ class JVBuilderBase:
         pass
 
     @staticmethod
-    def _solidfy(mesh, direction_vector, thickness_func):
+    def _solidfy(mesh, direction_vector, thickness_func, thickness_per_vert=False):
+        modified = set()
         for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()
 
                 for v in item.verts:
-                    v.co.x += direction_vector[0] * th
-                    v.co.y += direction_vector[1] * th
-                    v.co.z += direction_vector[2] * th
+                    if v not in modified:
+                        if thickness_per_vert:  # if thickness is determined per vertex, then get a new thickness value
+                            th = thickness_func()
+
+                        v.co.x += direction_vector[0] * th
+                        v.co.y += direction_vector[1] * th
+                        v.co.z += direction_vector[2] * th
+
+                        modified.add(v)
 
     @staticmethod
     def _create_variance_function(vary: bool, base_amount: float, variance: float):

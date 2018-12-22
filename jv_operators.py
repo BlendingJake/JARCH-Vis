@@ -19,6 +19,20 @@ class JVFlooringAdd(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class JVSidingAdd(bpy.types.Operator):
+    bl_idname = "object.jv_add_siding"
+    bl_label = "Add Siding"
+    bl_description = "JARCH Vis: Add Siding"
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        o = context.object
+
+        o.jv_properties.object_type = "siding"
+
+        return {"FINISHED"}
+
+
 # ---------------------------------------------------------------------------
 # Generic Operators
 # ---------------------------------------------------------------------------
@@ -52,6 +66,7 @@ class JVUpdate(bpy.types.Operator):
 
 classes = (
     JVFlooringAdd,
+    JVSidingAdd,
 
     JVDelete,
     JVUpdate

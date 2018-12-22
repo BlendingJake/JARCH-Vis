@@ -1,5 +1,5 @@
 from bpy.types import PropertyGroup
-from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty
+from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty
 from . jv_utils import Units
 from . jv_types import get_object_type_handler
 
@@ -21,9 +21,9 @@ class JVProperties(PropertyGroup):
             ("none", "None", ""),
             ("flooring", "Flooring", ""),
             ("siding", "Siding", ""),
-            ("roofing", "Roofing", ""),
-            ("stairs", "Stairs", ""),
-            ("window", "Window", "")
+            # ("roofing", "Roofing", ""),
+            # ("stairs", "Stairs", ""),
+            # ("window", "Window", "")
         ),
         default="none", description="The type of architecture to build", update=jv_on_property_update
     )
@@ -50,6 +50,13 @@ class JVProperties(PropertyGroup):
         ), default="regular", description="Flooring Pattern", update=jv_on_property_update
     )
 
+    siding_pattern: EnumProperty(
+        name="Pattern",
+        items=(
+            ("regular", "Regular", ""),
+        ), default="regular", description="Siding Pattern", update=jv_on_property_update
+    )
+
     # OVERALL DIMENSIONS ------------------------------------------------------------------------
     length: FloatProperty(
         name="Total Length",
@@ -61,6 +68,12 @@ class JVProperties(PropertyGroup):
         name="Total Width",
         min=0.5 * Units.FOOT, default=8 * Units.FOOT, precision=4,
         subtype="DISTANCE", description="Total width of material", update=jv_on_property_update
+    )
+
+    height: FloatProperty(
+        name="Total Height",
+        min=1 * Units.FOOT, default=8 * Units.FOOT, precision=3, subtype="DISTANCE",
+        description="Total height of the material", update=jv_on_property_update
     )
 
     # MATERIAL DIMENSIONS -----------------------------------------------------------------------
@@ -146,6 +159,12 @@ class JVProperties(PropertyGroup):
         update=jv_on_property_update
     )
 
+    gap_uniform: FloatProperty(
+        name="Gap",
+        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=1, precision=5,
+        description="The gap around each board or tile", update=jv_on_property_update
+    )
+
     # FLOORING SPECIFIC -------------------------------------------------------------------------
     gap_widthwise: FloatProperty(
         name="Gap Width-Wise",
@@ -157,12 +176,6 @@ class JVProperties(PropertyGroup):
         name="Gap Length-Wise",
         min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE",
         description="The gap between each board length-wise", update=jv_on_property_update
-    )
-
-    gap_uniform: FloatProperty(
-        name="Gap",
-        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=1, precision=5,
-        description="The gap around each board or tile", update=jv_on_property_update
     )
 
     tile_width: FloatProperty(
@@ -215,6 +228,33 @@ class JVProperties(PropertyGroup):
         name="Alternating Row Width",
         min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The width of the tiles in the alternating rows", update=jv_on_property_update
+    )
+
+    # SIDING SPECIFIC -------------------------------------------------------------------------
+    siding_direction: EnumProperty(
+        name="Siding Direction",
+        items=(
+            ("vertical", "Vertical", ""),
+            ("horizontal", "Horizontal", "")
+        ), default="vertical", description="Direction of siding", update=jv_on_property_update
+    )
+
+    slope_top: BoolProperty(
+        name="Slope Top?",
+        default=False, description="Cut a slope on the top of the siding?", update=jv_on_property_update
+    )
+
+    pitch: FloatProperty(
+        name="Pitch X/12",
+        default=4.00, min=0.00, step=1, precision=3,
+        description="Pitch/Slope of the top of the siding, in rise/run format that is x/12",
+        update=jv_on_property_update
+    )
+
+    pitch_offset: FloatVectorProperty(
+        name="Offset of Slope",
+        default=(0.0, 0.0, 0.0), size=3, precision=3, subtype="TRANSLATION",
+        description="Offset from the top-center of the siding for the slope", update=jv_on_property_update
     )
 
 

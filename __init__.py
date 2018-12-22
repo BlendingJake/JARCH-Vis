@@ -30,8 +30,11 @@ if "bpy" in locals():
         jv_utils,
         jv_types,
         jv_properties,
+
         jv_builder_base,
         jv_flooring,
+        jv_siding,
+
         jv_operators,
         jv_panel
     ]
@@ -42,8 +45,11 @@ else:
     from . import jv_utils
     from . import jv_types
     from . import jv_properties
+
     from . import jv_builder_base
     from . import jv_flooring
+    from . import jv_siding
+
     from . import jv_operators
     from . import jv_panel
 

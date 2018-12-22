@@ -9,7 +9,8 @@ class JVPanel(Panel):
     bl_region_type = "TOOLS"
 
     jv_add_operators = [
-        ("object.jv_add_flooring", "MESH_GRID")
+        ("object.jv_add_flooring", "MESH_GRID"),
+        ("object.jv_add_siding", "MOD_TRIANGULATE")
     ]
 
     jv_consistent_operators = [
