@@ -44,10 +44,11 @@ class JVSiding(JVBuilderBase):
         layout.separator()
         layout.prop(props, "thickness")
 
-        row = layout.row()
-        row.prop(props, "vary_thickness", icon="RNDCURVE")
-        if props.vary_thickness:
-            row.prop(props, "thickness_variance")
+        if props.siding_pattern != "tongue_groove":
+            row = layout.row()
+            row.prop(props, "vary_thickness", icon="RNDCURVE")
+            if props.vary_thickness:
+                row.prop(props, "thickness_variance")
 
         # slope
         layout.separator()
@@ -56,6 +57,12 @@ class JVSiding(JVBuilderBase):
         if props.slope_top:
             row.prop(props, "pitch")
             layout.prop(props, "pitch_offset")
+
+        # gaps
+        if props.siding_pattern in ("regular", "tongue_groove"):
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "gap_uniform")
 
     @staticmethod
     def update(props, context):
@@ -70,6 +77,13 @@ class JVSiding(JVBuilderBase):
         for f in faces:
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
+
+        # cut if needed
+        if props.siding_pattern == "tongue_groove":
+            JVSiding._cut_mesh(mesh, [
+                ((0, 0, props.height), (0, 0, -1)),  # top
+                ((props.length, 0, 0), (-1, 0, 0))  # right
+            ], fill_holes=True)
 
         # cut slope
         if props.slope_top:
@@ -86,11 +100,7 @@ class JVSiding(JVBuilderBase):
             JVSiding._cut_mesh(mesh, [
                 (center, left_normal),
                 (center, right_normal)
-            ])
-
-            mesh.faces.ensure_lookup_table()
-            mesh.edges.ensure_lookup_table()
-            mesh.verts.ensure_lookup_table()
+            ], fill_holes=props.siding_pattern == "tongue_groove")
 
         # solidify
         if props.siding_pattern != "tongue_groove":
@@ -105,7 +115,7 @@ class JVSiding(JVBuilderBase):
         verts, faces = [], []
 
         # dynamically call correct method as their names will match up with the style name
-        getattr(JVSiding, "_{}".format(props.flooring_pattern))(props, verts, faces)
+        getattr(JVSiding, "_{}".format(props.siding_pattern))(props, verts, faces)
 
         return verts, faces
 
@@ -168,17 +178,15 @@ class JVSiding(JVBuilderBase):
 
     @staticmethod
     def _tongue_groove(props, verts, faces):
-        """
-        Will be faux tongue & groove meaning it will look right from the front-face, but not be
-        a fully closed mesh
-        """
+        # TODO: determine how to add thickness variance to tongue and groove
+
         length, width, gap, th = props.board_length_long, props.board_width_medium, props.gap_uniform, props.thickness
 
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
         length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
         upper_x, upper_z = props.length, props.height
 
-        hi = Units.H_INCH
+        tongue_y, groove_y, th_y, hi = -(th / 3), -(th / 3) + Units.STH_INCH, -th, Units.H_INCH
 
         if props.siding_direction == "vertical":
             x = 0
@@ -186,47 +194,75 @@ class JVSiding(JVBuilderBase):
                 z = 0
 
                 width = width_variance()
+                tongue_x, groove_x = hi + gap, gap + width - Units.STH_INCH
                 while z < upper_z:
                     length = length_variance()
 
                     for zz in (z, z+length):  # bottom and top groups of vertices
-                        print("here")
                         verts += [
-                            (x, 0, zz),
-                            (x+hi+gap, 0, zz),
-                            (x+hi+gap, -th, zz),
-                            (x+hi+width+gap, -th, zz),
-                            (x+hi+width+gap, -th+hi, zz),
-                            (x+width+gap, -th+hi, zz)
+                            (x+tongue_x, 0, zz),
+                            (x+tongue_x, tongue_y, zz),
+                            (x, tongue_y, zz),
+                            (x, th_y-tongue_y, zz),
+                            (x+tongue_x, th_y-tongue_y, zz),
+                            (x+tongue_x, th_y, zz),
+
+                            (x+groove_x, th_y, zz),
+                            (x+tongue_x+width, th_y, zz),
+                            (x+tongue_x+width, th_y-groove_y, zz),
+                            (x+groove_x, th_y-groove_y, zz),
+                            (x+groove_x, groove_y, zz),
+                            (x+tongue_x+width, groove_y, zz),
+                            (x+tongue_x+width, 0, zz),
+                            (x+groove_x, 0, zz)
                         ]
 
-                    p = len(verts) - 12
-                    for i in range(5):
-                        faces.append((p+i, p+i+1, p+i+7, p+i+6))
+                    p = len(verts) - 28
+                    for i in range(13):  # run 0-12
+                        faces.append((p+i, p+i+1, p+i+15, p+i+14))
+                    faces.append((p, p+13, p+27, p+14))  # last face
+
+                    faces.append((p, p+13, p+12, p+11, p+10, p+9, p+8, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
+                    faces.append((p+14, p+15, p+16, p+17, p+18, p+19, p+20, p+21, p+22, p+23, p+24, p+25, p+26, p+27))
 
                     z += length + gap
                 x += width + gap
         else:
             z = 0
-            # while z < upper_z:
-            #     x = 0
-            #
-            #     width = width_variance()
-            #     while x < upper_x:
-            #         length = length_variance()
-            #
-            #         trimmed_width = min(cur_width, upper_z - z)
-            #         trimmed_length = min(cur_length, upper_x - x)
-            #
-            #         verts += [
-            #             (x, 0, z),
-            #             (x + trimmed_length, 0, z),
-            #             (x + trimmed_length, 0, z+trimmed_width),
-            #             (x, 0, z+trimmed_width)
-            #         ]
-            #
-            #         p = len(verts) - 4
-            #         faces.append((p, p + 1, p + 2, p + 3))
-            #
-            #         x += cur_length + gap
-            #     z += cur_width + gap
+            while z < upper_z:
+                x = 0
+
+                width = width_variance()
+                tongue_z, groove_z = width + hi + gap, hi + Units.STH_INCH
+                while x < upper_x:
+                    length = length_variance()
+
+                    for xx in (x, x+length):  # bottom and top groups of vertices
+                        verts += [
+                            (xx, 0, z),
+                            (xx, 0, z+groove_z),
+                            (xx, 0, z+width),
+                            (xx, tongue_y, z+width),
+                            (xx, tongue_y, z+tongue_z),
+                            (xx, th_y-tongue_y, z+tongue_z),
+                            (xx, th_y-tongue_y, z+width),
+
+                            (xx, th_y, z+width),
+                            (xx, th_y, z+groove_z),
+                            (xx, th_y, z),
+                            (xx, th_y-groove_y, z),
+                            (xx, th_y-groove_y, z+groove_z),
+                            (xx, groove_y, z+groove_z),
+                            (xx, groove_y, z)
+                        ]
+
+                    p = len(verts) - 28
+                    for i in range(13):  # run 0-12
+                        faces.append((p+i, p+i+1, p+i+15, p+i+14))
+                    faces.append((p, p+13, p+27, p+14))  # last face
+
+                    faces.append((p, p+13, p+12, p+11, p+10, p+9, p+8, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
+                    faces.append((p+14, p+15, p+16, p+17, p+18, p+19, p+20, p+21, p+22, p+23, p+24, p+25, p+26, p+27))
+
+                    x += length + gap
+                z += width + gap

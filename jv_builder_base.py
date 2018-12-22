@@ -40,21 +40,15 @@ class JVBuilderBase:
 
     @staticmethod
     def _solidfy(mesh, direction_vector, thickness_func, thickness_per_vert=False):
-        modified = set()
+        # TODO: determine how to use normal as direction vector
         for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()
 
                 for v in item.verts:
-                    if v not in modified:
-                        if thickness_per_vert:  # if thickness is determined per vertex, then get a new thickness value
-                            th = thickness_func()
-
-                        v.co.x += direction_vector[0] * th
-                        v.co.y += direction_vector[1] * th
-                        v.co.z += direction_vector[2] * th
-
-                        modified.add(v)
+                    v.co.x += direction_vector[0] * th
+                    v.co.y += direction_vector[1] * th
+                    v.co.z += direction_vector[2] * th
 
     @staticmethod
     def _create_variance_function(vary: bool, base_amount: float, variance: float):
@@ -66,7 +60,7 @@ class JVBuilderBase:
             return lambda: base_amount
 
     @staticmethod
-    def _cut_mesh(mesh, planes: list):
+    def _cut_mesh(mesh, planes: list, fill_holes=False):
         """
         Take the bmesh object and bisect it with all the planes given and remove the geometry outside of the planes
         :param mesh: the mesh to operate on
@@ -75,5 +69,53 @@ class JVBuilderBase:
         """
         for plane in planes:
             pos, normal = plane
-            bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001, plane_co=pos,
-                                   plane_no=normal, clear_inner=True)
+            geom = bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
+                                          plane_co=pos, plane_no=normal, clear_inner=True)
+
+            if fill_holes:
+                JVBuilderBase._fill_holes(mesh, geom["geom_cut"])
+
+        mesh.faces.ensure_lookup_table()
+        mesh.edges.ensure_lookup_table()
+        mesh.verts.ensure_lookup_table()
+
+    @staticmethod
+    def _fill_holes(mesh, cut_geometry):
+        verts, edges = set(), set()
+        for item in cut_geometry:
+            if isinstance(item, bmesh.types.BMEdge):
+                edges.add(item)
+                verts.add(item.verts[0])
+                verts.add(item.verts[1])
+
+        visited_verts = set()
+        grouped_edges = []
+
+        for v in verts:
+            if v not in visited_verts:
+                group = set()
+                JVBuilderBase._get_connected(v, verts, visited_verts, edges, group)
+                grouped_edges.append(group)
+
+        for group in grouped_edges:
+            bmesh.ops.edgenet_fill(mesh, edges=list(group))
+
+    @staticmethod
+    def _get_connected(v, all_vs: set, visited_vs: set, edges: set, g: set):
+        """
+        Recursive follow the edges that are connected to v if the edges are part of the newly created geometry
+        :param v: The vertex to follow
+        :param all_vs: A set of all the vertices from the newly created geometry
+        :param visited_vs: The vertices that we have visited so far
+        :param edges: A set of all the edges from the newly created geometry
+        :param g: The set of edges we are building that are connected
+        """
+        visited_vs.add(v)
+
+        for edge in v.link_edges:
+            if edge in edges:
+                g.add(edge)
+
+                for vert in edge.verts:
+                    if vert in all_vs and vert not in visited_vs:  # if we have a vertex we haven't visited yet
+                        JVBuilderBase._get_connected(vert, all_vs, visited_vs, edges, g)

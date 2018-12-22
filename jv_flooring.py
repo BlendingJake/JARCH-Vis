@@ -105,10 +105,6 @@ class JVFlooring(JVBuilderBase):
                 ((0, props.width, 0), (0, -1, 0))  # top
             ])
 
-            mesh.faces.ensure_lookup_table()
-            mesh.edges.ensure_lookup_table()
-            mesh.verts.ensure_lookup_table()
-
         # solidify
         JVFlooring._solidfy(mesh, (0, 0, 1), JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
                                                                                   props.thickness_variance))
