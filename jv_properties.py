@@ -54,6 +54,7 @@ class JVProperties(PropertyGroup):
         name="Pattern",
         items=(
             ("regular", "Regular", ""),
+            ("tongue_groove", "Tongue & Groove", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
