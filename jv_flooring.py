@@ -23,8 +23,8 @@ class JVFlooring(JVBuilderBase):
             row.prop(props, "board_width_narrow")
             row.prop(props, "board_length_short")
         elif props.flooring_pattern == "checkerboard":
-            row.prop(props, "board_length_really_short")
             row.prop(props, "checkerboard_board_count")
+            row.prop(props, "board_length_really_short")
         # tile-like
         elif props.flooring_pattern == "windmill":
             row.prop(props, "tile_width")
@@ -69,9 +69,10 @@ class JVFlooring(JVBuilderBase):
 
         # thickness and variance
         layout.separator()
-        layout.prop(props, "thickness")
+        box = layout.box()
+        box.prop(props, "thickness")
 
-        row = layout.row()
+        row = box.row()
         row.prop(props, "vary_thickness", icon="RNDCURVE")
         if props.vary_thickness:
             row.prop(props, "thickness_variance")

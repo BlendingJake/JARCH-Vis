@@ -31,19 +31,22 @@ class JVPanel(Panel):
                 handler.draw(props, layout)
 
             layout.separator()
-            layout.prop(props, "update_automatically", icon="FILE_REFRESH")
+            box = layout.box()
+            row = box.row()
+            row.prop(props, "update_automatically", icon="FILE_REFRESH")
             if not props.update_automatically:
-                layout.operator("object.jv_update", icon="FILE_REFRESH")
+                row.operator("object.jv_update", icon="FILE_REFRESH")
 
-            layout.separator()
+            box.separator()
             for op_name, icon in self.jv_consistent_operators:
-                layout.operator(op_name, icon=icon)
+                box.operator(op_name, icon=icon)
         else:
             pass  # convert
 
         layout.separator()
+        box = layout.box()
         for op_name, icon in self.jv_add_operators:
-            layout.operator(op_name, icon=icon)
+            box.operator(op_name, icon=icon)
 
 
 def register():

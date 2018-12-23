@@ -40,7 +40,6 @@ class JVBuilderBase:
 
     @staticmethod
     def _solidify(mesh, thickness_func, direction_vector=None, thickness_per_vert=False):
-        # TODO: determine how to use normal as direction vector
         for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], thickness=0)["geom"]:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()

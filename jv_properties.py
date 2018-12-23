@@ -55,7 +55,11 @@ class JVProperties(PropertyGroup):
         items=(
             ("regular", "Regular", ""),
             ("tongue_groove", "Tongue & Groove", ""),
-            ("dutch_lap", "Dutch Lap", "")
+            ("dutch_lap", "Dutch Lap", ""),
+            ("clapboard", "Clapboard", ""),
+            ("tin_regular", "Tin - Regular", ""),
+            ("tin_angular", "Tin - Angular", ""),
+            ("brick", "Brick", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
@@ -167,31 +171,6 @@ class JVProperties(PropertyGroup):
         description="The gap around each board or tile", update=jv_on_property_update
     )
 
-    # FLOORING SPECIFIC -------------------------------------------------------------------------
-    gap_widthwise: FloatProperty(
-        name="Gap Width-Wise",
-        min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE",
-        description="The gap between each board width-wise", update=jv_on_property_update
-    )
-
-    gap_lengthwise: FloatProperty(
-        name="Gap Length-Wise",
-        min=0.00, default=1 * Units.ETH_INCH, subtype="DISTANCE",
-        description="The gap between each board length-wise", update=jv_on_property_update
-    )
-
-    tile_width: FloatProperty(
-        name="Tile Width",
-        min=1 * Units.INCH, default=8 * Units.INCH, subtype="DISTANCE",
-        description="The width of each tile", update=jv_on_property_update
-    )
-
-    tile_length: FloatProperty(
-        name="Tile Length",
-        min=1 * Units.INCH, default=8 * Units.INCH, subtype="DISTANCE",
-        description="The length of each tile", update=jv_on_property_update
-    )
-
     row_offset: FloatProperty(
         name="Row Offset",
         min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
@@ -207,6 +186,19 @@ class JVProperties(PropertyGroup):
         name="Row Offset Variance",
         min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
         description="Each row will be offset between (width / 2) * (1 - variance)", update=jv_on_property_update
+    )
+
+    # FLOORING SPECIFIC -------------------------------------------------------------------------
+    tile_width: FloatProperty(
+        name="Tile Width",
+        min=1 * Units.INCH, default=8 * Units.INCH, subtype="DISTANCE",
+        description="The width of each tile", update=jv_on_property_update
+    )
+
+    tile_length: FloatProperty(
+        name="Tile Length",
+        min=1 * Units.INCH, default=8 * Units.INCH, subtype="DISTANCE",
+        description="The length of each tile", update=jv_on_property_update
     )
 
     checkerboard_board_count: IntProperty(
@@ -264,6 +256,41 @@ class JVProperties(PropertyGroup):
         default=65.00, min=5.00, max=95.00, precision=2, subtype="PERCENTAGE",
         description="The board will start sloping back at width*breakpoint up from the bottom",
         update=jv_on_property_update
+    )
+
+    battens: BoolProperty(
+        name="Add Battens?",
+        default=False, description="Add battens to the siding to cover the gaps between boards?",
+        update=jv_on_property_update
+    )
+
+    batten_width: FloatProperty(
+        name="Batten Width",
+        default=2*Units.INCH, min=0.5*Units.INCH, subtype="DISTANCE",
+        description="The width of the battens", update=jv_on_property_update
+    )
+
+    vary_batten_width: BoolProperty(
+        name="Vary Batten Width?",
+        default=False, description="Vary batten width?", update=jv_on_property_update
+    )
+
+    batten_width_variance: FloatProperty(
+        name="Batten Width Variance",
+        min=0.00, max=100.00, default=50.00, subtype="PERCENTAGE",
+        description="Each batten's width will be in width +- (w * variance)", update=jv_on_property_update
+    )
+
+    brick_height: FloatProperty(
+        name="Brick Width",
+        min=1*Units.INCH, default=9*Units.Q_INCH, precision=4, step=1, subtype="DISTANCE",
+        description="The height of each brick", update=jv_on_property_update
+    )
+
+    brick_length: FloatProperty(
+        name="Brick Length",
+        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        description="The length of each brick", update=jv_on_property_update
     )
 
 

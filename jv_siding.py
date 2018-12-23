@@ -1,7 +1,7 @@
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
 from mathutils import Vector, Euler
-from math import atan, radians
+from math import atan, radians, sqrt
 
 
 class JVSiding(JVBuilderBase):
@@ -13,12 +13,16 @@ class JVSiding(JVBuilderBase):
         row = layout.row()
         row.prop(props, "height")
         row.prop(props, "length")
+        layout.separator()
 
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
-            layout.separator()
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
             row = layout.row()
             row.prop(props, "board_width_medium")
             row.prop(props, "board_length_long")
+        elif props.siding_pattern == "brick":
+            row = layout.row()
+            row.prop(props, "brick_height")
+            row.prop(props, "brick_length")
 
         if props.siding_pattern in ("regular", "tongue_groove"):
             layout.separator()
@@ -29,7 +33,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "dutch_lap_breakpoint")
 
         # length and width variance
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
             layout.separator()
             row = layout.row()
 
@@ -44,29 +48,60 @@ class JVSiding(JVBuilderBase):
             if props.vary_length:
                 row.prop(props, "length_variance")
 
+        # battens
+        if props.siding_pattern == "regular" and props.siding_direction == "vertical":
+            layout.separator()
+            box = layout.box()
+            box.prop(props, "battens", icon="SNAP_EDGE")
+
+            if props.battens:
+                box.separator()
+                box.prop(props, "batten_width")
+
+                row = box.row()
+                row.prop(props, "vary_batten_width", icon="RNDCURVE")
+                if props.vary_batten_width:
+                    row.prop(props, "batten_width_variance")
+
         # thickness and variance
-        layout.separator()
-        layout.prop(props, "thickness")
+        if props.siding_pattern not in ("tin_regular", "tin_angular"):
+            layout.separator()
+            box = layout.box()
+            box.prop(props, "thickness")
 
-        if props.siding_pattern != "tongue_groove":
+            # NOTE: we cannot have varying thickness if battens are involved
+            if props.siding_pattern in ("dutch_lap", "brick") or \
+                    (props.siding_pattern == "regular" and not props.battens):
+                row = box.row()
+                row.prop(props, "vary_thickness", icon="RNDCURVE")
+                if props.vary_thickness:
+                    row.prop(props, "thickness_variance")
+
+        # row offset
+        if props.siding_pattern == "brick":
+            layout.separator()
             row = layout.row()
-            row.prop(props, "vary_thickness", icon="RNDCURVE")
-            if props.vary_thickness:
-                row.prop(props, "thickness_variance")
 
-        # slope
-        layout.separator()
-        row = layout.row()
-        row.prop(props, "slope_top", icon="LINCURVE")
-        if props.slope_top:
-            row.prop(props, "pitch")
-            layout.prop(props, "pitch_offset")
+            row.prop(props, "vary_row_offset", icon="RNDCURVE")
+            if props.vary_row_offset:
+                row.prop(props, "row_offset_variance")
+            else:
+                row.prop(props, "row_offset")
 
         # gaps
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
+
+        # slope
+        layout.separator()
+        box = layout.box()
+        row = box.row()
+        row.prop(props, "slope_top", icon="LINCURVE")
+        if props.slope_top:
+            row.prop(props, "pitch")
+            box.row().prop(props, "pitch_offset")
 
     @staticmethod
     def update(props, context):
@@ -83,7 +118,7 @@ class JVSiding(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # cut if needed
-        if props.siding_pattern in ("tongue_groove", "dutch_lap"):
+        if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular"):
             JVSiding._cut_mesh(mesh, [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
@@ -107,11 +142,13 @@ class JVSiding(JVBuilderBase):
             ], fill_holes=props.siding_pattern == "tongue_groove")
 
         # solidify - add thickness to props.thickness level
-        if props.siding_pattern == "regular":
+        if props.siding_pattern in ("regular", "brick"):
             JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, props.thickness,
                                                                         props.thickness_variance),
                                direction_vector=(0, -1, 0)
                                )
+        elif props.siding_pattern == "clapboard":
+            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness, 0))
 
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
@@ -131,9 +168,12 @@ class JVSiding(JVBuilderBase):
     @staticmethod
     def _regular(props, verts, faces):
         length, width, gap = props.board_length_long, props.board_width_medium, props.gap_uniform
+        batten_width, by = props.batten_width, -props.thickness
 
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
         length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
+        batten_width_variance = JVSiding._create_variance_function(props.vary_batten_width, batten_width,
+                                                                   props.batten_width_variance)
         upper_x, upper_z = props.length, props.height
 
         if props.siding_direction == "vertical":
@@ -160,6 +200,31 @@ class JVSiding(JVBuilderBase):
 
                     z += cur_length + gap
                 x += cur_width + gap
+
+                # battens
+                if props.battens and not props.vary_thickness:
+                    bw = batten_width_variance()
+                    tx = x - (gap / 2) - (bw / 2)
+
+                    if tx < upper_x:
+                        bw = min(bw, upper_x-tx)
+                        tz = 0
+                        while tz < upper_z:
+                            bl = length_variance()
+                            bl = min(bl, upper_z-tz)
+
+                            verts += [
+                                (tx, by, tz),
+                                (tx+bw, by, tz),
+                                (tx+bw, by, tz+bl),
+                                (tx, by, tz+bl)
+                            ]
+
+                            p = len(verts) - 4
+                            faces.append((p, p+1, p+2, p+3))
+
+                            tz += bl + gap
+
         else:
             z = 0
             while z < upper_z:
@@ -313,3 +378,145 @@ class JVSiding(JVBuilderBase):
 
                 x += cur_length + gap
             z += cur_width  # no gap in vertical direction
+
+    @staticmethod
+    def _clapboard(props, verts, faces):
+        length, width, gap = props.board_length_long, props.board_width_medium, props.gap_uniform
+        th = props.thickness
+        length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
+        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+
+        z = 0
+        upper_x, upper_z = props.length, props.height
+        while z < upper_z:
+            x = 0
+
+            vertical_width = sqrt(width_variance()**2 - th**2)
+            while x < upper_x:
+                length = length_variance()
+
+                trimmed_length = min(length, upper_x-x)
+                trimmed_width = min(vertical_width, upper_z-z)
+
+                verts += [
+                    (x, -th, z),
+                    (x+trimmed_length, -th, z),
+                    (x+trimmed_length, 0, z+trimmed_width),
+                    (x, 0, z+trimmed_width)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += length + gap
+            z += vertical_width + gap
+
+    @staticmethod
+    def _tin_regular(props, verts, faces):
+        ridge_steps = (
+            (0, 0),
+            (Units.H_INCH, Units.TQ_INCH),
+            (5*Units.ETH_INCH, 7*Units.ETH_INCH),
+            (11*Units.STH_INCH, Units.INCH),
+            (17*Units.STH_INCH, Units.INCH),
+            (9*Units.ETH_INCH, 7*Units.ETH_INCH),
+            (5*Units.Q_INCH, 3*Units.Q_INCH)
+        )
+
+        valley_steps = (
+            (0, 0),
+            (13*Units.ETH_INCH, 0),
+            (15*Units.ETH_INCH, Units.ETH_INCH),
+            (21*Units.ETH_INCH, Units.ETH_INCH)
+        )
+
+        upper_x = props.length
+        offset_between_valley_accents = 23*Units.ETH_INCH
+        for z in (0, props.height):
+            x = 0
+            while x < upper_x+offset_between_valley_accents:
+                for step in ridge_steps:
+                    verts.append((x+step[0], -step[1], z))
+                x += 7*Units.Q_INCH
+
+                for _ in range(2):
+                    for step in valley_steps:
+                        verts.append((x+step[0], -step[1], z))
+                    x += offset_between_valley_accents
+
+                verts.append((x, 0, z))  # finish valley ridge
+                x += offset_between_valley_accents-Units.INCH
+
+        # faces
+        offset = len(verts) // 2
+        for i in range(offset-1):
+            faces.append((i, i+1, i+offset+1, i+offset))
+
+    @staticmethod
+    def _tin_angular(props, verts, faces):
+        pan = 3*Units.INCH
+        ridge_steps = ((0, 0), (Units.H_INCH, 5*Units.Q_INCH), (3*Units.H_INCH, 5*Units.Q_INCH), (2*Units.INCH, 0))
+        valley_steps = ((0, 0), (pan, 0), (pan + Units.Q_INCH, Units.ETH_INCH), (pan + 3*Units.H_INCH, Units.ETH_INCH))
+
+        upper_x = props.length
+        for z in (0, props.height):
+            x = 0
+            while x < upper_x+pan:
+                for step in ridge_steps:
+                    verts.append((x+step[0], -step[1], z))
+                x += 2 * Units.INCH
+
+                for _ in range(2):
+                    for step in valley_steps:
+                        verts.append((x+step[0], -step[1], z))
+                    x += pan + 7*Units.Q_INCH
+
+                verts.append((x, 0, z))
+                x += pan
+
+        # faces
+        offset = len(verts) // 2
+        for i in range(offset - 1):
+            faces.append((i, i + 1, i + offset + 1, i + offset))
+
+    @staticmethod
+    def _brick(props, verts, faces):
+        length, height, gap = props.brick_length, props.brick_height, props.gap_uniform
+
+        first_length_for_fixed_offset = length * (props.row_offset / 100)
+        if first_length_for_fixed_offset == 0:
+            first_length_for_fixed_offset = length
+
+        offset_length_variance = JVSiding._create_variance_function(props.vary_row_offset, length / 2,
+                                                                    props.row_offset_variance)
+
+        z = 0
+        odd = False
+        upper_x, upper_z = props.length, props.height
+        while z < upper_z:
+            x = 0
+
+            trimmed_height = min(height, upper_z-z)
+            while x < upper_x:
+                cur_length = length
+                if x == 0:
+                    if odd and not props.vary_row_offset:
+                        cur_length = first_length_for_fixed_offset
+                    elif props.vary_row_offset:
+                        cur_length = offset_length_variance()
+
+                trimmed_length = min(cur_length, upper_x-x)
+
+                verts += [
+                    (x, 0, z),
+                    (x+trimmed_length, 0, z),
+                    (x+trimmed_length, 0, z+trimmed_height),
+                    (x, 0, z+trimmed_height)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += cur_length + gap
+            z += height + gap
+            odd = not odd
