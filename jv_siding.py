@@ -14,7 +14,7 @@ class JVSiding(JVBuilderBase):
         row.prop(props, "height")
         row.prop(props, "length")
 
-        if props.siding_pattern in ("regular", "tongue_groove"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
             layout.separator()
             row = layout.row()
             row.prop(props, "board_width_medium")
@@ -24,8 +24,12 @@ class JVSiding(JVBuilderBase):
             layout.separator()
             layout.prop(props, "siding_direction", icon="ORIENTATION_VIEW")
 
+        if props.siding_pattern == "dutch_lap":
+            layout.separator()
+            layout.prop(props, "dutch_lap_breakpoint")
+
         # length and width variance
-        if props.siding_pattern in ("regular", "tongue_groove"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
             layout.separator()
             row = layout.row()
 
@@ -59,7 +63,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "pitch_offset")
 
         # gaps
-        if props.siding_pattern in ("regular", "tongue_groove"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
@@ -79,11 +83,11 @@ class JVSiding(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # cut if needed
-        if props.siding_pattern == "tongue_groove":
+        if props.siding_pattern in ("tongue_groove", "dutch_lap"):
             JVSiding._cut_mesh(mesh, [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
-            ], fill_holes=True)
+            ], fill_holes=props.siding_pattern == "tongue_groove")
 
         # cut slope
         if props.slope_top:
@@ -102,11 +106,16 @@ class JVSiding(JVBuilderBase):
                 (center, right_normal)
             ], fill_holes=props.siding_pattern == "tongue_groove")
 
-        # solidify
-        if props.siding_pattern != "tongue_groove":
-            JVSiding._solidfy(mesh, (0, -1, 0), JVSiding._create_variance_function(props.vary_thickness,
-                                                                                   props.thickness,
-                                                                                   props.thickness_variance))
+        # solidify - add thickness to props.thickness level
+        if props.siding_pattern == "regular":
+            JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, props.thickness,
+                                                                        props.thickness_variance),
+                               direction_vector=(0, -1, 0)
+                               )
+
+        # solidify - just add slight thickness
+        elif props.siding_pattern == "dutch_lap":
+            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
 
         JVSiding._finish(context, mesh)
 
@@ -266,3 +275,41 @@ class JVSiding(JVBuilderBase):
 
                     x += length + gap
                 z += width + gap
+
+    @staticmethod
+    def _dutch_lap(props, verts, faces):
+        length, width, gap, th = props.board_length_long, props.board_width_medium, props.gap_uniform, props.thickness
+        break_p = props.dutch_lap_breakpoint / 100
+
+        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+        length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
+        thickness_variance = JVSiding._create_variance_function(props.vary_thickness, th, props.thickness_variance)
+
+        z = 0
+        upper_x, upper_z = props.length, props.height
+        while z < upper_z:
+            x = 0
+
+            cur_width = width_variance()
+            break_width = cur_width * break_p
+            y = thickness_variance()  # do thickness per row
+            while x < upper_x:
+                cur_length = length_variance()
+
+                for xx in (x, x+cur_length):
+                    verts += [
+                        (xx, 0, z),
+                        (xx, -y, z),
+                        (xx, -y, z+break_width),
+                        (xx, 0, z+cur_width)
+                    ]
+
+                p = len(verts) - 8
+                faces.extend((
+                    (p, p+4, p+5, p+1),
+                    (p+1, p+5, p+6, p+2),
+                    (p+2, p+6, p+7, p+3)
+                ))
+
+                x += cur_length + gap
+            z += cur_width  # no gap in vertical direction

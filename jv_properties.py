@@ -54,7 +54,8 @@ class JVProperties(PropertyGroup):
         name="Pattern",
         items=(
             ("regular", "Regular", ""),
-            ("tongue_groove", "Tongue & Groove", "")
+            ("tongue_groove", "Tongue & Groove", ""),
+            ("dutch_lap", "Dutch Lap", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
@@ -256,6 +257,13 @@ class JVProperties(PropertyGroup):
         name="Offset of Slope",
         default=(0.0, 0.0, 0.0), size=3, precision=3, subtype="TRANSLATION",
         description="Offset from the top-center of the siding for the slope", update=jv_on_property_update
+    )
+
+    dutch_lap_breakpoint: FloatProperty(
+        name="Slope Breakpoint",
+        default=65.00, min=5.00, max=95.00, precision=2, subtype="PERCENTAGE",
+        description="The board will start sloping back at width*breakpoint up from the bottom",
+        update=jv_on_property_update
     )
 
 

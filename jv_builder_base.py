@@ -39,16 +39,21 @@ class JVBuilderBase:
         pass
 
     @staticmethod
-    def _solidfy(mesh, direction_vector, thickness_func, thickness_per_vert=False):
+    def _solidify(mesh, thickness_func, direction_vector=None, thickness_per_vert=False):
         # TODO: determine how to use normal as direction vector
-        for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]:
+        for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], thickness=0)["geom"]:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()
 
+                if direction_vector is None:
+                    dv = item.normal
+                else:
+                    dv = direction_vector
+
                 for v in item.verts:
-                    v.co.x += direction_vector[0] * th
-                    v.co.y += direction_vector[1] * th
-                    v.co.z += direction_vector[2] * th
+                    v.co.x += dv[0] * th
+                    v.co.y += dv[1] * th
+                    v.co.z += dv[2] * th
 
     @staticmethod
     def _create_variance_function(vary: bool, base_amount: float, variance: float):

@@ -106,8 +106,10 @@ class JVFlooring(JVBuilderBase):
             ])
 
         # solidify
-        JVFlooring._solidfy(mesh, (0, 0, 1), JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
-                                                                                  props.thickness_variance))
+        JVFlooring._solidify(mesh, JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
+                                                                        props.thickness_variance),
+                             direction_vector=(0, 0, 1)
+                             )
 
         JVFlooring._finish(context, mesh)
 
