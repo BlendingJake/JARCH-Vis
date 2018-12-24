@@ -59,7 +59,8 @@ class JVProperties(PropertyGroup):
             ("clapboard", "Clapboard", ""),
             ("tin_regular", "Tin - Regular", ""),
             ("tin_angular", "Tin - Angular", ""),
-            ("brick", "Brick", "")
+            ("brick", "Brick", ""),
+            ("shakes", "Shakes", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
@@ -167,7 +168,7 @@ class JVProperties(PropertyGroup):
 
     gap_uniform: FloatProperty(
         name="Gap",
-        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=1, precision=5,
+        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=100, precision=5,
         description="The gap around each board or tile", update=jv_on_property_update
     )
 
@@ -199,6 +200,18 @@ class JVProperties(PropertyGroup):
         description="The depth of the grout is depth*thickness", update=jv_on_property_update
     )
 
+    shake_width: FloatProperty(
+        name="Shake Width",
+        min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        description="The width of each shake", update=jv_on_property_update
+    )
+
+    shake_length: FloatProperty(
+        name="Shake Length",
+        min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        description="The length/exposure of each shake", update=jv_on_property_update
+    )
+
     # FLOORING SPECIFIC -------------------------------------------------------------------------
     tile_width: FloatProperty(
         name="Tile Width",
@@ -225,13 +238,13 @@ class JVProperties(PropertyGroup):
 
     side_length: FloatProperty(
         name="Polygon Side Length",
-        min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The length of each side in the regular polygon", update=jv_on_property_update
     )
 
     alternating_row_width: FloatProperty(
         name="Alternating Row Width",
-        min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The width of the tiles in the alternating rows", update=jv_on_property_update
     )
 
@@ -294,13 +307,13 @@ class JVProperties(PropertyGroup):
 
     brick_height: FloatProperty(
         name="Brick Width",
-        min=1*Units.INCH, default=9*Units.Q_INCH, precision=4, step=1, subtype="DISTANCE",
+        min=1*Units.INCH, default=9*Units.Q_INCH, precision=4, step=100, subtype="DISTANCE",
         description="The height of each brick", update=jv_on_property_update
     )
 
     brick_length: FloatProperty(
         name="Brick Length",
-        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The length of each brick", update=jv_on_property_update
     )
 

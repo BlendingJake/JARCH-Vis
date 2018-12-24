@@ -24,6 +24,10 @@ class JVSiding(JVBuilderBase):
             row = layout.row()
             row.prop(props, "brick_height")
             row.prop(props, "brick_length")
+        elif props.siding_pattern == "shakes":
+            row = layout.row()
+            row.prop(props, "shake_length")
+            row.prop(props, "shake_width")
 
         if props.siding_pattern in ("regular", "tongue_groove"):
             layout.separator()
@@ -34,7 +38,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "dutch_lap_breakpoint")
 
         # length and width variance
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "shakes"):
             layout.separator()
             row = layout.row()
 
@@ -65,7 +69,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "batten_width_variance")
 
         # row offset
-        if props.siding_pattern == "brick":
+        if props.siding_pattern in ("brick", "shakes"):
             layout.separator()
             row = layout.row()
 
@@ -90,7 +94,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "thickness_variance")
 
         # gaps
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick", "shakes"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
@@ -171,7 +175,8 @@ class JVSiding(JVBuilderBase):
                                                                         props.thickness_variance),
                                direction_vector=(0, -1, 0)
                                )
-        elif props.siding_pattern == "clapboard":
+        # solidify - add thickness, non-variable
+        elif props.siding_pattern in ("clapboard", "shakes"):
             JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness, 0))
 
         # solidify - just add slight thickness
@@ -292,8 +297,6 @@ class JVSiding(JVBuilderBase):
 
     @staticmethod
     def _tongue_groove(props, verts, faces):
-        # TODO: determine how to add thickness variance to tongue and groove
-
         length, width, gap, th = props.board_length_long, props.board_width_medium, props.gap_uniform, props.thickness
 
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
@@ -559,4 +562,50 @@ class JVSiding(JVBuilderBase):
 
                 x += cur_length + gap
             z += height + gap
+            odd = not odd
+
+    @staticmethod
+    def _shakes(props, verts, faces):
+        exposure, width, gap = props.shake_length, props.shake_width, props.gap_uniform
+        th_y = -props.thickness
+
+        first_width_for_fixed_offset = width * (props.row_offset / 100)
+        if first_width_for_fixed_offset == 0:
+            first_width_for_fixed_offset = width
+
+        offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
+                                                                    props.row_offset_variance)
+        exposure_variance = JVSiding._create_variance_function(props.vary_length, exposure, props.length_variance)
+        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+
+        z = 0
+        odd = False
+        upper_x, upper_z = props.length, props.height
+        while z < upper_z:
+            x = 0
+
+            cur_exposure = sqrt(exposure_variance()**2 - th_y**2)
+            while x < upper_x:
+                cur_width = width_variance()
+                if x == 0:
+                    if odd and not props.vary_row_offset:
+                        cur_width = first_width_for_fixed_offset
+                    elif props.vary_row_offset:
+                        cur_width = offset_width_variance()
+
+                dx = min(cur_width, upper_x-x)
+                dz = min(cur_exposure, upper_z-z)
+
+                verts += [
+                    (x, th_y, z),
+                    (x+dx, th_y, z),
+                    (x+dx, 0, z+dz),
+                    (x, 0, z+dz)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p+1, p+2, p+3))
+
+                x += cur_width + gap
+            z += cur_exposure
             odd = not odd
