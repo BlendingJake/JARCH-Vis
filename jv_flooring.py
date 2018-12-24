@@ -99,7 +99,7 @@ class JVFlooring(JVBuilderBase):
         # cut if needed
         if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
                                       "octagons", "windmill"):
-            JVFlooring._cut_mesh(mesh, [
+            JVFlooring._cut_meshes([mesh], [
                 ((0, 0, 0), (1, 0, 0)),  # left
                 ((0, 0, 0), (0, 1, 0)),  # bottom
                 ((props.length, 0, 0), (-1, 0, 0)),  # right
@@ -107,8 +107,9 @@ class JVFlooring(JVBuilderBase):
             ])
 
         # solidify
-        JVFlooring._solidify(mesh, JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
-                                                                        props.thickness_variance),
+        JVFlooring._solidify(mesh,
+                             JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
+                                                                  props.thickness_variance),
                              direction_vector=(0, 0, 1)
                              )
 

@@ -188,6 +188,17 @@ class JVProperties(PropertyGroup):
         description="Each row will be offset between (width / 2) * (1 - variance)", update=jv_on_property_update
     )
 
+    add_grout: BoolProperty(
+        name="Add Grout?",
+        default=True, description="Add cube for where the grout/mortar would be?", update=jv_on_property_update
+    )
+
+    grout_depth: FloatProperty(
+        name="Grout Depth",
+        min=0.00, max=100.00, default=5.00, precision=4, step=100, subtype="PERCENTAGE",
+        description="The depth of the grout is depth*thickness", update=jv_on_property_update
+    )
+
     # FLOORING SPECIFIC -------------------------------------------------------------------------
     tile_width: FloatProperty(
         name="Tile Width",

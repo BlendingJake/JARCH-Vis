@@ -39,8 +39,8 @@ class JVBuilderBase:
         pass
 
     @staticmethod
-    def _solidify(mesh, thickness_func, direction_vector=None, thickness_per_vert=False):
-        for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], thickness=0)["geom"]:
+    def _solidify(mesh, thickness_func, direction_vector=None):
+        for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()
 
@@ -64,24 +64,25 @@ class JVBuilderBase:
             return lambda: base_amount
 
     @staticmethod
-    def _cut_mesh(mesh, planes: list, fill_holes=False):
+    def _cut_meshes(meshes: list, planes: list, fill_holes=False):
         """
         Take the bmesh object and bisect it with all the planes given and remove the geometry outside of the planes
-        :param mesh: the mesh to operate on
+        :param meshes: a list of the meshes to cut
         :param planes: a list of tuples, each tuple being (plane position, plane normal). The normals should point
                         towards the center of the mesh, aka, geometry on the opposite side of the normal will be removed
         """
-        for plane in planes:
-            pos, normal = plane
-            geom = bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
-                                          plane_co=pos, plane_no=normal, clear_inner=True)
+        for mesh in meshes:
+            for plane in planes:
+                pos, normal = plane
+                geom = bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
+                                              plane_co=pos, plane_no=normal, clear_inner=True)
 
-            if fill_holes:
-                JVBuilderBase._fill_holes(mesh, geom["geom_cut"])
+                if fill_holes:
+                    JVBuilderBase._fill_holes(mesh, geom["geom_cut"])
 
-        mesh.faces.ensure_lookup_table()
-        mesh.edges.ensure_lookup_table()
-        mesh.verts.ensure_lookup_table()
+            mesh.faces.ensure_lookup_table()
+            mesh.edges.ensure_lookup_table()
+            mesh.verts.ensure_lookup_table()
 
     @staticmethod
     def _fill_holes(mesh, cut_geometry):

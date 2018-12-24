@@ -2,6 +2,7 @@ from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
 from mathutils import Vector, Euler
 from math import atan, radians, sqrt
+import bmesh
 
 
 class JVSiding(JVBuilderBase):
@@ -63,6 +64,17 @@ class JVSiding(JVBuilderBase):
                 if props.vary_batten_width:
                     row.prop(props, "batten_width_variance")
 
+        # row offset
+        if props.siding_pattern == "brick":
+            layout.separator()
+            row = layout.row()
+
+            row.prop(props, "vary_row_offset", icon="RNDCURVE")
+            if props.vary_row_offset:
+                row.prop(props, "row_offset_variance")
+            else:
+                row.prop(props, "row_offset")
+
         # thickness and variance
         if props.siding_pattern not in ("tin_regular", "tin_angular"):
             layout.separator()
@@ -77,22 +89,19 @@ class JVSiding(JVBuilderBase):
                 if props.vary_thickness:
                     row.prop(props, "thickness_variance")
 
-        # row offset
-        if props.siding_pattern == "brick":
-            layout.separator()
-            row = layout.row()
-
-            row.prop(props, "vary_row_offset", icon="RNDCURVE")
-            if props.vary_row_offset:
-                row.prop(props, "row_offset_variance")
-            else:
-                row.prop(props, "row_offset")
-
         # gaps
         if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
+
+        # grout/mortar
+        if props.siding_pattern == "brick":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "add_grout", text="Add Mortar?", icon="MOD_WIREFRAME")
+            if props.add_grout:
+                row.prop(props, "grout_depth", text="Mortar Depth")
 
         # slope
         layout.separator()
@@ -117,9 +126,20 @@ class JVSiding(JVBuilderBase):
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
 
+        # create mortar mesh
+        mortar_mesh = None
+        if props.siding_pattern == "brick" and props.add_grout:
+            mortar_mesh = bmesh.new()
+            for v in ((0, 0, 0), (props.length, 0, 0), (props.length, 0, props.height), (0, 0, props.height)):
+                mortar_mesh.verts.new(v)
+            mortar_mesh.verts.ensure_lookup_table()
+
+            mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 1, 2, 3)])
+            mortar_mesh.faces.ensure_lookup_table()
+
         # cut if needed
         if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular"):
-            JVSiding._cut_mesh(mesh, [
+            JVSiding._cut_meshes([mesh], [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
             ], fill_holes=props.siding_pattern == "tongue_groove")
@@ -136,7 +156,11 @@ class JVSiding(JVBuilderBase):
             left_normal = Vector((1, 0, 0))
             left_normal.rotate(Euler((0, radians(90) - angle, 0)))
 
-            JVSiding._cut_mesh(mesh, [
+            meshes = [mesh]
+            if mortar_mesh is not None:
+                meshes.append(mortar_mesh)
+
+            JVSiding._cut_meshes(meshes, [
                 (center, left_normal),
                 (center, right_normal)
             ], fill_holes=props.siding_pattern == "tongue_groove")
@@ -153,6 +177,22 @@ class JVSiding(JVBuilderBase):
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
             JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
+
+        # solidify mortar
+        if mortar_mesh is not None:
+            th = props.thickness * (1 - (props.grout_depth / 100))
+            JVSiding._solidify(mortar_mesh, JVSiding._create_variance_function(False, th, 0),
+                               direction_vector=(0, -1, 0))
+
+            # merge mortar mesh
+            mappings = {}
+            for v in mortar_mesh.verts:
+                mappings[v] = mesh.verts.new(v.co)
+            mesh.verts.ensure_lookup_table()
+
+            for f in mortar_mesh.faces:
+                mesh.faces.new([mappings[v] for v in f.verts])
+            mesh.faces.ensure_lookup_table()
 
         JVSiding._finish(context, mesh)
 
