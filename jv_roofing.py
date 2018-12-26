@@ -44,12 +44,13 @@ class JVRoofing(JVBuilderBase):
         mesh.faces.ensure_lookup_table()
 
         # overall dimension cutting - length
-        if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab"):
+        if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
+                                     "shingles_architectural"):
             JVRoofing._cut_meshes([mesh], [
                 ((props.length, 0, 0), (-1, 0, 0))
             ])
         # overall dimension cutting - width
-        if props.roofing_pattern == "shingles_3_tab":
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural"):
             JVRoofing._cut_meshes([mesh], [
                 ((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))
             ])
@@ -62,8 +63,12 @@ class JVRoofing(JVBuilderBase):
         # mirror
 
         # solidify
-        if props.roofing_pattern == "shingles_3_tab":
-            th = 5*Units.STH_INCH
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural"):
+            if props.roofing_pattern == "shingles_3_tab":
+                th = 5 * Units.STH_INCH
+            else:
+                th = 3*Units.STH_INCH
+
             JVRoofing._solidify(mesh, JVRoofing._create_variance_function(False, th, 0))
 
         JVRoofing._finish(context, mesh)
@@ -247,3 +252,68 @@ class JVRoofing(JVBuilderBase):
                     faces.extend(((p+i, p+i+3, p+i+4, p+i+1), (p+i+1, p+i+4, p+i+5, p+i+2)))
 
                 is_gap = not is_gap
+
+    @staticmethod
+    def _shingles_architectural(props, verts, faces):
+        hi, th, width = Units.H_INCH, 3*Units.STH_INCH, Units.FOOT
+        hw = width / 2
+
+        bottom_z, mid_z = 4*th, 2*th
+
+        separation_variance = JVRoofing._create_variance_function(True, 8*Units.INCH, 40)
+        width_variance = JVRoofing._create_variance_function(True, 4*Units.INCH, 60)
+
+        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        y = 0
+        odd = False
+        while y < upper_y:
+            # row backing layer
+            verts += [
+                (0, y, bottom_z),
+                (upper_x, y, bottom_z),
+                (upper_x, y+width, 0),
+                (0, y+width, 0)
+            ]
+
+            p = len(verts) - 4
+            faces.append((p, p+1, p+2, p+3))
+
+            x = 0
+            finish = False
+            p = len(verts)
+            while x < upper_x or finish:
+                finish = False
+                dx = separation_variance()
+                if x == 0 and odd:
+                    dx /= 2
+
+                verts += [  # all z's are +th because they are layered on top of the backing layer
+                    (x, y+hw, mid_z+th),
+                    (x, y+width, th)
+                ]
+
+                x += dx
+
+                if x < upper_x:  # only do tab if we are still under width
+                    verts += [
+                        (x-hi, y, bottom_z+th),
+                        (x, y+hw, mid_z+th),
+                        (x, y+width, th)
+                    ]
+
+                    x += width_variance()
+                    verts.append((x+hi, y, bottom_z+th))
+                    finish = True  # if we get here, we need to finish the row no matter what
+
+            # faces
+            # there will always be 2 verts on the end to close everything off, besides that, it will be multiple of 6
+            sets = (len(verts) - p - 2) // 6
+            for i in range(0, 6*sets, 6):
+                faces.extend((
+                    (p+i, p+i+3, p+i+4, p+i+1),
+                    (p+i+2, p+i+5, p+i+6, p+i+3),
+                    (p+i+3, p+i+6, p+i+7, p+i+4)
+                ))
+
+            y += hw
+            odd = not odd
