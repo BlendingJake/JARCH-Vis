@@ -69,7 +69,8 @@ class JVProperties(PropertyGroup):
         items=(
             ("tin_regular", "Tin - Regular", ""),
             ("tin_angular", "Tin - Angular", ""),
-            ("tin_standing_seam", "Tin - Standing Seam", "")
+            ("tin_standing_seam", "Tin - Standing Seam", ""),
+            ("shingles_3_tab", "Shingles - 3 Tab", "")
         ), default="tin_regular", description="Roofing Pattern", update=jv_on_property_update
     )
 
