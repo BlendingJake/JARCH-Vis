@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 from random import uniform
+from mathutils import Vector
 
 
 class JVBuilderBase:
@@ -124,3 +125,12 @@ class JVBuilderBase:
                 for vert in edge.verts:
                     if vert in all_vs and vert not in visited_vs:  # if we have a vertex we haven't visited yet
                         JVBuilderBase._get_connected(vert, all_vs, visited_vs, edges, g)
+
+    @staticmethod
+    def _rotate_mesh_vertices(mesh, rotation, origin=Vector((0, 0, 0))):
+        for vert in mesh.verts:
+            pos = vert.co - origin
+            pos.rotate(rotation)
+            vert.co = pos
+
+        mesh.verts.ensure_lookup_table()

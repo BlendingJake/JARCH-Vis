@@ -21,7 +21,7 @@ class JVProperties(PropertyGroup):
             ("none", "None", ""),
             ("flooring", "Flooring", ""),
             ("siding", "Siding", ""),
-            # ("roofing", "Roofing", ""),
+            ("roofing", "Roofing", ""),
             # ("stairs", "Stairs", ""),
             # ("window", "Window", "")
         ),
@@ -62,6 +62,15 @@ class JVProperties(PropertyGroup):
             ("brick", "Brick", ""),
             ("shakes", "Shakes", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
+    )
+
+    roofing_pattern: EnumProperty(
+        name="Pattern",
+        items=(
+            ("tin_regular", "Tin - Regular", ""),
+            ("tin_angular", "Tin - Angular", ""),
+            ("tin_standing_seam", "Tin - Standing Seam", "")
+        ), default="tin_regular", description="Roofing Pattern", update=jv_on_property_update
     )
 
     # OVERALL DIMENSIONS ------------------------------------------------------------------------
@@ -212,6 +221,13 @@ class JVProperties(PropertyGroup):
         description="The length/exposure of each shake", update=jv_on_property_update
     )
 
+    pitch: FloatProperty(
+        name="Pitch X/12",
+        default=4.00, min=0.00, step=1, precision=3,
+        description="Pitch/Slope of the top of the siding, in rise/run format that is x/12",
+        update=jv_on_property_update
+    )
+
     # FLOORING SPECIFIC -------------------------------------------------------------------------
     tile_width: FloatProperty(
         name="Tile Width",
@@ -262,13 +278,6 @@ class JVProperties(PropertyGroup):
         default=False, description="Cut a slope on the top of the siding?", update=jv_on_property_update
     )
 
-    pitch: FloatProperty(
-        name="Pitch X/12",
-        default=4.00, min=0.00, step=1, precision=3,
-        description="Pitch/Slope of the top of the siding, in rise/run format that is x/12",
-        update=jv_on_property_update
-    )
-
     pitch_offset: FloatVectorProperty(
         name="Offset of Slope",
         default=(0.0, 0.0, 0.0), size=3, precision=3, subtype="TRANSLATION",
@@ -315,6 +324,13 @@ class JVProperties(PropertyGroup):
         name="Brick Length",
         min=1*Units.INCH, default=8*Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The length of each brick", update=jv_on_property_update
+    )
+
+    # ROOFING SPECIFIC -------------------------------------------------------------------------
+    pan_width: FloatProperty(
+        name="Pan Width",
+        min=1*Units.INCH, default=Units.FOOT, precision=4, step=75, subtype="DISTANCE",
+        description="The width of each pan", update=jv_on_property_update
     )
 
 

@@ -1,10 +1,12 @@
 from . jv_flooring import JVFlooring
 from . jv_siding import JVSiding
+from . jv_roofing import JVRoofing
 
 
 registered_types = {
     "flooring": JVFlooring,
-    "siding": JVSiding
+    "siding": JVSiding,
+    "roofing": JVRoofing
 }
 
 

@@ -33,6 +33,20 @@ class JVSidingAdd(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class JVRoofingAdd(bpy.types.Operator):
+    bl_idname = "object.jv_add_roofing"
+    bl_label = "Add Roofing"
+    bl_description = "JARCH Vis: Add Roofing"
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        o = context.object
+
+        o.jv_properties.object_type = "roofing"
+
+        return {"FINISHED"}
+
+
 # ---------------------------------------------------------------------------
 # Generic Operators
 # ---------------------------------------------------------------------------
@@ -67,6 +81,7 @@ class JVUpdate(bpy.types.Operator):
 classes = (
     JVFlooringAdd,
     JVSidingAdd,
+    JVRoofingAdd,
 
     JVDelete,
     JVUpdate

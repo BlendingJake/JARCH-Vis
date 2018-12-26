@@ -10,7 +10,8 @@ class JVPanel(Panel):
 
     jv_add_operators = [
         ("object.jv_add_flooring", "MESH_GRID"),
-        ("object.jv_add_siding", "MOD_TRIANGULATE")
+        ("object.jv_add_siding", "MOD_TRIANGULATE"),
+        ("object.jv_add_roofing", "LINCURVE")
     ]
 
     jv_consistent_operators = [

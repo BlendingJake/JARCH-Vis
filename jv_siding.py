@@ -574,7 +574,7 @@ class JVSiding(JVBuilderBase):
             first_width_for_fixed_offset = width
 
         offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
-                                                                    props.row_offset_variance)
+                                                                   props.row_offset_variance)
         exposure_variance = JVSiding._create_variance_function(props.vary_length, exposure, props.length_variance)
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
 
