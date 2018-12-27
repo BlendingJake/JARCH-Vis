@@ -71,7 +71,8 @@ class JVProperties(PropertyGroup):
             ("tin_angular", "Tin - Angular", ""),
             ("tin_standing_seam", "Tin - Standing Seam", ""),
             ("shingles_3_tab", "Shingles - 3 Tab", ""),
-            ("shingles_architectural", "Shingles - Architectural", "")
+            ("shingles_architectural", "Shingles - Architectural", ""),
+            ("shakes", "Shakes", "")
         ), default="tin_regular", description="Roofing Pattern", update=jv_on_property_update
     )
 
@@ -162,7 +163,13 @@ class JVProperties(PropertyGroup):
     thickness: FloatProperty(
         name="Thickness",
         min=1 * Units.ETH_INCH, default=1 * Units.INCH, subtype="DISTANCE",
-        description="The thickness of each board or tile", update=jv_on_property_update
+        description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
+    )
+
+    thickness_thick: FloatProperty(
+        name="Thickness",
+        min=1*Units.ETH_INCH, default=2.5*Units.INCH, step=75, precision=3, subtype="DISTANCE",
+        description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
     )
 
     vary_thickness: BoolProperty(
@@ -220,7 +227,7 @@ class JVProperties(PropertyGroup):
     shake_length: FloatProperty(
         name="Shake Length",
         min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
-        description="The length/exposure of each shake", update=jv_on_property_update
+        description="The length of each shake, the actual exposure will be length/2", update=jv_on_property_update
     )
 
     pitch: FloatProperty(

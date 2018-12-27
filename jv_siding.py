@@ -37,7 +37,7 @@ class JVSiding(JVBuilderBase):
             layout.separator()
             layout.prop(props, "dutch_lap_breakpoint")
 
-        # length and width variance
+        # width variance
         if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "shakes"):
             layout.separator()
             row = layout.row()
@@ -46,6 +46,8 @@ class JVSiding(JVBuilderBase):
             if props.vary_width:
                 row.prop(props, "width_variance")
 
+        # length variance
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
             layout.separator()
             row = layout.row()
 
@@ -83,7 +85,11 @@ class JVSiding(JVBuilderBase):
         if props.siding_pattern not in ("tin_regular", "tin_angular"):
             layout.separator()
             box = layout.box()
-            box.prop(props, "thickness")
+
+            if props.siding_pattern == "brick":
+                box.prop(props, "thickness_thick")
+            else:
+                box.prop(props, "thickness")
 
             # NOTE: we cannot have varying thickness if battens are involved
             if props.siding_pattern in ("dutch_lap", "brick") or \
@@ -171,8 +177,9 @@ class JVSiding(JVBuilderBase):
 
         # solidify - add thickness to props.thickness level
         if props.siding_pattern in ("regular", "brick"):
+            th = props.thickness_thick if props.siding_pattern == "brick" else props.thickness
             JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, props.thickness,
-                                                                        props.thickness_variance),
+                                                                        th),
                                direction_vector=(0, -1, 0)
                                )
         # solidify - add thickness, non-variable
@@ -566,8 +573,8 @@ class JVSiding(JVBuilderBase):
 
     @staticmethod
     def _shakes(props, verts, faces):
-        exposure, width, gap = props.shake_length, props.shake_width, props.gap_uniform
-        th_y = -props.thickness
+        length, width, gap = props.shake_length, props.shake_width, props.gap_uniform
+        th_y, hl = -2 * props.thickness, length / 2
 
         first_width_for_fixed_offset = width * (props.row_offset / 100)
         if first_width_for_fixed_offset == 0:
@@ -575,16 +582,23 @@ class JVSiding(JVBuilderBase):
 
         offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
                                                                    props.row_offset_variance)
-        exposure_variance = JVSiding._create_variance_function(props.vary_length, exposure, props.length_variance)
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+        upper_x, upper_z = props.length, props.height
+
+        # bottom row backing layer
+        verts += [
+            (0, th_y/2, 0),
+            (upper_x, th_y/2, 0),
+            (upper_x, 0, hl),
+            (0, 0, hl)
+        ]
+        faces.append((0, 1, 2, 3))
 
         z = 0
         odd = False
-        upper_x, upper_z = props.length, props.height
         while z < upper_z:
             x = 0
 
-            cur_exposure = sqrt(exposure_variance()**2 - th_y**2)
             while x < upper_x:
                 cur_width = width_variance()
                 if x == 0:
@@ -594,7 +608,7 @@ class JVSiding(JVBuilderBase):
                         cur_width = offset_width_variance()
 
                 dx = min(cur_width, upper_x-x)
-                dz = min(cur_exposure, upper_z-z)
+                dz = min(length, upper_z-z)
 
                 verts += [
                     (x, th_y, z),
@@ -607,5 +621,5 @@ class JVSiding(JVBuilderBase):
                 faces.append((p, p+1, p+2, p+3))
 
                 x += cur_width + gap
-            z += cur_exposure
+            z += hl
             odd = not odd

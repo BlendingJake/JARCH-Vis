@@ -317,3 +317,8 @@ class JVRoofing(JVBuilderBase):
 
             y += hw
             odd = not odd
+
+    @staticmethod
+    def _shakes(props, verts, faces):
+        length, width, th, gap = props.shake_length, props.shake_width, props.thickness, props.gap_uniform
+
