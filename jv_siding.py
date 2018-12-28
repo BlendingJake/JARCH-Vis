@@ -75,8 +75,16 @@ class JVSiding(JVBuilderBase):
                 if props.vary_batten_width:
                     row.prop(props, "batten_width_variance")
 
+        # jointing
+        if props.siding_pattern == "brick":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "joint_left", icon="ALIGN_LEFT")
+            row.prop(props, "joint_right", icon="ALIGN_RIGHT")
+
         # row offset
-        if props.siding_pattern in ("brick", "shakes", "scallop_shakes"):
+        if props.siding_pattern in ("shakes", "scallop_shakes") or \
+                (props.siding_pattern == "brick" and not props.joint_right and not props.joint_left):
             layout.separator()
             row = layout.row()
 
@@ -148,7 +156,13 @@ class JVSiding(JVBuilderBase):
         mortar_mesh = None
         if props.siding_pattern == "brick" and props.add_grout:
             mortar_mesh = bmesh.new()
-            for v in ((0, 0, 0), (props.length, 0, 0), (props.length, 0, props.height), (0, 0, props.height)):
+
+            # account for jointing
+            th = props.thickness_thick * (1 - (props.grout_depth / 100)) + props.gap_uniform
+            lx = th if props.joint_left else 0
+            rx = th if props.joint_right else 0
+
+            for v in ((-lx, 0, 0), (props.length+rx, 0, 0), (props.length+rx, 0, props.height), (-lx, 0, props.height)):
                 mortar_mesh.verts.new(v)
             mortar_mesh.verts.ensure_lookup_table()
 
@@ -547,7 +561,7 @@ class JVSiding(JVBuilderBase):
 
     @staticmethod
     def _brick(props, verts, faces):
-        length, height, gap = props.brick_length, props.brick_height, props.gap_uniform
+        length, height, gap, th = props.brick_length, props.brick_height, props.gap_uniform, props.thickness_thick
 
         first_length_for_fixed_offset = length * (props.row_offset / 100)
         if first_length_for_fixed_offset == 0:
@@ -560,7 +574,10 @@ class JVSiding(JVBuilderBase):
         odd = False
         upper_x, upper_z = props.length, props.height
         while z < upper_z:
-            x = 0
+            if odd and props.joint_left:
+                x = -th - gap
+            else:
+                x = 0
 
             trimmed_height = min(height, upper_z-z)
             while x < upper_x:
@@ -571,7 +588,10 @@ class JVSiding(JVBuilderBase):
                     elif props.vary_row_offset:
                         cur_length = offset_length_variance()
 
-                trimmed_length = min(cur_length, upper_x-x)
+                if not odd and props.joint_right:
+                    trimmed_length = min(cur_length, upper_x + th + gap - x)
+                else:
+                    trimmed_length = min(cur_length, upper_x - x)
 
                 verts += [
                     (x, 0, z),

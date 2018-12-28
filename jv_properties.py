@@ -347,6 +347,18 @@ class JVProperties(PropertyGroup):
         description="The length of each brick", update=jv_on_property_update
     )
 
+    joint_left: BoolProperty(
+        name="Joint Left?",
+        default=False, description="Leave 'thickness + gap' overhang on odd rows to allow jointing?",
+        update=jv_on_property_update
+    )
+
+    joint_right: BoolProperty(
+        name="Joint Right?",
+        default=False, description="Leave 'thickness + gap' overhang on even rows to allow jointing?",
+        update=jv_on_property_update
+    )
+
     # ROOFING SPECIFIC -------------------------------------------------------------------------
     pan_width: FloatProperty(
         name="Pan Width",
