@@ -113,6 +113,9 @@ class JVFlooring(JVBuilderBase):
                              direction_vector=(0, 0, 1)
                              )
 
+        # main material index
+        JVFlooring._add_material_index(mesh.faces, 0)
+
         JVFlooring._finish(context, mesh)
 
     @staticmethod

@@ -82,6 +82,9 @@ class JVRoofing(JVBuilderBase):
         if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
             JVRoofing._solidify(mesh, JVRoofing._create_variance_function(False, props.thickness_thin, 0))
 
+        # main material index
+        JVRoofing._add_material_index(mesh.faces, 0)
+
         JVRoofing._finish(context, mesh)
 
     @staticmethod

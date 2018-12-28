@@ -190,8 +190,8 @@ class JVSiding(JVBuilderBase):
         # solidify - add thickness to props.thickness level
         if props.siding_pattern in ("regular", "brick"):
             th = props.thickness_thick if props.siding_pattern == "brick" else props.thickness
-            JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, props.thickness,
-                                                                        th),
+            JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, th,
+                                                                        props.thickness_variance),
                                direction_vector=(0, -1, 0)
                                )
         # solidify - add thickness, non-variable
@@ -202,9 +202,12 @@ class JVSiding(JVBuilderBase):
         elif props.siding_pattern == "dutch_lap":
             JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
 
+        # add main material index
+        JVSiding._add_material_index(mesh.faces, 0)
+
         # solidify mortar
         if mortar_mesh is not None:
-            th = props.thickness * (1 - (props.grout_depth / 100))
+            th = props.thickness_thick * (1 - (props.grout_depth / 100))
             JVSiding._solidify(mortar_mesh, JVSiding._create_variance_function(False, th, 0),
                                direction_vector=(0, -1, 0))
 
@@ -215,7 +218,8 @@ class JVSiding(JVBuilderBase):
             mesh.verts.ensure_lookup_table()
 
             for f in mortar_mesh.faces:
-                mesh.faces.new([mappings[v] for v in f.verts])
+                face = mesh.faces.new([mappings[v] for v in f.verts])
+                face.material_index = 1
             mesh.faces.ensure_lookup_table()
 
         JVSiding._finish(context, mesh)

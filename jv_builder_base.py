@@ -138,3 +138,8 @@ class JVBuilderBase:
             vert.co = pos
 
         mesh.verts.ensure_lookup_table()
+
+    @staticmethod
+    def _add_material_index(faces, index: int):
+        for f in faces:
+            f.material_index = index
