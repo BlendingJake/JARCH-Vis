@@ -60,7 +60,8 @@ class JVProperties(PropertyGroup):
             ("tin_regular", "Tin - Regular", ""),
             ("tin_angular", "Tin - Angular", ""),
             ("brick", "Brick", ""),
-            ("shakes", "Shakes", "")
+            ("shakes", "Shakes", ""),
+            ("scallop_shakes", "Scallop Shakes", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
@@ -160,9 +161,15 @@ class JVProperties(PropertyGroup):
         description="The length of each board will be in length +- length*variance", update=jv_on_property_update
     )
 
+    thickness_thin: FloatProperty(
+        name="Thickness",
+        min=Units.ETH_INCH, default=5*Units.STH_INCH, step=100, precision=4, subtype="DISTANCE",
+        description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
+    )
+
     thickness: FloatProperty(
         name="Thickness",
-        min=1 * Units.ETH_INCH, default=1 * Units.INCH, subtype="DISTANCE",
+        min=Units.ETH_INCH, default=1.5 * Units.INCH, step=100, subtype="DISTANCE",
         description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
     )
 
@@ -220,7 +227,7 @@ class JVProperties(PropertyGroup):
 
     shake_width: FloatProperty(
         name="Shake Width",
-        min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1*Units.INCH, default=4*Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The width of each shake", update=jv_on_property_update
     )
 
@@ -228,6 +235,11 @@ class JVProperties(PropertyGroup):
         name="Shake Length",
         min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The length of each shake, the actual exposure will be length/2", update=jv_on_property_update
+    )
+
+    scallop_resolution: IntProperty(
+        name="Curve Resolution",
+        min=1, default=8, description="The smoothness of the curve", update=jv_on_property_update
     )
 
     pitch: FloatProperty(

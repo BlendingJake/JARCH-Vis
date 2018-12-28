@@ -1,7 +1,7 @@
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
 from mathutils import Vector, Euler
-from math import atan, radians, sqrt
+from math import atan, radians, sqrt, sin, cos
 import bmesh
 
 
@@ -24,7 +24,7 @@ class JVSiding(JVBuilderBase):
             row = layout.row()
             row.prop(props, "brick_height")
             row.prop(props, "brick_length")
-        elif props.siding_pattern == "shakes":
+        elif props.siding_pattern in ("shakes", "scallop_shakes"):
             row = layout.row()
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
@@ -55,6 +55,11 @@ class JVSiding(JVBuilderBase):
             if props.vary_length:
                 row.prop(props, "length_variance")
 
+        # scallop resolution
+        if props.siding_pattern == "scallop_shakes":
+            layout.separator()
+            layout.prop(props, "scallop_resolution")
+
         # battens
         if props.siding_pattern == "regular" and props.siding_direction == "vertical":
             layout.separator()
@@ -71,7 +76,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "batten_width_variance")
 
         # row offset
-        if props.siding_pattern in ("brick", "shakes"):
+        if props.siding_pattern in ("brick", "shakes", "scallop_shakes"):
             layout.separator()
             row = layout.row()
 
@@ -88,6 +93,8 @@ class JVSiding(JVBuilderBase):
 
             if props.siding_pattern == "brick":
                 box.prop(props, "thickness_thick")
+            elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
+                box.prop(props, "thickness_thin")
             else:
                 box.prop(props, "thickness")
 
@@ -100,7 +107,8 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "thickness_variance")
 
         # gaps
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick", "shakes"):
+        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick", "shakes",
+                                    "scallop_shakes"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
@@ -147,12 +155,16 @@ class JVSiding(JVBuilderBase):
             mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 1, 2, 3)])
             mortar_mesh.faces.ensure_lookup_table()
 
-        # cut if needed
-        if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular"):
+        # cut top and right
+        if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular", "scallop_shakes"):
             JVSiding._cut_meshes([mesh], [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
             ], fill_holes=props.siding_pattern == "tongue_groove")
+
+        # cut left
+        if props.siding_pattern == "scallop_shakes":
+            JVSiding._cut_meshes([mesh], [((0, 0, 0), (1, 0, 0))])
 
         # cut slope
         if props.slope_top:
@@ -183,8 +195,8 @@ class JVSiding(JVBuilderBase):
                                direction_vector=(0, -1, 0)
                                )
         # solidify - add thickness, non-variable
-        elif props.siding_pattern in ("clapboard", "shakes"):
-            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness, 0))
+        elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
+            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness_thin, 0))
 
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
@@ -574,7 +586,7 @@ class JVSiding(JVBuilderBase):
     @staticmethod
     def _shakes(props, verts, faces):
         length, width, gap = props.shake_length, props.shake_width, props.gap_uniform
-        th_y, hl = -2 * props.thickness, length / 2
+        th_y, hl = -2 * props.thickness_thin, length / 2
 
         first_width_for_fixed_offset = width * (props.row_offset / 100)
         if first_width_for_fixed_offset == 0:
@@ -587,8 +599,8 @@ class JVSiding(JVBuilderBase):
 
         # bottom row backing layer
         verts += [
-            (0, th_y/2, 0),
-            (upper_x, th_y/2, 0),
+            (0, th_y / 2, 0),
+            (upper_x, th_y / 2, 0),
             (upper_x, 0, hl),
             (0, 0, hl)
         ]
@@ -623,3 +635,47 @@ class JVSiding(JVBuilderBase):
                 x += cur_width + gap
             z += hl
             odd = not odd
+
+    @staticmethod
+    def _scallop_shakes(props, verts, faces):
+        length, width, gap, th = props.shake_length, props.shake_width, props.gap_uniform, props.thickness_thin
+        rad, res = width / 2, props.scallop_resolution
+        rest_z, ang_step = length - rad, radians(180 / (res+1))
+        th_y, y_slope = -th, -th / rest_z
+
+        first_width_for_fixed_offset = width * (props.row_offset / 100)
+        if first_width_for_fixed_offset == width:
+            first_width_for_fixed_offset = 0
+
+        offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
+                                                                   props.row_offset_variance)
+
+        upper_x, upper_z = props.length, props.height
+        odd = False
+        z = rad
+        while z < upper_z:
+            x = 0
+            if odd and not props.vary_row_offset:
+                x = -first_width_for_fixed_offset
+            elif props.vary_row_offset:
+                x = -offset_width_variance()
+
+            while x < upper_x:
+                cx = x + rad
+                top = z+rest_z
+                p = len(verts)
+                for i in range(res+2):
+                    ang = ang_step * i
+                    dx = rad * cos(ang)
+                    dz = rad * sin(ang)
+
+                    verts += [(cx-dx, th_y + (y_slope*dz), z-dz), (cx-dx, 0, top)]
+
+                # faces
+                for i in range(res+1):
+                    faces.append((p, p+2, p+3, p+1))
+                    p += 2
+
+                x += width + gap
+            odd = not odd
+            z += rest_z

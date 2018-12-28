@@ -14,13 +14,19 @@ class JVRoofing(JVBuilderBase):
         row.prop(props, "width")
         row.prop(props, "length")
         layout.prop(props, "pitch")
-        layout.separator()
 
         if props.roofing_pattern == "tin_standing_seam":
+            layout.separator()
             layout.prop(props, "pan_width")
+        elif props.roofing_pattern == "shakes":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "shake_length")
+            row.prop(props, "shake_width")
 
         # row offset
-        if props.roofing_pattern == "shingles_3_tab":
+        if props.roofing_pattern in ("shingles_3_tab", "shakes"):
+            layout.separator()
             row = layout.row()
 
             row.prop(props, "vary_row_offset", icon="RNDCURVE")
@@ -28,6 +34,16 @@ class JVRoofing(JVBuilderBase):
                 row.prop(props, "row_offset_variance")
             else:
                 row.prop(props, "row_offset")
+
+        # thickness
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
+            layout.separator()
+            layout.prop(props, "thickness_thin")
+
+        # gap
+        if props.roofing_pattern == "shakes":
+            layout.separator()
+            layout.prop(props, "gap_uniform")
 
     @staticmethod
     def update(props, context):
@@ -63,13 +79,8 @@ class JVRoofing(JVBuilderBase):
         # mirror
 
         # solidify
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural"):
-            if props.roofing_pattern == "shingles_3_tab":
-                th = 5 * Units.STH_INCH
-            else:
-                th = 3*Units.STH_INCH
-
-            JVRoofing._solidify(mesh, JVRoofing._create_variance_function(False, th, 0))
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
+            JVRoofing._solidify(mesh, JVRoofing._create_variance_function(False, props.thickness_thin, 0))
 
         JVRoofing._finish(context, mesh)
 
@@ -189,7 +200,7 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def _shingles_3_tab(props, verts, faces):
-        width, exposure, th, gap = Units.FOOT, 11*Units.H_INCH, 5*Units.STH_INCH, Units.H_INCH
+        width, exposure, th, gap = Units.FOOT, 11*Units.H_INCH, props.thickness_thin, Units.H_INCH
 
         first_length_for_fixed_offset = (width - (gap/2)) * (props.row_offset / 100)
         if first_length_for_fixed_offset == 0:
@@ -255,7 +266,7 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def _shingles_architectural(props, verts, faces):
-        hi, th, width = Units.H_INCH, 3*Units.STH_INCH, Units.FOOT
+        hi, th, width = Units.H_INCH, props.thickness_thin, Units.FOOT
         hw = width / 2
 
         bottom_z, mid_z = 4*th, 2*th
@@ -320,5 +331,54 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def _shakes(props, verts, faces):
-        length, width, th, gap = props.shake_length, props.shake_width, props.thickness, props.gap_uniform
+        length, width, gap = props.shake_length, props.shake_width, props.gap_uniform
+        th_z, hl = 2 * props.thickness_thin, length / 2
+
+        first_width_for_fixed_offset = width * (props.row_offset / 100)
+        if first_width_for_fixed_offset == 0:
+            first_width_for_fixed_offset = width
+
+        offset_width_variance = JVRoofing._create_variance_function(props.vary_row_offset, width / 2,
+                                                                    props.row_offset_variance)
+        width_variance = JVRoofing._create_variance_function(props.vary_width, width, props.width_variance)
+        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+
+        # bottom row backing layer
+        verts += [
+            (0, 0, th_z / 2),
+            (upper_x, 0, th_z / 2),
+            (upper_x, hl, 0),
+            (0, hl, 0)
+        ]
+        faces.append((0, 1, 2, 3))
+
+        y = 0
+        odd = False
+        while y < upper_y:
+            x = 0
+
+            while x < upper_x:
+                cur_width = width_variance()
+                if x == 0:
+                    if odd and not props.vary_row_offset:
+                        cur_width = first_width_for_fixed_offset
+                    elif props.vary_row_offset:
+                        cur_width = offset_width_variance()
+
+                dx = min(cur_width, upper_x - x)
+                dy = min(length, upper_y - y)
+
+                verts += [
+                    (x, y, th_z),
+                    (x + dx, y, th_z),
+                    (x + dx, y + dy, 0),
+                    (x, y + dy, 0)
+                ]
+
+                p = len(verts) - 4
+                faces.append((p, p + 1, p + 2, p + 3))
+
+                x += cur_width + gap
+            y += hl
+            odd = not odd
 
