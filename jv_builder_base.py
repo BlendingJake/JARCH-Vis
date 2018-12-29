@@ -42,7 +42,8 @@ class JVBuilderBase:
     @staticmethod
     def _solidify(mesh, thickness_func, direction_vector=None):
         visited = set()
-        for item in bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]:
+        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]
+        for item in new_geom:
             if isinstance(item, bmesh.types.BMFace):
                 th = thickness_func()
 
@@ -58,6 +59,8 @@ class JVBuilderBase:
                         v.co.z += dv[2] * th
 
                         visited.add(v)
+
+        return new_geom
 
     @staticmethod
     def _create_variance_function(vary: bool, base_amount: float, variance: float):
@@ -143,3 +146,31 @@ class JVBuilderBase:
     def _add_material_index(faces, index: int):
         for f in faces:
             f.material_index = index
+
+    @staticmethod
+    def _add_uv_seams_for_solidified_plane(extruded_geometry, original_edges, mesh):
+        print(len(extruded_geometry))
+        print(len(original_edges))
+        """
+        Add seams to all vertical edges and n-1 of the n top edges to allow the mesh to be unwrapped and lay flat
+        :param extruded_geometry: The new vertices, edges, and faces from bmesh.ops.solidify["geom"]
+        :param original_edges: the edges that formed the original plane
+        :param mesh: the current mesh object
+        """
+        og_edges = set(original_edges)
+        new_edges = set()
+
+        for item in extruded_geometry:
+            if isinstance(item, bmesh.types.BMFace):  # mark all but one of the top edges
+                first = True
+                for e in item.edges:
+                    new_edges.add(e)
+                    if first:
+                        first = not first
+                        continue
+                    else:
+                        e.seam = True
+
+        for edge in mesh.edges:
+            if edge not in new_edges and edge not in og_edges:
+                edge.seam = True

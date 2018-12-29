@@ -59,6 +59,8 @@ class JVRoofing(JVBuilderBase):
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
 
+        original_edges = mesh.edges[:]
+
         # overall dimension cutting - length
         if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
                                      "shingles_architectural"):
@@ -79,11 +81,16 @@ class JVRoofing(JVBuilderBase):
         # mirror
 
         # solidify
+        new_geometry = []
         if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
-            JVRoofing._solidify(mesh, JVRoofing._create_variance_function(False, props.thickness_thin, 0))
+            new_geometry += JVRoofing._solidify(mesh,
+                                                JVRoofing._create_variance_function(False, props.thickness_thin, 0))
 
         # main material index
         JVRoofing._add_material_index(mesh.faces, 0)
+
+        # add uv seams
+        JVRoofing._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVRoofing._finish(context, mesh)
 

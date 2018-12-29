@@ -152,8 +152,11 @@ class JVSiding(JVBuilderBase):
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
 
+        original_edges = mesh.edges[:]
+
         # create mortar mesh
         mortar_mesh = None
+        mortar_original_edges = []
         if props.siding_pattern == "brick" and props.add_grout:
             mortar_mesh = bmesh.new()
 
@@ -168,6 +171,8 @@ class JVSiding(JVBuilderBase):
 
             mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 1, 2, 3)])
             mortar_mesh.faces.ensure_lookup_table()
+
+            mortar_original_edges = mortar_mesh.edges[:]
 
         # cut top and right
         if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular", "scallop_shakes"):
@@ -201,20 +206,21 @@ class JVSiding(JVBuilderBase):
                 (center, right_normal)
             ], fill_holes=props.siding_pattern == "tongue_groove")
 
+        new_geometry = []
         # solidify - add thickness to props.thickness level
         if props.siding_pattern in ("regular", "brick"):
             th = props.thickness_thick if props.siding_pattern == "brick" else props.thickness
-            JVSiding._solidify(mesh, JVSiding._create_variance_function(props.vary_thickness, th,
-                                                                        props.thickness_variance),
-                               direction_vector=(0, -1, 0)
-                               )
+            new_geometry += JVSiding._solidify(mesh,
+                                               JVSiding._create_variance_function(props.vary_thickness, th,
+                                                                                  props.thickness_variance),
+                                               direction_vector=(0, -1, 0))
         # solidify - add thickness, non-variable
         elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
-            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness_thin, 0))
+            new_geometry += JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness_thin, 0))
 
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
-            JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
+            new_geometry += JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
 
         # add main material index
         JVSiding._add_material_index(mesh.faces, 0)
@@ -222,8 +228,8 @@ class JVSiding(JVBuilderBase):
         # solidify mortar
         if mortar_mesh is not None:
             th = props.thickness_thick * (1 - (props.grout_depth / 100))
-            JVSiding._solidify(mortar_mesh, JVSiding._create_variance_function(False, th, 0),
-                               direction_vector=(0, -1, 0))
+            mortar_new_geometry = JVSiding._solidify(mortar_mesh, JVSiding._create_variance_function(False, th, 0),
+                                                     direction_vector=(0, -1, 0))
 
             # merge mortar mesh
             mappings = {}
@@ -231,10 +237,34 @@ class JVSiding(JVBuilderBase):
                 mappings[v] = mesh.verts.new(v.co)
             mesh.verts.ensure_lookup_table()
 
+            new_edges = set()  # should have a size of 12
+            face_mappings = {}
             for f in mortar_mesh.faces:
                 face = mesh.faces.new([mappings[v] for v in f.verts])
+                face_mappings[f] = face
                 face.material_index = 1
+
+                for edge in face.edges:
+                    new_edges.add(edge)
             mesh.faces.ensure_lookup_table()
+
+            # determine where mortar_original_edges and mortar_new_geometry mapped in mesh.edges to all uv_seam handling
+            for edge in mortar_original_edges:  # should run 4*12 times in total
+                # find where edge maps
+                for cor_edge in new_edges:
+                    e1, e2 = mappings[edge.verts[0]], mappings[edge.verts[1]]
+                    ce1, ce2 = cor_edge.verts
+                    if (e1 is ce1 and e2 is ce2) or (e1 is ce2 and e2 is ce1):
+                        original_edges.append(cor_edge)
+
+            # map the extruded face to the corresponding face in the new mesh
+            for item in mortar_new_geometry:
+                if isinstance(item, bmesh.types.BMFace):
+                    new_geometry.append(face_mappings[item])
+
+        # add uv seams
+        if props.siding_pattern != "tongue_groove":
+            JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVSiding._finish(context, mesh)
 

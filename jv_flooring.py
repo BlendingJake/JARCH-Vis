@@ -95,6 +95,8 @@ class JVFlooring(JVBuilderBase):
         for f in faces:
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
+        
+        original_edges = mesh.edges[:]
 
         # cut if needed
         if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
@@ -107,14 +109,17 @@ class JVFlooring(JVBuilderBase):
             ])
 
         # solidify
-        JVFlooring._solidify(mesh,
-                             JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
-                                                                  props.thickness_variance),
-                             direction_vector=(0, 0, 1)
-                             )
+        new_geometry = JVFlooring._solidify(mesh,
+                                            JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
+                                                                                 props.thickness_variance),
+                                            direction_vector=(0, 0, 1)
+                                            )
 
         # main material index
         JVFlooring._add_material_index(mesh.faces, 0)
+
+        # add uv seams
+        JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVFlooring._finish(context, mesh)
 
