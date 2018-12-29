@@ -29,7 +29,7 @@ class JVBuilderBase:
         return bm
 
     @staticmethod
-    def _finish(context, mesh):
+    def _finish(context, mesh: bmesh.types.BMesh):
         mesh.normal_update()
         bmesh.update_edit_mesh(context.object.data, True)
 
@@ -41,7 +41,7 @@ class JVBuilderBase:
         pass
 
     @staticmethod
-    def _solidify(mesh, thickness: Union[callable, float]):
+    def _solidify(mesh: bmesh.types.BMesh, thickness: Union[callable, float]):
         """
         Solidify the mesh. If 'thickness' is callable, then use the normal as the direction
         :param mesh: the mesh to solidify
@@ -101,7 +101,7 @@ class JVBuilderBase:
             mesh.verts.ensure_lookup_table()
 
     @staticmethod
-    def _fill_holes(mesh, cut_geometry):
+    def _fill_holes(mesh: bmesh.types.BMesh, cut_geometry):
         verts, edges = set(), set()
         for item in cut_geometry:
             if isinstance(item, bmesh.types.BMEdge):

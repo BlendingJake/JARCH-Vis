@@ -446,5 +446,4 @@ class JVRoofing(JVBuilderBase):
 
                 # go forward to right edge of half-circle, then go back so 0.5*0.5" wing doesn't intersect half-circle
                 x += hi + spacing + (2*radius) - th - hi
-            y += length - th  # allow for 'th' of overlap in circles
-
+            y += length - hi  # allow for 'hi' of overlap in circles

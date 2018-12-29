@@ -263,6 +263,25 @@ class JVSiding(JVBuilderBase):
         # add uv seams
         if props.siding_pattern != "tongue_groove":
             JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
+        else:
+            # mark all long-side edges and all but one on the ends
+            ends = []
+            for face in mesh.faces:
+                if len(face.verts) > 5:  # any long side face should have less than 5 or less vertices after being cut
+                    ends.append(face)
+
+            end_edges = set()
+            for face in ends:
+                for edge in face.edges:
+                    end_edges.add(edge)
+
+            for i in range(0, len(ends), 2):  # every other face should be a new board
+                for edge in ends[i].edges[1:]:
+                    edge.seam = True
+
+            for edge in mesh.edges:
+                if edge not in end_edges:
+                    edge.seam = True
 
         JVSiding._finish(context, mesh)
 
