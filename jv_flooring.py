@@ -111,9 +111,7 @@ class JVFlooring(JVBuilderBase):
         # solidify
         new_geometry = JVFlooring._solidify(mesh,
                                             JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
-                                                                                 props.thickness_variance),
-                                            direction_vector=(0, 0, 1)
-                                            )
+                                                                                 props.thickness_variance))
 
         # main material index
         JVFlooring._add_material_index(mesh.faces, 0)
@@ -173,7 +171,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += length + props.gap_uniform
 
@@ -212,7 +210,7 @@ class JVFlooring(JVBuilderBase):
                             ]
 
                             p = len(verts) - 4
-                            faces.append((p, p+1, p+2, p+3))
+                            faces.append((p, p+3, p+2, p+1))
 
                             x += width + gap
                 else:
@@ -231,7 +229,7 @@ class JVFlooring(JVBuilderBase):
                             ]
 
                             p = len(verts) - 4
-                            faces.append((p, p + 1, p + 2, p + 3))
+                            faces.append((p, p+3, p+2, p+1))
 
                             ty += width + gap
                     x += length + gap
@@ -268,7 +266,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 # move to left-most corner of complementary board
                 x += leg_length + leg_gap - leg_width
@@ -283,7 +281,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p + 1, p + 2, p + 3))
+                faces.append((p, p+3, p+2, p+1))
 
                 # move to bottom-most corner of next board
                 x += leg_length + leg_width + leg_gap
@@ -313,7 +311,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += leg_length + props.gap_uniform
                 y += y_leg_length
@@ -366,7 +364,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 8
-                faces.extend(((p, p+1, p+2, p+3), (p+4, p+5, p+6, p+7)))
+                faces.extend(((p, p+3, p+2, p+1), (p+4, p+7, p+6, p+5)))
 
                 x += distance_between_groups
 
@@ -414,7 +412,7 @@ class JVFlooring(JVBuilderBase):
 
                 p = len(verts)
                 for i in range(p-20, p, 4):
-                    faces.append((i, i+1, i+2, i+3))
+                    faces.append((i, i+3, i+2, i+1))
 
                 x += length + gap + width + gap
             y += length + gap + width + gap
@@ -465,7 +463,7 @@ class JVFlooring(JVBuilderBase):
 
                 p = len(verts)
                 for i in range(p-24, p, 4):  # 6 faces, 4 vertices each
-                    faces.append((i, i+1, i+2, i+3))
+                    faces.append((i, i+3, i+2, i+1))
 
                 x += half_length + gap
                 y = ty
@@ -502,7 +500,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 6
-                faces.append((p, p+1, p+2, p+3, p+4, p+5))
+                faces.append((p, p+5, p+4, p+3, p+2, p+1))
 
                 if props.with_dots:
                     # add cube dot
@@ -520,7 +518,7 @@ class JVFlooring(JVBuilderBase):
                     x += d + (gap / 2)
 
                     p = len(verts) - 4
-                    faces.append((p, p+1, p+2, p+3))
+                    faces.append((p, p+3, p+2, p+1))
                 else:
                     x += x_leg + gap_dif + d
                     if move_down:
@@ -559,7 +557,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 8
-                faces.append((p, p+1, p+2, p+3, p+4, p+5, p+6, p+7))
+                faces.append((p, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
 
                 x += y_leg + (gap / 2)
                 y -= x_leg + gap_dif
@@ -572,7 +570,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += y_leg + (gap / 2)
                 y += x_leg + gap_dif
@@ -623,7 +621,7 @@ class JVFlooring(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += cur_length + gap
 

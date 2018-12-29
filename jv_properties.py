@@ -73,7 +73,8 @@ class JVProperties(PropertyGroup):
             ("tin_standing_seam", "Tin - Standing Seam", ""),
             ("shingles_3_tab", "Shingles - 3 Tab", ""),
             ("shingles_architectural", "Shingles - Architectural", ""),
-            ("shakes", "Shakes", "")
+            ("shakes", "Shakes", ""),
+            ("terracotta", "Terracotta", "")
         ), default="tin_regular", description="Roofing Pattern", update=jv_on_property_update
     )
 
@@ -364,6 +365,23 @@ class JVProperties(PropertyGroup):
         name="Pan Width",
         min=1*Units.INCH, default=Units.FOOT, precision=4, step=75, subtype="DISTANCE",
         description="The width of each pan", update=jv_on_property_update
+    )
+
+    terracotta_resolution: IntProperty(
+        name="Curve Resolution",
+        min=1, default=12, description="The resolution of the curve on the tile", update=jv_on_property_update
+    )
+
+    terracotta_radius: FloatProperty(
+        name="Tile Radius",
+        min=Units.INCH, default=2*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        description="The radius of the half-circle on the tile", update=jv_on_property_update
+    )
+
+    terracotta_gap: FloatProperty(
+        name="Tile Gap",
+        min=Units.H_INCH, default=1.5*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        description="The distance between the half-circles on the tiles", update=jv_on_property_update
     )
 
 

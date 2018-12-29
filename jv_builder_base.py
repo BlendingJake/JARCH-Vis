@@ -2,6 +2,7 @@ import bpy
 import bmesh
 from random import uniform
 from mathutils import Vector
+from typing import Union
 
 
 class JVBuilderBase:
@@ -40,25 +41,32 @@ class JVBuilderBase:
         pass
 
     @staticmethod
-    def _solidify(mesh, thickness_func, direction_vector=None):
+    def _solidify(mesh, thickness: Union[callable, float]):
+        """
+        Solidify the mesh. If 'thickness' is callable, then use the normal as the direction
+        :param mesh: the mesh to solidify
+        :param thickness: If thickness is callable, then each new face gets a thickness value from the function.
+                Otherwise, the value will be used consistently.
+        :return:
+        """
+        mesh.normal_update()
         visited = set()
-        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=0)["geom"]
-        for item in new_geom:
-            if isinstance(item, bmesh.types.BMFace):
-                th = thickness_func()
+        start_th = 0 if callable(thickness) else thickness
 
-                if direction_vector is None:
-                    dv = item.normal
-                else:
-                    dv = direction_vector
+        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=start_th)["geom"]
 
-                for v in item.verts:
-                    if v not in visited:
-                        v.co.x += dv[0] * th
-                        v.co.y += dv[1] * th
-                        v.co.z += dv[2] * th
+        # manually add thickness if 'thickness' is callable
+        if callable(thickness):
+            for item in new_geom:
+                if isinstance(item, bmesh.types.BMFace):
+                    th = thickness()
+                    for v in item.verts:
+                        if v not in visited:
+                            v.co.x += item.normal[0] * th
+                            v.co.y += item.normal[1] * th
+                            v.co.z += item.normal[2] * th
 
-                        visited.add(v)
+                            visited.add(v)
 
         return new_geom
 
@@ -149,8 +157,6 @@ class JVBuilderBase:
 
     @staticmethod
     def _add_uv_seams_for_solidified_plane(extruded_geometry, original_edges, mesh):
-        print(len(extruded_geometry))
-        print(len(original_edges))
         """
         Add seams to all vertical edges and n-1 of the n top edges to allow the mesh to be unwrapped and lay flat
         :param extruded_geometry: The new vertices, edges, and faces from bmesh.ops.solidify["geom"]

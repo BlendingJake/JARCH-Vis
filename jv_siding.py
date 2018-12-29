@@ -79,8 +79,8 @@ class JVSiding(JVBuilderBase):
         if props.siding_pattern == "brick":
             layout.separator()
             row = layout.row()
-            row.prop(props, "joint_left", icon="ALIGN_LEFT")
-            row.prop(props, "joint_right", icon="ALIGN_RIGHT")
+            row.prop(props, "joint_left", icon="ALIGN_RIGHT")
+            row.prop(props, "joint_right", icon="ALIGN_LEFT")
 
         # row offset
         if props.siding_pattern in ("shakes", "scallop_shakes") or \
@@ -169,7 +169,7 @@ class JVSiding(JVBuilderBase):
                 mortar_mesh.verts.new(v)
             mortar_mesh.verts.ensure_lookup_table()
 
-            mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 1, 2, 3)])
+            mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 3, 2, 1)])
             mortar_mesh.faces.ensure_lookup_table()
 
             mortar_original_edges = mortar_mesh.edges[:]
@@ -212,15 +212,14 @@ class JVSiding(JVBuilderBase):
             th = props.thickness_thick if props.siding_pattern == "brick" else props.thickness
             new_geometry += JVSiding._solidify(mesh,
                                                JVSiding._create_variance_function(props.vary_thickness, th,
-                                                                                  props.thickness_variance),
-                                               direction_vector=(0, -1, 0))
+                                                                                  props.thickness_variance))
         # solidify - add thickness, non-variable
         elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
-            new_geometry += JVSiding._solidify(mesh, JVSiding._create_variance_function(False, props.thickness_thin, 0))
+            new_geometry += JVSiding._solidify(mesh, props.thickness_thin)
 
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
-            new_geometry += JVSiding._solidify(mesh, JVSiding._create_variance_function(False, Units.ETH_INCH, 0))
+            new_geometry += JVSiding._solidify(mesh, Units.ETH_INCH)
 
         # add main material index
         JVSiding._add_material_index(mesh.faces, 0)
@@ -228,8 +227,7 @@ class JVSiding(JVBuilderBase):
         # solidify mortar
         if mortar_mesh is not None:
             th = props.thickness_thick * (1 - (props.grout_depth / 100))
-            mortar_new_geometry = JVSiding._solidify(mortar_mesh, JVSiding._create_variance_function(False, th, 0),
-                                                     direction_vector=(0, -1, 0))
+            mortar_new_geometry = JVSiding._solidify(mortar_mesh, th)
 
             # merge mortar mesh
             mappings = {}
@@ -308,7 +306,7 @@ class JVSiding(JVBuilderBase):
                     ]
 
                     p = len(verts) - 4
-                    faces.append((p, p+1, p+2, p+3))
+                    faces.append((p, p+3, p+2, p+1))
 
                     z += cur_length + gap
                 x += cur_width + gap
@@ -333,7 +331,7 @@ class JVSiding(JVBuilderBase):
                             ]
 
                             p = len(verts) - 4
-                            faces.append((p, p+1, p+2, p+3))
+                            faces.append((p, p+3, p+2, p+1))
 
                             tz += bl + gap
 
@@ -357,7 +355,7 @@ class JVSiding(JVBuilderBase):
                     ]
 
                     p = len(verts) - 4
-                    faces.append((p, p + 1, p + 2, p + 3))
+                    faces.append((p, p+3, p+2, p+1))
 
                     x += cur_length + gap
                 z += cur_width + gap
@@ -481,18 +479,18 @@ class JVSiding(JVBuilderBase):
 
                 p = len(verts) - 8
                 faces.extend((
-                    (p, p+4, p+5, p+1),
-                    (p+1, p+5, p+6, p+2),
-                    (p+2, p+6, p+7, p+3)
+                    (p, p+1, p+5, p+4),
+                    (p+1, p+2, p+6, p+5),
+                    (p+2, p+3, p+7, p+6)
                 ))
 
                 x += cur_length + gap
-            z += cur_width  # no gap in vertical direction
+            z += cur_width + Units.ETH_INCH  # shift up width + thickness
 
     @staticmethod
     def _clapboard(props, verts, faces):
         length, width, gap = props.board_length_long, props.board_width_medium, props.gap_uniform
-        th = props.thickness
+        th = props.thickness_thin
         length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
 
@@ -516,10 +514,10 @@ class JVSiding(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += length + gap
-            z += vertical_width + gap
+            z += vertical_width
 
     @staticmethod
     def _tin_regular(props, verts, faces):
@@ -631,7 +629,7 @@ class JVSiding(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += cur_length + gap
             z += height + gap
@@ -658,7 +656,7 @@ class JVSiding(JVBuilderBase):
             (upper_x, 0, hl),
             (0, 0, hl)
         ]
-        faces.append((0, 1, 2, 3))
+        faces.append((0, 3, 2, 1))
 
         z = 0
         odd = False
@@ -684,7 +682,7 @@ class JVSiding(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+1, p+2, p+3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += cur_width + gap
             z += hl
@@ -727,7 +725,7 @@ class JVSiding(JVBuilderBase):
 
                 # faces
                 for i in range(res+1):
-                    faces.append((p, p+2, p+3, p+1))
+                    faces.append((p, p+1, p+3, p+2))
                     p += 2
 
                 x += width + gap

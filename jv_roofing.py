@@ -1,6 +1,6 @@
 from . jv_builder_base import JVBuilderBase
 from mathutils import Euler
-from math import atan, cos
+from math import atan, cos, radians, sin
 from . jv_utils import Units
 
 
@@ -23,6 +23,11 @@ class JVRoofing(JVBuilderBase):
             row = layout.row()
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
+        elif props.roofing_pattern == "terracotta":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "tile_length")
+            row.prop(props, "terracotta_radius")
 
         # row offset
         if props.roofing_pattern in ("shingles_3_tab", "shakes"):
@@ -36,9 +41,17 @@ class JVRoofing(JVBuilderBase):
                 row.prop(props, "row_offset")
 
         # thickness
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes", "terracotta"):
             layout.separator()
             layout.prop(props, "thickness_thin")
+
+        # terracotta spacing and resolution
+        if props.roofing_pattern == "terracotta":
+            layout.separator()
+            layout.prop(props, "terracotta_gap")
+
+            layout.separator()
+            layout.prop(props, "terracotta_resolution")
 
         # gap
         if props.roofing_pattern == "shakes":
@@ -63,12 +76,12 @@ class JVRoofing(JVBuilderBase):
 
         # overall dimension cutting - length
         if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
-                                     "shingles_architectural"):
+                                     "shingles_architectural", "terracotta"):
             JVRoofing._cut_meshes([mesh], [
                 ((props.length, 0, 0), (-1, 0, 0))
             ])
         # overall dimension cutting - width
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural"):
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "terracotta"):
             JVRoofing._cut_meshes([mesh], [
                 ((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))
             ])
@@ -82,9 +95,8 @@ class JVRoofing(JVBuilderBase):
 
         # solidify
         new_geometry = []
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes"):
-            new_geometry += JVRoofing._solidify(mesh,
-                                                JVRoofing._create_variance_function(False, props.thickness_thin, 0))
+        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes", "terracotta"):
+            new_geometry += JVRoofing._solidify(mesh, props.thickness_thin)
 
         # main material index
         JVRoofing._add_material_index(mesh.faces, 0)
@@ -230,7 +242,7 @@ class JVRoofing(JVBuilderBase):
             (props.length, exposure, middle_z-th),
             (0, exposure, middle_z-th)
         ]
-        faces.append((0, 1, 2, 3))
+        faces.append((0, 3, 2, 1))
 
         upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
         y = 0
@@ -268,9 +280,9 @@ class JVRoofing(JVBuilderBase):
             is_gap = False
             for i in range(0, 3*(sets - 1), 3):  # do one less set to just fill between sets
                 if is_gap:
-                    faces.append((p+i+1, p+i+4, p+i+5, p+i+2))
+                    faces.append((p+i+1, p+i+2, p+i+5, p+i+4))
                 else:
-                    faces.extend(((p+i, p+i+3, p+i+4, p+i+1), (p+i+1, p+i+4, p+i+5, p+i+2)))
+                    faces.extend(((p+i, p+i+1, p+i+4, p+i+3), (p+i+1, p+i+2, p+i+5, p+i+4)))
 
                 is_gap = not is_gap
 
@@ -297,7 +309,7 @@ class JVRoofing(JVBuilderBase):
             ]
 
             p = len(verts) - 4
-            faces.append((p, p+1, p+2, p+3))
+            faces.append((p, p+3, p+2, p+1))
 
             x = 0
             finish = False
@@ -331,9 +343,9 @@ class JVRoofing(JVBuilderBase):
             sets = (len(verts) - p - 2) // 6
             for i in range(0, 6*sets, 6):
                 faces.extend((
-                    (p+i, p+i+3, p+i+4, p+i+1),
-                    (p+i+2, p+i+5, p+i+6, p+i+3),
-                    (p+i+3, p+i+6, p+i+7, p+i+4)
+                    (p+i, p+i+1, p+i+4, p+i+3),
+                    (p+i+2, p+i+3, p+i+6, p+i+5),
+                    (p+i+3, p+i+4, p+i+7, p+i+6)
                 ))
 
             y += hw
@@ -360,7 +372,7 @@ class JVRoofing(JVBuilderBase):
             (upper_x, hl, 0),
             (0, hl, 0)
         ]
-        faces.append((0, 1, 2, 3))
+        faces.append((0, 3, 2, 1))
 
         y = 0
         odd = False
@@ -386,9 +398,48 @@ class JVRoofing(JVBuilderBase):
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p + 1, p + 2, p + 3))
+                faces.append((p, p+3, p+2, p+1))
 
                 x += cur_width + gap
             y += hl
             odd = not odd
+
+    @staticmethod
+    def _terracotta(props, verts, faces):
+        length, radius, th = props.tile_length, props.terracotta_radius, props.thickness_thin
+        spacing, res, hi = props.terracotta_gap, props.terracotta_resolution, Units.H_INCH
+        ang_step = radians(175 / (res + 1))  # don't complete full half-circle, end a couple of degrees short
+
+        steps = (
+            (spacing, radius, 0, th),  # bottom spacing, radius, delta-y, and delta-z values
+            (spacing + th, radius-th, length, 0)  # top spacing, radius, delta-y, and delta-z values
+        )
+
+        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        y = 0
+        while y < upper_y:
+            x = 0
+            while x < upper_x:
+                # build bottom row of vertices, then do the top row
+                p = len(verts)
+                for space, rad, dy, z in steps:
+                    tx = x
+                    verts += [(tx, y+dy, z+hi), (tx+hi, y+dy, z)]
+
+                    tx += hi+space+rad
+                    for i in range(res + 2):
+                        ang = ang_step * i
+                        dx, dz = rad * cos(ang), rad * sin(ang)
+
+                        verts.append((tx-dx, y+dy, z+dz))
+
+                # faces
+                offset = 2 + res + 2  # 2 vertices for wing and spacing, then res+2 for half-circle
+                for _ in range(2 + res + 1):  # 2 faces for wing and spacing, then res+1 for half-circle
+                    faces.append((p, p+offset, p+offset+1, p+1))
+                    p += 1
+
+                # go forward to right edge of half-circle, then go back so 0.5*0.5" wing doesn't intersect half-circle
+                x += hi + spacing + (2*radius) - th - hi
+            y += length
 
