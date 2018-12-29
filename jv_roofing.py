@@ -1,6 +1,6 @@
 from . jv_builder_base import JVBuilderBase
 from mathutils import Euler
-from math import atan, cos, radians, sin
+from math import atan, cos, radians, sin, asin
 from . jv_utils import Units
 
 
@@ -408,30 +408,35 @@ class JVRoofing(JVBuilderBase):
     def _terracotta(props, verts, faces):
         length, radius, th = props.tile_length, props.terracotta_radius, props.thickness_thin
         spacing, res, hi = props.terracotta_gap, props.terracotta_resolution, Units.H_INCH
-        ang_step = radians(175 / (res + 1))  # don't complete full half-circle, end a couple of degrees short
+        radius_small = radius - th
 
-        steps = (
-            (spacing, radius, 0, th),  # bottom spacing, radius, delta-y, and delta-z values
-            (spacing + th, radius-th, length, 0)  # top spacing, radius, delta-y, and delta-z values
-        )
+        # adjust by asin(th/radius) to that the half-circle doesn't overlap with the wing of the next tile
+        bottom_ang_step = (radians(180) - asin(th/radius)) / (res + 1)
+        theta = asin(th/(radius - th))  # similar to asin(th/radius) above, just for smaller radius cricle of the top
+        top_ang_step = radians(180) / (res + 1)  # going from -theta to 180-theta, so full 180 degrees, just rotated
 
         upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
         y = 0
         while y < upper_y:
             x = 0
             while x < upper_x:
-                # build bottom row of vertices, then do the top row
                 p = len(verts)
-                for space, rad, dy, z in steps:
-                    tx = x
-                    verts += [(tx, y+dy, z+hi), (tx+hi, y+dy, z)]
 
-                    tx += hi+space+rad
-                    for i in range(res + 2):
-                        ang = ang_step * i
-                        dx, dz = rad * cos(ang), rad * sin(ang)
+                # build bottom set of vertices
+                verts += [(x+th, y, hi+th), (x+th+hi, y, th)]
+                tx = x + th + hi + spacing + radius
+                for i in range(res+2):
+                    ang = bottom_ang_step * i
+                    dx, dz = radius * cos(ang), radius * sin(ang)
+                    verts.append((tx-dx, y, th+dz))
 
-                        verts.append((tx-dx, y+dy, z+dz))
+                # build top set of vertices
+                verts += [(x, y+length, hi), (x+hi, y+length, 0)]
+                tx = x + spacing + (4*th) + (radius - th)  # adjust to center of smaller radius circle
+                for i in range(res+2):
+                    ang = top_ang_step * i - theta
+                    dx, dz = radius_small * cos(ang), radius_small * sin(ang)
+                    verts.append((tx-dx, y+length, th+dz))
 
                 # faces
                 offset = 2 + res + 2  # 2 vertices for wing and spacing, then res+2 for half-circle
@@ -441,5 +446,5 @@ class JVRoofing(JVBuilderBase):
 
                 # go forward to right edge of half-circle, then go back so 0.5*0.5" wing doesn't intersect half-circle
                 x += hi + spacing + (2*radius) - th - hi
-            y += length
+            y += length - th  # allow for 'th' of overlap in circles
 
