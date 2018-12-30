@@ -1,5 +1,6 @@
 from bpy.types import PropertyGroup
-from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty
+from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty, \
+    CollectionProperty
 from . jv_utils import Units
 from . jv_types import get_object_type_handler
 
@@ -12,6 +13,10 @@ def jv_on_property_update(_, context):
 
         if handler is not None:
             handler.update(props, context)
+
+
+class FaceGroup(PropertyGroup):
+    pass
 
 
 class JVProperties(PropertyGroup):
@@ -31,6 +36,11 @@ class JVProperties(PropertyGroup):
     update_automatically: BoolProperty(
         name="Update Automatically?",
         default=True, description="Update the mesh anytime a property is changed?", update=jv_on_property_update
+    )
+
+    face_groups: CollectionProperty(
+        name="Face Groups",
+        type=FaceGroup, description="All the faces that should be grouped together when converting an object"
     )
 
     # OBJECT STYLES ------------------------------------------------------------------------------
@@ -54,7 +64,6 @@ class JVProperties(PropertyGroup):
         name="Pattern",
         items=(
             ("regular", "Regular", ""),
-            ("tongue_groove", "Tongue & Groove", ""),
             ("dutch_lap", "Dutch Lap", ""),
             ("clapboard", "Clapboard", ""),
             ("tin_regular", "Tin - Regular", ""),

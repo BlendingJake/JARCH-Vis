@@ -16,7 +16,7 @@ class JVSiding(JVBuilderBase):
         row.prop(props, "length")
         layout.separator()
 
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "dutch_lap", "clapboard"):
             row = layout.row()
             row.prop(props, "board_width_medium")
             row.prop(props, "board_length_long")
@@ -29,7 +29,7 @@ class JVSiding(JVBuilderBase):
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
 
-        if props.siding_pattern in ("regular", "tongue_groove"):
+        if props.siding_pattern == "regular":
             layout.separator()
             layout.prop(props, "siding_direction", icon="ORIENTATION_VIEW")
 
@@ -38,7 +38,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "dutch_lap_breakpoint")
 
         # width variance
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "shakes"):
+        if props.siding_pattern in ("regular", "dutch_lap", "clapboard", "shakes"):
             layout.separator()
             row = layout.row()
 
@@ -47,7 +47,7 @@ class JVSiding(JVBuilderBase):
                 row.prop(props, "width_variance")
 
         # length variance
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "dutch_lap", "clapboard"):
             layout.separator()
             row = layout.row()
 
@@ -115,8 +115,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "thickness_variance")
 
         # gaps
-        if props.siding_pattern in ("regular", "tongue_groove", "dutch_lap", "clapboard", "brick", "shakes",
-                                    "scallop_shakes"):
+        if props.siding_pattern in ("regular", "dutch_lap", "clapboard", "brick", "shakes", "scallop_shakes"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
@@ -175,11 +174,11 @@ class JVSiding(JVBuilderBase):
             mortar_original_edges = mortar_mesh.edges[:]
 
         # cut top and right
-        if props.siding_pattern in ("tongue_groove", "dutch_lap", "tin_regular", "tin_angular", "scallop_shakes"):
+        if props.siding_pattern in ("dutch_lap", "tin_regular", "tin_angular", "scallop_shakes"):
             JVSiding._cut_meshes([mesh], [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
-            ], fill_holes=props.siding_pattern == "tongue_groove")
+            ])
 
         # cut left
         if props.siding_pattern == "scallop_shakes":
@@ -204,7 +203,7 @@ class JVSiding(JVBuilderBase):
             JVSiding._cut_meshes(meshes, [
                 (center, left_normal),
                 (center, right_normal)
-            ], fill_holes=props.siding_pattern == "tongue_groove")
+            ])
 
         new_geometry = []
         # solidify - add thickness to props.thickness level
@@ -261,27 +260,7 @@ class JVSiding(JVBuilderBase):
                     new_geometry.append(face_mappings[item])
 
         # add uv seams
-        if props.siding_pattern != "tongue_groove":
-            JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
-        else:
-            # mark all long-side edges and all but one on the ends
-            ends = []
-            for face in mesh.faces:
-                if len(face.verts) > 5:  # any long side face should have less than 5 or less vertices after being cut
-                    ends.append(face)
-
-            end_edges = set()
-            for face in ends:
-                for edge in face.edges:
-                    end_edges.add(edge)
-
-            for i in range(0, len(ends), 2):  # every other face should be a new board
-                for edge in ends[i].edges[1:]:
-                    edge.seam = True
-
-            for edge in mesh.edges:
-                if edge not in end_edges:
-                    edge.seam = True
+        JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVSiding._finish(context, mesh)
 
@@ -378,95 +357,6 @@ class JVSiding(JVBuilderBase):
 
                     x += cur_length + gap
                 z += cur_width + gap
-
-    @staticmethod
-    def _tongue_groove(props, verts, faces):
-        length, width, gap, th = props.board_length_long, props.board_width_medium, props.gap_uniform, props.thickness
-
-        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
-        length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
-        upper_x, upper_z = props.length, props.height
-
-        tongue_y, groove_y, th_y, hi = -(th / 3), -(th / 3) + Units.STH_INCH, -th, Units.H_INCH
-
-        if props.siding_direction == "vertical":
-            x = 0
-            while x < upper_x:
-                z = 0
-
-                width = width_variance()
-                tongue_x, groove_x = hi + gap, gap + width - Units.STH_INCH
-                while z < upper_z:
-                    length = length_variance()
-
-                    for zz in (z, z+length):  # bottom and top groups of vertices
-                        verts += [
-                            (x+tongue_x, 0, zz),
-                            (x+tongue_x, tongue_y, zz),
-                            (x, tongue_y, zz),
-                            (x, th_y-tongue_y, zz),
-                            (x+tongue_x, th_y-tongue_y, zz),
-                            (x+tongue_x, th_y, zz),
-
-                            (x+groove_x, th_y, zz),
-                            (x+tongue_x+width, th_y, zz),
-                            (x+tongue_x+width, th_y-groove_y, zz),
-                            (x+groove_x, th_y-groove_y, zz),
-                            (x+groove_x, groove_y, zz),
-                            (x+tongue_x+width, groove_y, zz),
-                            (x+tongue_x+width, 0, zz),
-                            (x+groove_x, 0, zz)
-                        ]
-
-                    p = len(verts) - 28
-                    for i in range(13):  # run 0-12
-                        faces.append((p+i, p+i+1, p+i+15, p+i+14))
-                    faces.append((p, p+13, p+27, p+14))  # last face
-
-                    faces.append((p, p+13, p+12, p+11, p+10, p+9, p+8, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
-                    faces.append((p+14, p+15, p+16, p+17, p+18, p+19, p+20, p+21, p+22, p+23, p+24, p+25, p+26, p+27))
-
-                    z += length + gap
-                x += width + gap
-        else:
-            z = 0
-            while z < upper_z:
-                x = 0
-
-                width = width_variance()
-                tongue_z, groove_z = width + hi + gap, hi + Units.STH_INCH
-                while x < upper_x:
-                    length = length_variance()
-
-                    for xx in (x, x+length):  # bottom and top groups of vertices
-                        verts += [
-                            (xx, 0, z),
-                            (xx, 0, z+groove_z),
-                            (xx, 0, z+width),
-                            (xx, tongue_y, z+width),
-                            (xx, tongue_y, z+tongue_z),
-                            (xx, th_y-tongue_y, z+tongue_z),
-                            (xx, th_y-tongue_y, z+width),
-
-                            (xx, th_y, z+width),
-                            (xx, th_y, z+groove_z),
-                            (xx, th_y, z),
-                            (xx, th_y-groove_y, z),
-                            (xx, th_y-groove_y, z+groove_z),
-                            (xx, groove_y, z+groove_z),
-                            (xx, groove_y, z)
-                        ]
-
-                    p = len(verts) - 28
-                    for i in range(13):  # run 0-12
-                        faces.append((p+i, p+i+1, p+i+15, p+i+14))
-                    faces.append((p, p+13, p+27, p+14))  # last face
-
-                    faces.append((p, p+13, p+12, p+11, p+10, p+9, p+8, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
-                    faces.append((p+14, p+15, p+16, p+17, p+18, p+19, p+20, p+21, p+22, p+23, p+24, p+25, p+26, p+27))
-
-                    x += length + gap
-                z += width + gap
 
     @staticmethod
     def _dutch_lap(props, verts, faces):
