@@ -65,6 +65,7 @@ class JVProperties(PropertyGroup):
         items=(
             ("regular", "Regular", ""),
             ("dutch_lap", "Dutch Lap", ""),
+            ("shiplap", "Shiplap", ""),
             ("clapboard", "Clapboard", ""),
             ("tin_regular", "Tin - Regular", ""),
             ("tin_angular", "Tin - Angular", ""),
@@ -205,6 +206,18 @@ class JVProperties(PropertyGroup):
         name="Gap",
         min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=100, precision=5,
         description="The gap around each board or tile", update=jv_on_property_update
+    )
+
+    gap_widthwise: FloatProperty(
+        name="Gap - Widthwise",
+        min=0.00, default=Units.ETH_INCH, subtype="DISTANCE", step=100, precision=4,
+        description="The gap between the board or tile in the width direction", update=jv_on_property_update
+    )
+
+    gap_lengthwise: FloatProperty(
+        name="Gap - Lengthwise",
+        min=0.00, default=Units.STH_INCH, subtype="DISTANCE", step=100, precision=4,
+        description="The gap between the board or tile in the length direction", update=jv_on_property_update
     )
 
     row_offset: FloatProperty(
@@ -398,6 +411,7 @@ def register():
     from bpy.utils import register_class
     from bpy.types import Object
 
+    register_class(FaceGroup)
     register_class(JVProperties)
     Object.jv_properties = PointerProperty(
         type=JVProperties,
@@ -412,6 +426,7 @@ def unregister():
 
     del Object.jv_properties
     unregister_class(JVProperties)
+    unregister_class(FaceGroup)
 
 
 if __name__ == "__main__":

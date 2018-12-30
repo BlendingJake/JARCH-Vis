@@ -16,7 +16,7 @@ class JVSiding(JVBuilderBase):
         row.prop(props, "length")
         layout.separator()
 
-        if props.siding_pattern in ("regular", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard"):
             row = layout.row()
             row.prop(props, "board_width_medium")
             row.prop(props, "board_length_long")
@@ -29,7 +29,7 @@ class JVSiding(JVBuilderBase):
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
 
-        if props.siding_pattern == "regular":
+        if props.siding_pattern in ("regular", "shiplap"):
             layout.separator()
             layout.prop(props, "siding_direction", icon="ORIENTATION_VIEW")
 
@@ -38,7 +38,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "dutch_lap_breakpoint")
 
         # width variance
-        if props.siding_pattern in ("regular", "dutch_lap", "clapboard", "shakes"):
+        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard", "shakes"):
             layout.separator()
             row = layout.row()
 
@@ -47,7 +47,7 @@ class JVSiding(JVBuilderBase):
                 row.prop(props, "width_variance")
 
         # length variance
-        if props.siding_pattern in ("regular", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard"):
             layout.separator()
             row = layout.row()
 
@@ -107,7 +107,7 @@ class JVSiding(JVBuilderBase):
                 box.prop(props, "thickness")
 
             # NOTE: we cannot have varying thickness if battens are involved
-            if props.siding_pattern in ("dutch_lap", "brick") or \
+            if props.siding_pattern in ("dutch_lap", "brick", "shiplap") or \
                     (props.siding_pattern == "regular" and not props.battens):
                 row = box.row()
                 row.prop(props, "vary_thickness", icon="RNDCURVE")
@@ -119,6 +119,11 @@ class JVSiding(JVBuilderBase):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
+        elif props.siding_pattern == "shiplap":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "gap_widthwise")
+            row.prop(props, "gap_lengthwise")
 
         # grout/mortar
         if props.siding_pattern == "brick":
@@ -174,7 +179,7 @@ class JVSiding(JVBuilderBase):
             mortar_original_edges = mortar_mesh.edges[:]
 
         # cut top and right
-        if props.siding_pattern in ("dutch_lap", "tin_regular", "tin_angular", "scallop_shakes"):
+        if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):
             JVSiding._cut_meshes([mesh], [
                 ((0, 0, props.height), (0, 0, -1)),  # top
                 ((props.length, 0, 0), (-1, 0, 0))  # right
@@ -260,7 +265,8 @@ class JVSiding(JVBuilderBase):
                     new_geometry.append(face_mappings[item])
 
         # add uv seams
-        JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
+        if props.siding_pattern != "shiplap":
+            JVSiding._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVSiding._finish(context, mesh)
 
@@ -395,6 +401,67 @@ class JVSiding(JVBuilderBase):
 
                 x += cur_length + gap
             z += cur_width + Units.ETH_INCH  # shift up width + thickness
+
+    @staticmethod
+    def _shiplap(props, verts, faces):
+        length, width, th = props.board_length_long, props.board_width_medium, props.thickness
+        gap_length, gap_width = props.gap_lengthwise, props.gap_widthwise
+
+        length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
+        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+        thickness_variance = JVSiding._create_variance_function(props.vary_thickness, th, props.thickness_variance)
+
+        upper_x, upper_z = props.length, props.height
+        if props.siding_direction == "vertical":
+            x = 0
+            while x < upper_x:
+                z = 0
+                dx, y = width_variance(), -thickness_variance()
+                while z < upper_z:
+                    dz = length_variance()
+
+                    p = len(verts)
+                    for zz in (z, z+dz):
+                        verts += [
+                            (x, 0, zz),
+                            (x, y, zz),
+                            (x+dx, y, zz),
+                            (x+dx, 0, zz),
+                            (x+dx+gap_width, 0, zz)
+                        ]
+
+                    # faces
+                    for _ in range(4):
+                        faces.append((p, p+1, p+6, p+5))
+                        p += 1
+
+                    z += dz + gap_length
+                x += dx + gap_width
+        else:
+            z = 0
+            while z < upper_z:
+                x = 0
+                dz, y = width_variance(), -thickness_variance()
+                while x < upper_x:
+                    dx = length_variance()
+
+                    p = len(verts)
+                    for xx in (x, x+dx):
+                        verts += [
+                            (xx, 0, z),
+                            (xx, y, z),
+                            (xx, y, z+dz),
+                            (xx, 0, z+dz),
+                            (xx, 0, z+dz+gap_width)
+                        ]
+
+                    # faces
+                    for _ in range(4):
+                        faces.append((p, p+1, p+6, p+5))
+                        p += 1
+
+                    x += dx + gap_length
+                z += dz + gap_width
 
     @staticmethod
     def _clapboard(props, verts, faces):
