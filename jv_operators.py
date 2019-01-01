@@ -78,13 +78,62 @@ class JVUpdate(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# ---------------------------------------------------------------------------
+# UIList Handlers
+# ---------------------------------------------------------------------------
+class OBJECT_UL_cutouts(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        layout.prop(item, "offset")
+        layout.prop(item, "dimensions")
+
+
+# ---------------------------------------------------------------------------
+# List Operators
+# ---------------------------------------------------------------------------
+class JVAddCutout(bpy.types.Operator):
+    bl_idname = "object.jv_add_cutout"
+    bl_label = "Add Cutout"
+    bl_description = "JARCH Vis: Add Cutout"
+
+    def execute(self, context):
+        props = context.object.jv_properties
+        props.cutouts.add()
+        props.cutouts_index = min(len(props.cutouts)-1, props.cutouts_index+1)
+
+        bpy.ops.object.jv_update()
+
+        return {"FINISHED"}
+
+
+class JVDeleteCutout(bpy.types.Operator):
+    bl_idname = "object.jv_delete_cutout"
+    bl_label = "Delete Cutout"
+    bl_description = "JARCH Vis: Delete Cutout"
+
+    def execute(self, context):
+        props = context.object.jv_properties
+
+        if 0 <= props.cutouts_index < len(props.cutouts):
+            props.cutouts.remove(props.cutouts_index)
+            props.cutouts_index = max(0, props.cutouts_index-1)
+
+            bpy.ops.object.jv_update()
+
+        return {"FINISHED"}
+
+
 classes = (
     JVFlooringAdd,
     JVSidingAdd,
     JVRoofingAdd,
 
     JVDelete,
-    JVUpdate
+    JVUpdate,
+
+    OBJECT_UL_cutouts,
+
+    JVAddCutout,
+    JVDeleteCutout
 )
 
 

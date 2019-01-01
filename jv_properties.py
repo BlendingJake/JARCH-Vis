@@ -15,8 +15,18 @@ def jv_on_property_update(_, context):
             handler.update(props, context)
 
 
-class FaceGroup(PropertyGroup):
-    pass
+class Cutout(PropertyGroup):
+    offset: FloatVectorProperty(
+        name="Offset",
+        default=(0.0, 0.0, 0.0), step=10, precision=3, subtype="TRANSLATION", size=3,
+        description="The offset of the cutout from the bottom-left corner", update=jv_on_property_update
+    )
+
+    dimensions: FloatVectorProperty(
+        name="Dimensions",
+        default=(Units.FOOT, Units.FOOT, Units.FOOT), step=10, precision=3, unit="LENGTH", size=3, min=0.0,
+        description="The the dimensions of the cutout", update=jv_on_property_update
+    )
 
 
 class JVProperties(PropertyGroup):
@@ -36,11 +46,6 @@ class JVProperties(PropertyGroup):
     update_automatically: BoolProperty(
         name="Update Automatically?",
         default=True, description="Update the mesh anytime a property is changed?", update=jv_on_property_update
-    )
-
-    face_groups: CollectionProperty(
-        name="Face Groups",
-        type=FaceGroup, description="All the faces that should be grouped together when converting an object"
     )
 
     # OBJECT STYLES ------------------------------------------------------------------------------
@@ -105,6 +110,20 @@ class JVProperties(PropertyGroup):
         name="Total Height",
         min=1 * Units.FOOT, default=8 * Units.FOOT, precision=3, subtype="DISTANCE",
         description="Total height of the material", update=jv_on_property_update
+    )
+
+    # CUTOUTS -----------------------------------------------------------------------------------
+    add_cutouts: BoolProperty(
+        name="Add Cutouts?",
+        description="Add box cutouts for things like windows or doors?", update=jv_on_property_update
+    )
+
+    cutouts: CollectionProperty(
+        name="Cutouts", type=Cutout
+    )
+
+    cutouts_index: IntProperty(
+        name="Cutout Index"
     )
 
     # MATERIAL DIMENSIONS -----------------------------------------------------------------------
@@ -411,7 +430,7 @@ def register():
     from bpy.utils import register_class
     from bpy.types import Object
 
-    register_class(FaceGroup)
+    register_class(Cutout)
     register_class(JVProperties)
     Object.jv_properties = PointerProperty(
         type=JVProperties,
@@ -426,7 +445,7 @@ def unregister():
 
     del Object.jv_properties
     unregister_class(JVProperties)
-    unregister_class(FaceGroup)
+    unregister_class(Cutout)
 
 
 if __name__ == "__main__":

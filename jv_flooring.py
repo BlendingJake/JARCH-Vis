@@ -95,6 +95,9 @@ class JVFlooring(JVBuilderBase):
         for f in faces:
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
+
+        if props.add_cutouts:
+            JVFlooring._cutouts(mesh, props)
         
         original_edges = mesh.edges[:]
 

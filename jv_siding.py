@@ -156,6 +156,9 @@ class JVSiding(JVBuilderBase):
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
 
+        if props.add_cutouts:
+            JVSiding._cutouts(mesh, props)
+
         original_edges = mesh.edges[:]
 
         # create mortar mesh

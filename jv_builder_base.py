@@ -180,3 +180,64 @@ class JVBuilderBase:
         for edge in mesh.edges:
             if edge not in new_edges and edge not in og_edges:
                 edge.seam = True
+
+    @staticmethod
+    def _cutouts(mesh: bmesh.types.BMesh, props):
+        """
+        For each added cutout, bisect the mesh according to the 6 faces of the cutout cubes. Then manually
+        remove all faces from the mesh that are contained within the cutout cubes.
+        :param mesh: the bmesh mesh
+        :param props: all JV properties
+        """
+        mesh.normal_update()
+
+        for cutout in props.cutouts:
+            x, y, z, dx, dy, dz = *cutout.offset, *cutout.dimensions
+            planes = (  # plane center and normal
+                ((x, 0, 0), (1, 0, 0)),
+                ((x+dx, 0, 0), (-1, 0, 0)),
+                ((0, y, 0), (0, 1, 0)),
+                ((0, y+dy, 0), (0, -1, 0)),
+                ((0, 0, z), (0, 0, 1)),
+                ((0, 0, z+dz), (0, 0, -1))
+            )
+
+            for plane_co, plane_normal in planes:
+                bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001, plane_co=plane_co, plane_no=plane_normal)
+
+                mesh.verts.ensure_lookup_table()
+                mesh.edges.ensure_lookup_table()
+                mesh.faces.ensure_lookup_table()
+
+            # remove faces
+            to_remove = []
+            for face in mesh.faces:
+                c = face.calc_center_median()
+                print(c)
+                if x <= c.x <= x+dx and y <= c.y <= y+dy and z <= c.z <= z+dz:
+                    to_remove.append(face)
+
+            for face in to_remove:
+                mesh.faces.remove(face)
+
+            # remove any edges that are no longer connected to any faces
+            to_remove.clear()
+            for edge in mesh.edges:
+                if edge.is_wire:
+                    to_remove.append(edge)
+
+            for edge in to_remove:
+                mesh.edges.remove(edge)
+
+            # remove any vertices that are no longer connected to any faces
+            to_remove.clear()
+            for vertex in mesh.verts:
+                if vertex.is_wire:
+                    to_remove.append(vertex)
+
+            for vertex in to_remove:
+                mesh.verts.remove(vertex)
+
+            mesh.verts.ensure_lookup_table()
+            mesh.edges.ensure_lookup_table()
+            mesh.faces.ensure_lookup_table()

@@ -66,9 +66,9 @@ def register():
 
 
 def unregister():
-    jv_properties.unregister()
-    jv_operators.unregister()
     jv_panel.unregister()
+    jv_operators.unregister()
+    jv_properties.unregister()
 
 
 if __name__ == "__main__":
