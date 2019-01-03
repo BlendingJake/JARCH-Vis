@@ -253,6 +253,8 @@ class JVSiding(JVBuilderBase):
                     new_edges.add(edge)
             mesh.faces.ensure_lookup_table()
 
+            mortar_mesh.free()
+
             # determine where mortar_original_edges and mortar_new_geometry mapped in mesh.edges to all uv_seam handling
             for edge in mortar_original_edges:  # should run 4*12 times in total
                 # find where edge maps

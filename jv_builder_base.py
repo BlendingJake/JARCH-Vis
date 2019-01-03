@@ -37,8 +37,26 @@ class JVBuilderBase:
         mesh.free()
 
     @staticmethod
-    def _geometry(props):
+    def _geometry(props, dims: tuple):
         pass
+
+    @staticmethod
+    def _build_mesh_from_geometry(mesh: bmesh.types.BMesh, vertices: list, faces: list):
+        """
+        Take a bmesh mesh, vertices positions, and face-vertex indices and clear and add the vertices and faces
+        to the mesh object
+        :param mesh: the bmesh object to clear and add the geometry to
+        :param vertices: tuples of the positions of the vertices
+        :param faces: tuples of the indices of the vertices that make up the face
+        """
+        mesh.clear()
+        for v in vertices:
+            mesh.verts.new(v)
+        mesh.verts.ensure_lookup_table()
+
+        for f in faces:
+            mesh.faces.new([mesh.verts[i] for i in f])
+        mesh.faces.ensure_lookup_table()
 
     @staticmethod
     def _solidify(mesh: bmesh.types.BMesh, thickness: Union[callable, float]):
@@ -220,24 +238,30 @@ class JVBuilderBase:
             for face in to_remove:
                 mesh.faces.remove(face)
 
-            # remove any edges that are no longer connected to any faces
-            to_remove.clear()
-            for edge in mesh.edges:
-                if edge.is_wire:
-                    to_remove.append(edge)
+            JVBuilderBase._clean_mesh(mesh)
 
-            for edge in to_remove:
-                mesh.edges.remove(edge)
+    @staticmethod
+    def _clean_mesh(mesh: bmesh.types.BMesh):
+        """
+        Remove all vertices and edges that aren't connected to anything
+        :param mesh: the mesh to clean
+        """
+        to_remove = []
+        for edge in mesh.edges:
+            if edge.is_wire:
+                to_remove.append(edge)
 
-            # remove any vertices that are no longer connected to any faces
-            to_remove.clear()
-            for vertex in mesh.verts:
-                if vertex.is_wire:
-                    to_remove.append(vertex)
+        for edge in to_remove:
+            mesh.edges.remove(edge)
 
-            for vertex in to_remove:
-                mesh.verts.remove(vertex)
+        to_remove.clear()
+        for vertex in mesh.verts:
+            if vertex.is_wire:
+                to_remove.append(vertex)
 
-            mesh.verts.ensure_lookup_table()
-            mesh.edges.ensure_lookup_table()
-            mesh.faces.ensure_lookup_table()
+        for vertex in to_remove:
+            mesh.verts.remove(vertex)
+
+        mesh.verts.ensure_lookup_table()
+        mesh.edges.ensure_lookup_table()
+        mesh.faces.ensure_lookup_table()

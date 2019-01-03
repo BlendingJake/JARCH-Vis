@@ -22,45 +22,59 @@ class JVPanel(Panel):
         layout = self.layout
         obj = context.object
 
-        if obj is not None and obj.type == "MESH":
-            props = obj.jv_properties
-            layout.prop(props, "object_type", icon="MATERIAL")
-            layout.separator()
+        if obj is None or obj.type != "MESH":
+            return
 
-            handler = get_object_type_handler(props.object_type)
-            if handler is not None:
-                handler.draw(props, layout)
+        props = obj.jv_properties
+        if context.mode == "OBJECT":
+            if props.object_type == "none":  # convert
+                layout.operator("object.jv_convert", icon="MOD_EXPLODE")
+            else:
+                layout.prop(props, "object_type", icon="MATERIAL")
+                layout.separator()
 
-            # cutouts
+                handler = get_object_type_handler(props.object_type)
+                if handler is not None:
+                    handler.draw(props, layout)
+
+                # cutouts
+                layout.separator()
+                box = layout.box()
+                box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")
+
+                if props.add_cutouts:
+                    row = box.row()
+                    row.template_list("OBJECT_UL_cutouts", "", props, "cutouts", props, "cutouts_index", rows=5)
+
+                    column = row.column()
+                    column.operator("object.jv_add_cutout", text="", icon="ADD")
+                    column.operator("object.jv_delete_cutout", text="", icon="REMOVE")
+
+                layout.separator()
+                box = layout.box()
+                row = box.row()
+                row.prop(props, "update_automatically", icon="FILE_REFRESH")
+                if not props.update_automatically:
+                    row.operator("object.jv_update", icon="FILE_REFRESH")
+
+                box.separator()
+                for op_name, icon in self.jv_consistent_operators:
+                    box.operator(op_name, icon=icon)
+
+            # add operators
             layout.separator()
             box = layout.box()
-            box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")
+            for op_name, icon in self.jv_add_operators:
+                box.operator(op_name, icon=icon)
 
-            if props.add_cutouts:
-                row = box.row()
-                row.template_list("OBJECT_UL_cutouts", "", props, "cutouts", props, "cutouts_index", rows=5)
+        elif context.mode == "EDIT_MESH":
+            if props.object_type == "none":
+                row = layout.row()
+                row.template_list("OBJECT_UL_face_groups", "", props, "face_groups", props, "face_groups_index", rows=5)
 
                 column = row.column()
-                column.operator("object.jv_add_cutout", text="", icon="ADD")
-                column.operator("object.jv_delete_cutout", text="", icon="REMOVE")
-
-            layout.separator()
-            box = layout.box()
-            row = box.row()
-            row.prop(props, "update_automatically", icon="FILE_REFRESH")
-            if not props.update_automatically:
-                row.operator("object.jv_update", icon="FILE_REFRESH")
-
-            box.separator()
-            for op_name, icon in self.jv_consistent_operators:
-                box.operator(op_name, icon=icon)
-        else:
-            pass  # convert
-
-        layout.separator()
-        box = layout.box()
-        for op_name, icon in self.jv_add_operators:
-            box.operator(op_name, icon=icon)
+                column.operator("object.jv_add_face_group", text="", icon="ADD")
+                column.operator("object.jv_delete_face_group", text="", icon="REMOVE")
 
 
 def register():

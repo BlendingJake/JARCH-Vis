@@ -72,9 +72,6 @@ class JVRoofing(JVBuilderBase):
             mesh.faces.new([mesh.verts[i] for i in f])
         mesh.faces.ensure_lookup_table()
 
-        if props.add_cutouts:
-            JVRoofing._cutouts(mesh, props)
-
         original_edges = mesh.edges[:]
 
         # overall dimension cutting - length
@@ -93,6 +90,10 @@ class JVRoofing(JVBuilderBase):
         rot = atan(props.pitch / 12)
         rotation = Euler((rot, 0, 0))
         JVRoofing._rotate_mesh_vertices(mesh, rotation)
+
+        # cutouts
+        if props.add_cutouts:
+            JVRoofing._cutouts(mesh, props)
 
         # mirror
 

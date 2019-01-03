@@ -1,8 +1,9 @@
-from bpy.types import PropertyGroup
+from bpy.types import PropertyGroup, Object
 from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty, \
-    CollectionProperty
+    CollectionProperty, StringProperty
 from . jv_utils import Units
 from . jv_types import get_object_type_handler
+import bpy
 
 
 def jv_on_property_update(_, context):
@@ -13,6 +14,67 @@ def jv_on_property_update(_, context):
 
         if handler is not None:
             handler.update(props, context)
+
+
+def jv_on_face_group_index_update(_, context):
+    props = context.object.jv_properties
+
+    if 0 <= props.face_groups_index < len(props.face_groups):
+        indices = set([int(i) for i in props.face_groups[props.face_groups_index].face_indices.split(",")])
+        bpy.ops.object.editmode_toggle()
+
+        # deselect everything before selecting the correct faces
+        for vertex in context.object.data.vertices:
+            vertex.select = False
+
+        for edge in context.object.data.edges:
+            edge.select = False
+
+        for face in context.object.data.polygons:
+            face.select = face.index in indices
+
+        bpy.ops.object.editmode_toggle()
+
+
+class BisectingPlane(PropertyGroup):
+    normal: FloatVectorProperty(
+        name="Normal", size=3, unit="LENGTH"
+    )
+
+    center: FloatVectorProperty(
+        name="Center", size=3, unit="LENGTH"
+    )
+
+
+class FaceGroup(PropertyGroup):
+    face_indices: StringProperty(
+        name="Face Indices (CSV)", default=""
+    )
+
+    is_convex: BoolProperty(
+        name="Convex?",
+        description="Are the faces convex? Aka, are all interior angles <= 180 degrees and are there not cutouts?"
+    )
+
+    convert_object: PointerProperty(
+        name="Convert Object", type=Object
+    )
+
+    rotation: FloatVectorProperty(
+        subtype="EULER", size=3
+    )
+
+    location: FloatVectorProperty(
+        subtype="TRANSLATION", size=3
+    )
+
+    dimensions: FloatVectorProperty(
+        unit="LENGTH", size=2
+    )
+
+    bisecting_planes: CollectionProperty(
+        name="Bisecting Planes", type=BisectingPlane
+    )
 
 
 class Cutout(PropertyGroup):
@@ -46,6 +108,10 @@ class JVProperties(PropertyGroup):
     update_automatically: BoolProperty(
         name="Update Automatically?",
         default=True, description="Update the mesh anytime a property is changed?", update=jv_on_property_update
+    )
+
+    convert_source_object: PointerProperty(
+        name="Convert Source Object", type=Object
     )
 
     # OBJECT STYLES ------------------------------------------------------------------------------
@@ -124,6 +190,15 @@ class JVProperties(PropertyGroup):
 
     cutouts_index: IntProperty(
         name="Cutout Index"
+    )
+
+    # OBJECT STYLES ------------------------------------------------------------------------------
+    face_groups: CollectionProperty(
+        name="Face Groups", type=FaceGroup
+    )
+
+    face_groups_index: IntProperty(
+        name="Face Groups Index", update=jv_on_face_group_index_update
     )
 
     # MATERIAL DIMENSIONS -----------------------------------------------------------------------
@@ -430,7 +505,9 @@ def register():
     from bpy.utils import register_class
     from bpy.types import Object
 
+    register_class(BisectingPlane)
     register_class(Cutout)
+    register_class(FaceGroup)
     register_class(JVProperties)
     Object.jv_properties = PointerProperty(
         type=JVProperties,
@@ -445,7 +522,9 @@ def unregister():
 
     del Object.jv_properties
     unregister_class(JVProperties)
+    unregister_class(FaceGroup)
     unregister_class(Cutout)
+    unregister_class(BisectingPlane)
 
 
 if __name__ == "__main__":

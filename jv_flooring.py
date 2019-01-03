@@ -1,5 +1,8 @@
 from . jv_builder_base import JVBuilderBase
 from math import sqrt, cos, tan, radians
+from mathutils import Vector
+import bmesh
+import bpy
 
 
 class JVFlooring(JVBuilderBase):
@@ -84,57 +87,110 @@ class JVFlooring(JVBuilderBase):
 
     @staticmethod
     def update(props, context):
-        mesh = JVFlooring._start(context)
-        verts, faces = JVFlooring._geometry(props)
+        if props.convert_source_object is not None:  # then this is a converted object
+            JVFlooring._update_as_converted(props, context)
+        else:
+            mesh = JVFlooring._start(context)
+            verts, faces = JVFlooring._geometry(props, (props.length, props.width))
+            JVFlooring._build_mesh_from_geometry(mesh, verts, faces)
 
-        mesh.clear()
-        for v in verts:
-            mesh.verts.new(v)
-        mesh.verts.ensure_lookup_table()
+            if props.add_cutouts:
+                JVFlooring._cutouts(mesh, props)
 
-        for f in faces:
-            mesh.faces.new([mesh.verts[i] for i in f])
-        mesh.faces.ensure_lookup_table()
+            original_edges = mesh.edges[:]
 
-        if props.add_cutouts:
-            JVFlooring._cutouts(mesh, props)
-        
-        original_edges = mesh.edges[:]
+            # cut if needed
+            if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
+                                          "octagons", "windmill"):
+                JVFlooring._cut_meshes([mesh], [
+                    ((0, 0, 0), (1, 0, 0)),  # left
+                    ((0, 0, 0), (0, 1, 0)),  # bottom
+                    ((props.length, 0, 0), (-1, 0, 0)),  # right
+                    ((0, props.width, 0), (0, -1, 0))  # top
+                ])
 
-        # cut if needed
-        if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
-                                      "octagons", "windmill"):
-            JVFlooring._cut_meshes([mesh], [
-                ((0, 0, 0), (1, 0, 0)),  # left
-                ((0, 0, 0), (0, 1, 0)),  # bottom
-                ((props.length, 0, 0), (-1, 0, 0)),  # right
-                ((0, props.width, 0), (0, -1, 0))  # top
-            ])
+            # solidify
+            new_geometry = JVFlooring._solidify(mesh,
+                                                JVFlooring._create_variance_function(props.vary_thickness,
+                                                                                     props.thickness,
+                                                                                     props.thickness_variance))
 
-        # solidify
-        new_geometry = JVFlooring._solidify(mesh,
-                                            JVFlooring._create_variance_function(props.vary_thickness, props.thickness,
-                                                                                 props.thickness_variance))
+            # main material index
+            JVFlooring._add_material_index(mesh.faces, 0)
 
-        # main material index
-        JVFlooring._add_material_index(mesh.faces, 0)
+            # add uv seams
+            JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
-        # add uv seams
-        JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
-
-        JVFlooring._finish(context, mesh)
+            JVFlooring._finish(context, mesh)
 
     @staticmethod
-    def _geometry(props):
+    def _update_as_converted(props, context):
+        objects = []
+        main_obj = context.object
+        src = props.convert_source_object
+        for fg in src.jv_properties.face_groups:  # face groups on original object
+            verts, faces = JVFlooring._geometry(props, tuple(fg.dimensions))
+            rotated_verts = []
+
+            # rotate vertices
+            for v in verts:
+                vv = Vector(v)
+                vv.rotate(fg.rotation)
+                rotated_verts.append(tuple(vv))
+
+            mesh = bmesh.new()
+            JVFlooring._build_mesh_from_geometry(mesh, rotated_verts, faces)
+
+            bpy.ops.mesh.primitive_cube_add()
+            new_obj = context.object
+            new_obj.location = fg.location
+            objects.append(new_obj)
+            mesh.to_mesh(new_obj.data)
+
+            if fg.is_convex:
+                # cut mesh using bisect_plane for every edge, remove all geometry outside of planes
+                planes = []
+                for plane in fg.bisecting_planes:
+                    planes.append((tuple(plane.center), tuple(plane.normal)))
+
+                JVFlooring._cut_meshes([mesh], planes)
+                mesh.to_mesh(new_obj.data)
+            else:
+                bpy.ops.object.modifier_add(type="BOOLEAN")
+                new_obj.modifiers["Boolean"].object = fg.convert_object
+                bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+
+            mesh.free()
+
+        # join objects
+        for obj in context.selected_objects:
+            obj.select_set(False)
+        for obj in objects:
+            obj.select_set(True)
+
+        bpy.ops.object.join()
+
+        bm = bmesh.new()
+        bm.from_mesh(context.object.data)
+        JVFlooring._clean_mesh(bm)
+
+        bpy.ops.object.delete()  # remove object formed from joining meshes
+
+        main_obj.select_set(True)
+        bm.to_mesh(main_obj.data)
+        bm.free()
+
+    @staticmethod
+    def _geometry(props, dims: tuple):
         verts, faces = [], []
 
         # dynamically call correct method as their names will match up with the style name
-        getattr(JVFlooring, "_{}".format(props.flooring_pattern))(props, verts, faces)
+        getattr(JVFlooring, "_{}".format(props.flooring_pattern))(dims, props, verts, faces)
 
         return verts, faces
 
     @staticmethod
-    def _regular(props, verts, faces):
+    def _regular(dims: tuple, props, verts, faces):
         width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width_narrow,
                                                               props.width_variance)
         length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length_medium,
@@ -150,7 +206,7 @@ class JVFlooring(JVBuilderBase):
 
         y = 0
         odd = False
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while y < upper_y:
             x = 0
 
@@ -182,7 +238,7 @@ class JVFlooring(JVBuilderBase):
             odd = not odd
 
     @staticmethod
-    def _checkerboard(props, verts, faces):
+    def _checkerboard(dims: tuple, props, verts, faces):
         length = props.board_length_really_short
         board_count = props.checkerboard_board_count
         gap = props.gap_uniform
@@ -191,7 +247,7 @@ class JVFlooring(JVBuilderBase):
         width = (length - (gap * (board_count - 1))) / board_count
 
         y = 0
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         start_vertical = False
         while y < upper_y:
             x = 0
@@ -243,7 +299,7 @@ class JVFlooring(JVBuilderBase):
             start_vertical = not start_vertical
 
     @staticmethod
-    def _herringbone(props, verts, faces):
+    def _herringbone(dims: tuple, props, verts, faces):
         length = props.board_length_short
         width = props.board_width_narrow
 
@@ -254,7 +310,7 @@ class JVFlooring(JVBuilderBase):
         long_leg_gap = props.gap_uniform * sqrt(2)
 
         start_y = -leg_length  # start down some so there are no gaps
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while start_y < upper_y + leg_width:  # go a little further than need to ensure no gaps
             x = 0
 
@@ -293,13 +349,13 @@ class JVFlooring(JVBuilderBase):
             start_y += 2 * leg_width + long_leg_gap
 
     @staticmethod
-    def _chevron(props, verts, faces):
+    def _chevron(dims: tuple, props, verts, faces):
         leg_length = props.board_length_short / sqrt(2)
         leg_width = props.board_width_narrow * sqrt(2)
         leg_gap = props.gap_uniform * sqrt(2)
 
         start_y = -leg_length
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while start_y < upper_y:
             x = 0
             y = start_y
@@ -324,7 +380,7 @@ class JVFlooring(JVBuilderBase):
             start_y += leg_width + leg_gap
 
     @staticmethod
-    def _hopscotch(props, verts, faces):
+    def _hopscotch(dims: tuple, props, verts, faces):
         """
         A row consists of every group that is at the same y value. A row is built, then the x offset for the next
         row is determined and that row is created
@@ -345,7 +401,7 @@ class JVFlooring(JVBuilderBase):
 
         row = 0
         y = -gap - half_width
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while y < upper_y:
             x = x_start_values[row % len(x_start_values)]
 
@@ -376,13 +432,13 @@ class JVFlooring(JVBuilderBase):
             row += 1
 
     @staticmethod
-    def _windmill(props, verts, faces):
+    def _windmill(dims: tuple, props, verts, faces):
         length = props.tile_width
         gap = props.gap_uniform
         width = (length - gap) / 2
 
         y = 0
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while y < upper_y:
             x = 0
             while x < upper_x:
@@ -421,12 +477,12 @@ class JVFlooring(JVBuilderBase):
             y += length + gap + width + gap
 
     @staticmethod
-    def _stepping_stone(props, verts, faces):
+    def _stepping_stone(dims: tuple, props, verts, faces):
         length, width, gap = props.tile_length, props.tile_width, props.gap_uniform
         half_length, half_width = (length - gap) / 2, (width - gap) / 2
 
         y = 0
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while y < upper_y:
             x = 0
             while x < upper_x:
@@ -474,7 +530,7 @@ class JVFlooring(JVBuilderBase):
             y += half_width + width + (2*gap)
 
     @staticmethod
-    def _hexagons(props, verts, faces):
+    def _hexagons(dims: tuple, props, verts, faces):
         side_length, gap = props.side_length, props.gap_uniform
         x_leg = side_length / 2
         y_leg = x_leg / tan(radians(30))
@@ -486,7 +542,7 @@ class JVFlooring(JVBuilderBase):
         dot_y = ((2*y_leg) + gap - (2*gap_dif)) / 2
 
         start_y = y_leg
-        upper_x, upper_y = props.length + d, props.width + (2*y_leg)
+        upper_x, upper_y = dims[0] + d, dims[1] + (2*y_leg)
         while start_y < upper_y:
             move_down = True
             x = x_leg
@@ -534,7 +590,7 @@ class JVFlooring(JVBuilderBase):
             start_y += (2*y_leg) + gap
 
     @staticmethod
-    def _octagons(props, verts, faces):  # with dots since octagons cannot fit together otherwise
+    def _octagons(dims: tuple, props, verts, faces):  # with dots since octagons cannot fit together otherwise
         side_length, gap = props.side_length, props.gap_uniform
         gap_dif = gap * cos(radians(30))
         x_leg = side_length / 2
@@ -543,7 +599,7 @@ class JVFlooring(JVBuilderBase):
         dot_s = ((2 * y_leg + gap) - 2*x_leg - 2*gap_dif) / 2
 
         y = y_leg
-        upper_x, upper_y = props.length + y_leg, props.width + (2*y_leg)
+        upper_x, upper_y = dims[0] + y_leg, dims[1] + (2*y_leg)
         while y < upper_y:
             x = x_leg
             while x < upper_x:
@@ -581,7 +637,7 @@ class JVFlooring(JVBuilderBase):
             y += (2*y_leg) + gap
 
     @staticmethod
-    def _corridor(props, verts, faces):
+    def _corridor(dims: tuple, props, verts, faces):
         length, width, gap = props.tile_length, props.tile_width, props.gap_uniform
         half_width = props.alternating_row_width
 
@@ -595,7 +651,7 @@ class JVFlooring(JVBuilderBase):
 
         y = 0
         large = True
-        upper_x, upper_y = props.length, props.width
+        upper_x, upper_y = dims
         while y < upper_y:
             x = 0
 
