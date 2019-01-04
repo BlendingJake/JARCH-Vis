@@ -2,7 +2,7 @@ import bpy
 import bmesh
 from random import uniform
 from mathutils import Vector
-from typing import Union
+from typing import Union, List
 
 
 class JVBuilderBase:
@@ -78,14 +78,20 @@ class JVBuilderBase:
 
         # manually add thickness if 'thickness' is callable
         if callable(thickness):
+            faces = set()
             for item in new_geom:
                 if isinstance(item, bmesh.types.BMFace):
-                    th = thickness()
-                    for v in item.verts:
+                    faces.add(item)
+
+            groups = JVBuilderBase._group_connected_faces(faces)
+            for group in groups:
+                th = thickness()
+                for face in group:
+                    for v in face.verts:
                         if v not in visited:
-                            v.co.x += item.normal[0] * th
-                            v.co.y += item.normal[1] * th
-                            v.co.z += item.normal[2] * th
+                            v.co.x += face.normal[0] * th
+                            v.co.y += face.normal[1] * th
+                            v.co.z += face.normal[2] * th
 
                             visited.add(v)
 
@@ -136,14 +142,14 @@ class JVBuilderBase:
         for v in verts:
             if v not in visited_verts:
                 group = set()
-                JVBuilderBase._get_connected(v, verts, visited_verts, edges, group)
+                JVBuilderBase._get_connected_edges(v, verts, visited_verts, edges, group)
                 grouped_edges.append(group)
 
         for group in grouped_edges:
             bmesh.ops.edgenet_fill(mesh, edges=list(group))
 
     @staticmethod
-    def _get_connected(v, all_vs: set, visited_vs: set, edges, g: set):
+    def _get_connected_edges(v, all_vs: set, visited_vs: set, edges: Union[dict, set], g: set):
         """
         Starting at a given vertex 'v', follow all attached edges that are in 'edges' and collect them together into 'g'
         The follow aspect is recursive, and the end result will be all connected edges being put in 'g'
@@ -161,7 +167,30 @@ class JVBuilderBase:
 
                 for vert in edge.verts:
                     if vert in all_vs and vert not in visited_vs:  # if we have a vertex we haven't visited yet
-                        JVBuilderBase._get_connected(vert, all_vs, visited_vs, edges, g)
+                        JVBuilderBase._get_connected_edges(vert, all_vs, visited_vs, edges, g)
+
+    @staticmethod
+    def _group_connected_faces(faces: set) -> List[set]:
+        """
+        Take a set of faces and group them together based on whether the faces are connected, aka, share an edge
+        :param faces: a set of faces
+        :return: a list of sets of grouped faces
+        """
+        grouped = []
+        visited = set()
+        for face in faces:
+            if face not in visited:
+                group = {face}
+                visited.add(face)
+                for edge in face.edges:
+                    for linked_face in edge.link_faces:
+                        if linked_face in faces:
+                            group.add(linked_face)
+                            visited.add(linked_face)
+
+                grouped.append(group)
+
+        return grouped
 
     @staticmethod
     def _rotate_mesh_vertices(mesh, rotation, origin=Vector((0, 0, 0))):
@@ -211,7 +240,7 @@ class JVBuilderBase:
         for v in new_vertices:
             if v not in visited_vertices:
                 group = set()
-                JVBuilderBase._get_connected(v, new_vertices, visited_vertices, new_edges, group)
+                JVBuilderBase._get_connected_edges(v, new_vertices, visited_vertices, new_edges, group)
                 grouped_edges.append(group)
 
         # mark top edges
@@ -262,7 +291,6 @@ class JVBuilderBase:
             to_remove = []
             for face in mesh.faces:
                 c = face.calc_center_median()
-                print(c)
                 if x <= c.x <= x+dx and y <= c.y <= y+dy and z <= c.z <= z+dz:
                     to_remove.append(face)
 
