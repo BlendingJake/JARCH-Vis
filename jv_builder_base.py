@@ -16,7 +16,20 @@ class JVBuilderBase:
 
     @staticmethod
     def delete(props, context):
+        src = props.convert_source_object
+
+        if src is not None:
+            for fg in src.jv_properties.face_groups:
+                if not fg.is_convex:
+                    fg.boolean_object.hide_viewport = False
+                    fg.boolean_object.select_set(True)
+
         bpy.ops.object.delete()
+
+        if src is not None:
+            src.hide_viewport = False
+            src.select_set(True)
+            context.view_layer.objects.active = src
 
     @staticmethod
     def _start(context):
