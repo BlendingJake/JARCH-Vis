@@ -20,21 +20,24 @@ class JVBuilderBase:
 
     @staticmethod
     def _start(context):
-        bpy.ops.object.mode_set(mode='EDIT')
+        # bpy.ops.object.mode_set(mode='EDIT')
 
-        bm = bmesh.from_edit_mesh(context.object.data)
+        # bm = bmesh.from_edit_mesh(context.object.data)
+        bm = bmesh.new()
+        bm.from_mesh(context.object.data)
         bm.verts.ensure_lookup_table()
         bm.faces.ensure_lookup_table()
 
         return bm
 
     @staticmethod
-    def _finish(context, mesh: bmesh.types.BMesh):
-        mesh.normal_update()
-        bmesh.update_edit_mesh(context.object.data, True)
+    def _finish(context, bm: bmesh.types.BMesh):
+        bm.normal_update()
+        # bmesh.update_edit_mesh(context.object.data, True)
+        bm.to_mesh(context.object.data)
 
-        bpy.ops.object.mode_set(mode='OBJECT')
-        mesh.free()
+        # bpy.ops.object.mode_set(mode='OBJECT')
+        bm.free()
 
     @staticmethod
     def _geometry(props, dims: tuple):

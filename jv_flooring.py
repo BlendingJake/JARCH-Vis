@@ -88,7 +88,8 @@ class JVFlooring(JVBuilderBase):
     @staticmethod
     def update(props, context):
         if props.convert_source_object is not None:  # then this is a converted object
-            JVFlooring._update_as_converted(props, context)
+            mesh = JVFlooring._update_as_converted(props, context)
+            original_edges = mesh.edges[:]
         else:
             mesh = JVFlooring._start(context)
             verts, faces = JVFlooring._geometry(props, (props.length, props.width))
@@ -109,19 +110,19 @@ class JVFlooring(JVBuilderBase):
                     ((0, props.width, 0), (0, -1, 0))  # top
                 ])
 
-            # solidify
-            new_geometry = JVFlooring._solidify(mesh,
-                                                JVFlooring._create_variance_function(props.vary_thickness,
-                                                                                     props.thickness,
-                                                                                     props.thickness_variance))
+        # solidify
+        new_geometry = JVFlooring._solidify(mesh,
+                                            JVFlooring._create_variance_function(props.vary_thickness,
+                                                                                 props.thickness,
+                                                                                 props.thickness_variance))
 
-            # main material index
-            JVFlooring._add_material_index(mesh.faces, 0)
+        # main material index
+        JVFlooring._add_material_index(mesh.faces, 0)
 
-            # add uv seams
-            JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
+        # add uv seams
+        JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
-            JVFlooring._finish(context, mesh)
+        JVFlooring._finish(context, mesh)
 
     @staticmethod
     def _update_as_converted(props, context):
@@ -132,10 +133,11 @@ class JVFlooring(JVBuilderBase):
             verts, faces = JVFlooring._geometry(props, tuple(fg.dimensions))
             rotated_verts = []
 
-            # rotate vertices
+            # rotate and shift vertices
             for v in verts:
                 vv = Vector(v)
                 vv.rotate(fg.rotation)
+                vv += fg.location
                 rotated_verts.append(tuple(vv))
 
             mesh = bmesh.new()
@@ -143,7 +145,7 @@ class JVFlooring(JVBuilderBase):
 
             bpy.ops.mesh.primitive_cube_add()
             new_obj = context.object
-            new_obj.location = fg.location
+            new_obj.location = src.location
             objects.append(new_obj)
             mesh.to_mesh(new_obj.data)
 
@@ -167,8 +169,10 @@ class JVFlooring(JVBuilderBase):
             obj.select_set(False)
         for obj in objects:
             obj.select_set(True)
+        context.view_layer.objects.active = objects[0]
 
-        bpy.ops.object.join()
+        if len(objects) > 1:
+            bpy.ops.object.join()
 
         bm = bmesh.new()
         bm.from_mesh(context.object.data)
@@ -177,8 +181,9 @@ class JVFlooring(JVBuilderBase):
         bpy.ops.object.delete()  # remove object formed from joining meshes
 
         main_obj.select_set(True)
-        bm.to_mesh(main_obj.data)
-        bm.free()
+        context.view_layer.objects.active = main_obj
+
+        return bm
 
     @staticmethod
     def _geometry(props, dims: tuple):
@@ -191,7 +196,7 @@ class JVFlooring(JVBuilderBase):
 
     @staticmethod
     def _regular(dims: tuple, props, verts, faces):
-        width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width_narrow,
+        width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width_medium,
                                                               props.width_variance)
         length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length_medium,
                                                                props.length_variance)

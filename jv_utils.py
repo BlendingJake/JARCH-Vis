@@ -15,7 +15,7 @@ class Units:
     STH_INCH: float = INCH / 16  # 1/16th inch
 
 
-def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[MeshVertex], fg, obj_loc: Vector):
+def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[MeshVertex], fg):
     """
     Determine the rotation of the faces from a plane lying in the X-Y plane with normal (0, 0, 1).
     Rotate the face points into the X-Y plane using that rotation and then determine the offset of the
@@ -23,7 +23,6 @@ def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[
     :param faces: a list of bpy.types.MeshPolygons that make up the face group
     :param vertices: a list of bpy.types.MeshVertexs that make up the face group
     :param fg: the face group to assign the rot, loc, and dim values to
-    :param obj_loc: the location of the source object
     """
     # ROTATION - the amount of rotation needed to get a point in X-Y plane to the face
     normal = Vector(faces[0].normal)
@@ -77,29 +76,30 @@ def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[
     loc.rotate(Euler((rho, 0, 0)))
     loc.rotate(Euler((0, 0, theta)))
 
-    fg.location = loc + obj_loc
+    fg.location = loc
 
 
-def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector):
+def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector, corner_loc: Vector):
     """
     Calculate vectors that are in the plane of the face group, perpendicular to the edge, and pointer inward
     :param edges: the set of boundary edges for the face group (bmesh.types.BMEdge)
     :param vertices: all vertices in the face group (bpy.types.MeshVertex)
     :param fg: the face group itself
     :param normal: the normal of the faces in the face group
-    :param obj_origin: the origin of the new object to know how much to shift bisecting planes
+    :param corner_loc: the origin/bottom-left corner of the face group
     """
-    center = Vector((0, 0, 0))
+    face_group_center = Vector((0, 0, 0))
     for vertex in vertices:
-        center += Vector(vertex.co)
-    center /= len(vertices)
+        face_group_center += Vector(vertex.co)
+    face_group_center /= len(vertices)
 
     for edge in edges:
         v1, v2, = edge.verts[0].co, edge.verts[1].co
         edge_v = Vector((v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]))
 
         bisecting_plane = fg.bisecting_planes.add()
-        bisecting_plane.center = Vector(((v2[0]+v1[0]) / 2, (v2[1]+v1[1]) / 2, (v2[2]+v1[2]) / 2))
+        edge_center = Vector(((v2[0]+v1[0]) / 2, (v2[1]+v1[1]) / 2, (v2[2]+v1[2]) / 2))
+        bisecting_plane.center = edge_center
 
         # the cross product of the edge and the normal of the face will be perpendicular to both and in the plane
         edge_normal = edge_v.cross(normal)
@@ -107,10 +107,8 @@ def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector):
         edge_normal_neg.negate()
 
         # see if the edge_normal or it's inverse is closer to the center of the faces. Pick the one closer
-        discerner = Vector(bisecting_plane.center) - center + normal  # points from center to edge middle + normal
+        discerner = Vector(bisecting_plane.center) - face_group_center + normal
         if edge_normal.angle(discerner) < edge_normal_neg.angle(discerner):
             edge_normal = edge_normal_neg
 
         bisecting_plane.normal = edge_normal
-
-        # TODO: bisecting plane coordinates are global when they need to be local

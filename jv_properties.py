@@ -41,6 +41,7 @@ class BisectingPlane(PropertyGroup):
         name="Normal", size=3, unit="LENGTH"
     )
 
+    # LOCAL
     center: FloatVectorProperty(
         name="Center", size=3, unit="LENGTH"
     )
@@ -60,10 +61,12 @@ class FaceGroup(PropertyGroup):
         name="Convert Object", type=Object
     )
 
+    # the rotation of the face group from the X-Y plane
     rotation: FloatVectorProperty(
         subtype="EULER", size=3
     )
 
+    # LOCAL coordinate of bottom-left corner
     location: FloatVectorProperty(
         subtype="TRANSLATION", size=3
     )

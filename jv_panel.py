@@ -42,7 +42,7 @@ class JVPanel(Panel):
                 box = layout.box()
                 box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")
 
-                if props.add_cutouts:
+                if props.add_cutouts and props.convert_source_object is None:
                     row = box.row()
                     row.template_list("OBJECT_UL_cutouts", "", props, "cutouts", props, "cutouts_index", rows=5)
 

@@ -118,7 +118,7 @@ class JVConvert(bpy.types.Operator):
                             vertices.add(src.data.vertices[vi])
 
                 # determine loc, rot, dims
-                determine_face_group_scale_rot_loc(faces, list(vertices), fg, src.location)
+                determine_face_group_scale_rot_loc(faces, list(vertices), fg)
 
                 if fg.is_convex:
                     # if the face group is convex, then we can used bmesh.ops.bisect_plane to cut it
@@ -133,7 +133,8 @@ class JVConvert(bpy.types.Operator):
                                 if edge.is_boundary:
                                     edges.add(edge)
 
-                    determine_bisecting_planes(edges, vertices, fg, faces[0].normal)
+                    fg.bisecting_planes.clear()  # remove any planes from a previous conversion
+                    determine_bisecting_planes(edges, vertices, fg, faces[0].normal, fg.location)
                     fg_mesh.free()
                 else:
                     # if the face group isn't convex, then we have to create a boolean object to use as a cutter
