@@ -57,8 +57,8 @@ class FaceGroup(PropertyGroup):
         description="Are the faces convex? Aka, are all interior angles <= 180 degrees and are there not cutouts?"
     )
 
-    convert_object: PointerProperty(
-        name="Convert Object", type=Object
+    boolean_object: PointerProperty(
+        name="Bolean Object", type=Object
     )
 
     # the rotation of the face group from the X-Y plane

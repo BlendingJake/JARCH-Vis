@@ -124,6 +124,21 @@ class JVFlooring(JVBuilderBase):
         JVFlooring._finish(context, mesh)
 
     @staticmethod
+    def delete(props, context):
+        src = props.convert_source_object
+
+        for fg in src.jv_properties.face_groups:
+            if not fg.is_convex:
+                fg.boolean_object.hide_viewport = False
+                fg.boolean_object.select_set(True)
+
+        bpy.ops.object.delete()
+
+        src.hide_viewport = False
+        src.select_set(True)
+        context.view_layer.objects.active = src
+
+    @staticmethod
     def _update_as_converted(props, context):
         objects = []
         main_obj = context.object
@@ -158,7 +173,7 @@ class JVFlooring(JVBuilderBase):
                 mesh.to_mesh(new_obj.data)
             else:
                 bpy.ops.object.modifier_add(type="BOOLEAN")
-                new_obj.modifiers["Boolean"].object = fg.convert_object
+                new_obj.modifiers["Boolean"].object = fg.boolean_object
                 bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
 
             mesh.free()

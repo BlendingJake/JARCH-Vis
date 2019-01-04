@@ -170,7 +170,7 @@ class JVConvert(bpy.types.Operator):
                     new_obj.location = src.location
 
                     bm.to_mesh(new_obj.data)
-                    fg.convert_object = new_obj
+                    fg.boolean_object = new_obj
                     bm.free()
 
                     new_obj.hide_viewport = True
