@@ -41,7 +41,7 @@ class JVBuilderBase:
 
     @staticmethod
     def _geometry(props, dims: tuple):
-        pass
+        return [], []
 
     @staticmethod
     def _build_mesh_from_geometry(mesh: bmesh.types.BMesh, vertices: list, faces: list):
@@ -324,3 +324,72 @@ class JVBuilderBase:
         mesh.verts.ensure_lookup_table()
         mesh.edges.ensure_lookup_table()
         mesh.faces.ensure_lookup_table()
+
+    @classmethod
+    def _generate_mesh_from_converted_object(cls, props, context) -> bmesh.types.BMesh:
+        """
+        Since the object is converted, go through each face group, creating a new mesh, cutting it,
+        and then joining them all together into a mesh which is returned
+        :param cls: the architecture class to use for generating the geometry
+        :param props: JVProperties
+        :param context:
+        :return: the completed mesh
+        """
+        objects = []
+        main_obj = context.object
+        src = props.convert_source_object
+        for fg in src.jv_properties.face_groups:  # face groups on original object
+            verts, faces = cls._geometry(props, tuple(fg.dimensions))
+            rotated_verts = []
+
+            # rotate and shift vertices
+            for v in verts:
+                vv = Vector(v)
+                vv.rotate(fg.rotation)
+                vv += fg.location
+                rotated_verts.append(tuple(vv))
+
+            mesh = bmesh.new()
+            cls._build_mesh_from_geometry(mesh, rotated_verts, faces)
+
+            bpy.ops.mesh.primitive_cube_add()
+            new_obj = context.object
+            new_obj.location = src.location
+            objects.append(new_obj)
+            mesh.to_mesh(new_obj.data)
+
+            if fg.is_convex:
+                # cut mesh using bisect_plane for every edge, remove all geometry outside of planes
+                planes = []
+                for plane in fg.bisecting_planes:
+                    planes.append((tuple(plane.center), tuple(plane.normal)))
+
+                cls._cut_meshes([mesh], planes)
+                mesh.to_mesh(new_obj.data)
+            else:
+                bpy.ops.object.modifier_add(type="BOOLEAN")
+                new_obj.modifiers["Boolean"].object = fg.boolean_object
+                bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+
+            mesh.free()
+
+        # join objects
+        for obj in context.selected_objects:
+            obj.select_set(False)
+        for obj in objects:
+            obj.select_set(True)
+        context.view_layer.objects.active = objects[0]
+
+        if len(objects) > 1:
+            bpy.ops.object.join()
+
+        bm = bmesh.new()
+        bm.from_mesh(context.object.data)
+        cls._clean_mesh(bm)
+
+        bpy.ops.object.delete()  # remove object formed from joining meshes
+
+        main_obj.select_set(True)
+        context.view_layer.objects.active = main_obj
+
+        return bm
