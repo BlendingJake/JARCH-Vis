@@ -89,7 +89,6 @@ class JVFlooring(JVBuilderBase):
     def update(props, context):
         if props.convert_source_object is not None:  # then this is a converted object
             mesh = JVFlooring._update_as_converted(props, context)
-            original_edges = mesh.edges[:]
         else:
             mesh = JVFlooring._start(context)
             verts, faces = JVFlooring._geometry(props, (props.length, props.width))
@@ -97,8 +96,6 @@ class JVFlooring(JVBuilderBase):
 
             if props.add_cutouts:
                 JVFlooring._cutouts(mesh, props)
-
-            original_edges = mesh.edges[:]
 
             # cut if needed
             if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
@@ -109,6 +106,8 @@ class JVFlooring(JVBuilderBase):
                     ((props.length, 0, 0), (-1, 0, 0)),  # right
                     ((0, props.width, 0), (0, -1, 0))  # top
                 ])
+
+        original_edges = mesh.edges[:]  # used to determine where seams should be added
 
         # solidify
         new_geometry = JVFlooring._solidify(mesh,

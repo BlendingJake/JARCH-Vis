@@ -143,13 +143,14 @@ class JVBuilderBase:
             bmesh.ops.edgenet_fill(mesh, edges=list(group))
 
     @staticmethod
-    def _get_connected(v, all_vs: set, visited_vs: set, edges: set, g: set):
+    def _get_connected(v, all_vs: set, visited_vs: set, edges, g: set):
         """
-        Recursive follow the edges that are connected to v if the edges are part of the newly created geometry
+        Starting at a given vertex 'v', follow all attached edges that are in 'edges' and collect them together into 'g'
+        The follow aspect is recursive, and the end result will be all connected edges being put in 'g'
         :param v: The vertex to follow
         :param all_vs: A set of all the vertices from the newly created geometry
         :param visited_vs: The vertices that we have visited so far
-        :param edges: A set of all the edges from the newly created geometry
+        :param edges: A set/dict of all the edges from the newly created geometry
         :param g: The set of edges we are building that are connected
         """
         visited_vs.add(v)
@@ -179,27 +180,54 @@ class JVBuilderBase:
     @staticmethod
     def _add_uv_seams_for_solidified_plane(extruded_geometry, original_edges, mesh):
         """
-        Add seams to all vertical edges and n-1 of the n top edges to allow the mesh to be unwrapped and lay flat
+        Add seams to all vertical edges and n-1 of the n top edges to allow the mesh to be unwrapped and lay flat.
+        To determine which top edges should be marked, first, all new vertices are collected, and then the edges
+        connecting them are grouped together based on whether they are connected or not. This groups new edges by
+        board, tile, etc. Next, the number of new faces connected to each edge is used to determine which edges to mark.
+        Only edges connected to one new face will be marked. Then mark all vertical edges
         :param extruded_geometry: The new vertices, edges, and faces from bmesh.ops.solidify["geom"]
         :param original_edges: the edges that formed the original plane
         :param mesh: the current mesh object
         """
-        og_edges = set(original_edges)
-        new_edges = set()
-
+        new_vertices = set()
+        new_faces = set()
+        new_edges = {}  # maps new edge -> count of new faces that share it
         for item in extruded_geometry:
-            if isinstance(item, bmesh.types.BMFace):  # mark all but one of the top edges
-                first = True
-                for e in item.edges:
-                    new_edges.add(e)
-                    if first:
-                        first = not first
-                        continue
-                    else:
-                        e.seam = True
+            if isinstance(item, bmesh.types.BMEdge):
+                new_edges[item] = 0
+            elif isinstance(item, bmesh.types.BMVert):
+                new_vertices.add(item)
+            else:
+                new_faces.add(item)
 
+        # determine how many new faces are connected to each edge
+        for face in new_faces:
+            for edge in face.edges:
+                new_edges[edge] += 1
+
+        # group edges by whether they are connected or not
+        visited_vertices = set()
+        grouped_edges = []
+        for v in new_vertices:
+            if v not in visited_vertices:
+                group = set()
+                JVBuilderBase._get_connected(v, new_vertices, visited_vertices, new_edges, group)
+                grouped_edges.append(group)
+
+        # mark top edges
+        for group in grouped_edges:
+            first = True
+            for edge in group:
+                if new_edges[edge] == 1 and first:  # skip one edge
+                    first = False
+                    continue
+                elif new_edges[edge] == 1:
+                    edge.seam = True
+
+        # mark vertical edges
+        og_edges = set(original_edges)
         for edge in mesh.edges:
-            if edge not in new_edges and edge not in og_edges:
+            if edge not in og_edges and edge not in new_edges:
                 edge.seam = True
 
     @staticmethod
