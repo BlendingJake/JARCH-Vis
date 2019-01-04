@@ -1,8 +1,5 @@
 from . jv_builder_base import JVBuilderBase
 from math import sqrt, cos, tan, radians
-from mathutils import Vector
-import bmesh
-import bpy
 
 
 class JVFlooring(JVBuilderBase):

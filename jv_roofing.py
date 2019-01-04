@@ -60,42 +60,46 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def update(props, context):
-        mesh = JVRoofing._start(context)
-        verts, faces = JVRoofing._geometry(props)
+        if props.convert_source_object is not None:
+            props.pitch = 0
+            mesh = JVRoofing._generate_mesh_from_converted_object(props, context)
+        else:
+            mesh = JVRoofing._start(context)
+            verts, faces = JVRoofing._geometry(props, (props.length, props.width))
 
-        mesh.clear()
-        for v in verts:
-            mesh.verts.new(v)
-        mesh.verts.ensure_lookup_table()
+            mesh.clear()
+            for v in verts:
+                mesh.verts.new(v)
+            mesh.verts.ensure_lookup_table()
 
-        for f in faces:
-            mesh.faces.new([mesh.verts[i] for i in f])
-        mesh.faces.ensure_lookup_table()
+            for f in faces:
+                mesh.faces.new([mesh.verts[i] for i in f])
+            mesh.faces.ensure_lookup_table()
+
+            # overall dimension cutting - length
+            if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
+                                         "shingles_architectural", "terracotta"):
+                JVRoofing._cut_meshes([mesh], [
+                    ((props.length, 0, 0), (-1, 0, 0))
+                ])
+            # overall dimension cutting - width
+            if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "terracotta"):
+                JVRoofing._cut_meshes([mesh], [
+                    ((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))
+                ])
+
+            # rotate
+            rot = atan(props.pitch / 12)
+            rotation = Euler((rot, 0, 0))
+            JVRoofing._rotate_mesh_vertices(mesh, rotation)
+
+            # cutouts
+            if props.add_cutouts:
+                JVRoofing._cutouts(mesh, props)
+
+            # mirror
 
         original_edges = mesh.edges[:]
-
-        # overall dimension cutting - length
-        if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
-                                     "shingles_architectural", "terracotta"):
-            JVRoofing._cut_meshes([mesh], [
-                ((props.length, 0, 0), (-1, 0, 0))
-            ])
-        # overall dimension cutting - width
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "terracotta"):
-            JVRoofing._cut_meshes([mesh], [
-                ((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))
-            ])
-
-        # rotate
-        rot = atan(props.pitch / 12)
-        rotation = Euler((rot, 0, 0))
-        JVRoofing._rotate_mesh_vertices(mesh, rotation)
-
-        # cutouts
-        if props.add_cutouts:
-            JVRoofing._cutouts(mesh, props)
-
-        # mirror
 
         # solidify
         new_geometry = []
@@ -111,15 +115,15 @@ class JVRoofing(JVBuilderBase):
         JVRoofing._finish(context, mesh)
 
     @staticmethod
-    def _geometry(props):
+    def _geometry(props, dims: tuple):
         verts, faces = [], []
 
-        getattr(JVRoofing, "_{}".format(props.roofing_pattern))(props, verts, faces)
+        getattr(JVRoofing, "_{}".format(props.roofing_pattern))(dims, props, verts, faces)
 
         return verts, faces
 
     @staticmethod
-    def _tin_regular(props, verts, faces):
+    def _tin_regular(dims: tuple, props, verts, faces):
         ridge_steps = (
             (0, 0),
             (Units.H_INCH, Units.TQ_INCH),
@@ -138,7 +142,7 @@ class JVRoofing(JVBuilderBase):
         )
 
         # diagonal distance to prep for rotation of vertices
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         offset_between_valley_accents = 23 * Units.ETH_INCH
         for y in (0, upper_y):
             x = 0
@@ -161,12 +165,12 @@ class JVRoofing(JVBuilderBase):
             faces.append((i, i + 1, i + offset + 1, i + offset))
 
     @staticmethod
-    def _tin_angular(props, verts, faces):
+    def _tin_angular(dims: tuple, props, verts, faces):
         pan = 3*Units.INCH
         ridge_steps = ((0, 0), (Units.H_INCH, 5*Units.Q_INCH), (3*Units.H_INCH, 5*Units.Q_INCH), (2*Units.INCH, 0))
         valley_steps = ((0, 0), (pan, 0), (pan + Units.Q_INCH, Units.ETH_INCH), (pan + 3*Units.H_INCH, Units.ETH_INCH))
 
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         for y in (0, upper_y):
             x = 0
             while x < upper_x+pan:
@@ -188,13 +192,13 @@ class JVRoofing(JVBuilderBase):
             faces.append((i, i + 1, i + offset + 1, i + offset))
 
     @staticmethod
-    def _tin_standing_seam(props, verts, faces):
+    def _tin_standing_seam(dims: tuple, props, verts, faces):
         width = props.pan_width
         qi, hi, sqi, fei, tei = Units.Q_INCH, Units.H_INCH, 7*Units.Q_INCH, 5*Units.ETH_INCH, 13*Units.ETH_INCH
         sei, nsi = 7*Units.ETH_INCH, 9*Units.STH_INCH
 
         v_offset = 11
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         x = 0
         while x < upper_x:
             p = len(verts)
@@ -225,7 +229,7 @@ class JVRoofing(JVBuilderBase):
                 faces.append((p+i, p+i+1, p+i+1+v_offset, p+i+v_offset))
 
     @staticmethod
-    def _shingles_3_tab(props, verts, faces):
+    def _shingles_3_tab(dims: tuple, props, verts, faces):
         width, exposure, th, gap = Units.FOOT, 11*Units.H_INCH, props.thickness_thin, Units.H_INCH
 
         first_length_for_fixed_offset = (width - (gap/2)) * (props.row_offset / 100)
@@ -248,7 +252,7 @@ class JVRoofing(JVBuilderBase):
         ]
         faces.append((0, 3, 2, 1))
 
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         y = 0
         odd = False
         while y < upper_y:
@@ -291,7 +295,7 @@ class JVRoofing(JVBuilderBase):
                 is_gap = not is_gap
 
     @staticmethod
-    def _shingles_architectural(props, verts, faces):
+    def _shingles_architectural(dims: tuple, props, verts, faces):
         hi, th, width = Units.H_INCH, props.thickness_thin, Units.FOOT
         hw = width / 2
 
@@ -300,7 +304,7 @@ class JVRoofing(JVBuilderBase):
         separation_variance = JVRoofing._create_variance_function(True, 8*Units.INCH, 40)
         width_variance = JVRoofing._create_variance_function(True, 4*Units.INCH, 60)
 
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         y = 0
         odd = False
         while y < upper_y:
@@ -356,7 +360,7 @@ class JVRoofing(JVBuilderBase):
             odd = not odd
 
     @staticmethod
-    def _shakes(props, verts, faces):
+    def _shakes(dims: tuple, props, verts, faces):
         length, width, gap = props.shake_length, props.shake_width, props.gap_uniform
         th_z, hl = 2 * props.thickness_thin, length / 2
 
@@ -367,7 +371,7 @@ class JVRoofing(JVBuilderBase):
         offset_width_variance = JVRoofing._create_variance_function(props.vary_row_offset, width / 2,
                                                                     props.row_offset_variance)
         width_variance = JVRoofing._create_variance_function(props.vary_width, width, props.width_variance)
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
 
         # bottom row backing layer
         verts += [
@@ -409,7 +413,7 @@ class JVRoofing(JVBuilderBase):
             odd = not odd
 
     @staticmethod
-    def _terracotta(props, verts, faces):
+    def _terracotta(dims: tuple, props, verts, faces):
         length, radius, th = props.tile_length, props.terracotta_radius, props.thickness_thin
         spacing, res, hi = props.terracotta_gap, props.terracotta_resolution, Units.H_INCH
         radius_small = radius - th
@@ -419,7 +423,7 @@ class JVRoofing(JVBuilderBase):
         theta = asin(th/(radius - th))  # similar to asin(th/radius) above, just for smaller radius cricle of the top
         top_ang_step = radians(180) / (res + 1)  # going from -theta to 180-theta, so full 180 degrees, just rotated
 
-        upper_x, upper_y = props.length, props.width / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
         y = 0
         while y < upper_y:
             x = 0

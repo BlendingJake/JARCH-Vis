@@ -126,12 +126,20 @@ class JVConvert(bpy.types.Operator):
                     fg_mesh = bmesh.new()
                     fg_mesh.from_mesh(src.data)
 
-                    edges = set()
+                    all_edges = {}
                     for face in fg_mesh.faces:
                         if face.index in indices:
                             for edge in face.edges:
-                                if edge.is_boundary:
-                                    edges.add(edge)
+                                # keep track of how many faces the edge is attached to
+                                if edge in all_edges:
+                                    all_edges[edge] += 1
+                                else:
+                                    all_edges[edge] = 1
+
+                    edges = set()
+                    for edge, count in all_edges.items():
+                        if count == 1:
+                            edges.add(edge)
 
                     fg.bisecting_planes.clear()  # remove any planes from a previous conversion
                     determine_bisecting_planes(edges, vertices, fg, faces[0].normal, fg.location)

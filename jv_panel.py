@@ -69,12 +69,20 @@ class JVPanel(Panel):
 
         elif context.mode == "EDIT_MESH":
             if props.object_type == "none":
-                row = layout.row()
+                row = layout.row(align=True)
                 row.template_list("OBJECT_UL_face_groups", "", props, "face_groups", props, "face_groups_index", rows=5)
 
-                column = row.column()
+                column = row.column(align=True)
                 column.operator("object.jv_add_face_group", text="", icon="ADD")
                 column.operator("object.jv_delete_face_group", text="", icon="REMOVE")
+
+                indices = []
+                for fg in props.face_groups:
+                    indices.extend([i for i in fg.face_indices.split(",")])
+
+                layout.separator()
+                layout.label(text="{}/{} Faces in Face Groups".format(len(indices), len(context.object.data.polygons)),
+                             icon="INFO")
 
 
 def register():

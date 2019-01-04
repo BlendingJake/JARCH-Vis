@@ -372,6 +372,8 @@ class JVBuilderBase:
             mesh.to_mesh(new_obj.data)
 
             if fg.is_convex:
+                mesh.normal_update()
+
                 # cut mesh using bisect_plane for every edge, remove all geometry outside of planes
                 planes = []
                 for plane in fg.bisecting_planes:
