@@ -13,7 +13,9 @@ class JVRoofing(JVBuilderBase):
         row = layout.row()
         row.prop(props, "width")
         row.prop(props, "length")
-        layout.prop(props, "pitch")
+
+        if props.convert_source_object is None:
+            layout.prop(props, "pitch")
 
         if props.roofing_pattern == "tin_standing_seam":
             layout.separator()
@@ -61,11 +63,10 @@ class JVRoofing(JVBuilderBase):
     @staticmethod
     def update(props, context):
         if props.convert_source_object is not None:
-            props.pitch = 0
             mesh = JVRoofing._generate_mesh_from_converted_object(props, context)
         else:
             mesh = JVRoofing._start(context)
-            verts, faces = JVRoofing._geometry(props, (props.length, props.width))
+            verts, faces = JVRoofing._geometry(props, (props.length, props.width / cos(atan(props.pitch / 12))))
 
             mesh.clear()
             for v in verts:
@@ -142,7 +143,7 @@ class JVRoofing(JVBuilderBase):
         )
 
         # diagonal distance to prep for rotation of vertices
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         offset_between_valley_accents = 23 * Units.ETH_INCH
         for y in (0, upper_y):
             x = 0
@@ -170,7 +171,7 @@ class JVRoofing(JVBuilderBase):
         ridge_steps = ((0, 0), (Units.H_INCH, 5*Units.Q_INCH), (3*Units.H_INCH, 5*Units.Q_INCH), (2*Units.INCH, 0))
         valley_steps = ((0, 0), (pan, 0), (pan + Units.Q_INCH, Units.ETH_INCH), (pan + 3*Units.H_INCH, Units.ETH_INCH))
 
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         for y in (0, upper_y):
             x = 0
             while x < upper_x+pan:
@@ -198,7 +199,7 @@ class JVRoofing(JVBuilderBase):
         sei, nsi = 7*Units.ETH_INCH, 9*Units.STH_INCH
 
         v_offset = 11
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         x = 0
         while x < upper_x:
             p = len(verts)
@@ -252,7 +253,7 @@ class JVRoofing(JVBuilderBase):
         ]
         faces.append((0, 3, 2, 1))
 
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         y = 0
         odd = False
         while y < upper_y:
@@ -304,7 +305,7 @@ class JVRoofing(JVBuilderBase):
         separation_variance = JVRoofing._create_variance_function(True, 8*Units.INCH, 40)
         width_variance = JVRoofing._create_variance_function(True, 4*Units.INCH, 60)
 
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         y = 0
         odd = False
         while y < upper_y:
@@ -371,7 +372,7 @@ class JVRoofing(JVBuilderBase):
         offset_width_variance = JVRoofing._create_variance_function(props.vary_row_offset, width / 2,
                                                                     props.row_offset_variance)
         width_variance = JVRoofing._create_variance_function(props.vary_width, width, props.width_variance)
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
 
         # bottom row backing layer
         verts += [
@@ -423,7 +424,7 @@ class JVRoofing(JVBuilderBase):
         theta = asin(th/(radius - th))  # similar to asin(th/radius) above, just for smaller radius cricle of the top
         top_ang_step = radians(180) / (res + 1)  # going from -theta to 180-theta, so full 180 degrees, just rotated
 
-        upper_x, upper_y = dims[0], dims[1] / cos(atan(props.pitch / 12))
+        upper_x, upper_y = dims
         y = 0
         while y < upper_y:
             x = 0
