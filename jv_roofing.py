@@ -67,15 +67,7 @@ class JVRoofing(JVBuilderBase):
         else:
             mesh = JVRoofing._start(context)
             verts, faces = JVRoofing._geometry(props, (props.length, props.width / cos(atan(props.pitch / 12))))
-
-            mesh.clear()
-            for v in verts:
-                mesh.verts.new(v)
-            mesh.verts.ensure_lookup_table()
-
-            for f in faces:
-                mesh.faces.new([mesh.verts[i] for i in f])
-            mesh.faces.ensure_lookup_table()
+            JVRoofing._build_mesh_from_geometry(mesh, verts, faces)
 
             # overall dimension cutting - length
             if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
@@ -98,7 +90,7 @@ class JVRoofing(JVBuilderBase):
             if props.add_cutouts:
                 JVRoofing._cutouts(mesh, props)
 
-            # mirror
+            # TODO: mirror
 
         original_edges = mesh.edges[:]
 

@@ -121,7 +121,7 @@ class JVBuilderBase:
             return lambda: base_amount
 
     @staticmethod
-    def _cut_meshes(meshes: list, planes: list, fill_holes=False):
+    def _cut_meshes(meshes: list, planes: list, fill_holes=False, remove_geom=True):
         """
         Take the bmesh object and bisect it with all the planes given and remove the geometry outside of the planes
         :param meshes: a list of the meshes to cut
@@ -132,7 +132,7 @@ class JVBuilderBase:
             for plane in planes:
                 pos, normal = plane
                 geom = bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
-                                              plane_co=pos, plane_no=normal, clear_inner=True)
+                                              plane_co=pos, plane_no=normal, clear_inner=remove_geom)
 
                 if fill_holes:
                     JVBuilderBase._fill_holes(mesh, geom["geom_cut"])
