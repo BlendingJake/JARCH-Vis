@@ -168,15 +168,17 @@ class JVSiding(JVBuilderBase):
                 mesh.faces.new([mesh.verts[i] for i in f])
             mesh.faces.ensure_lookup_table()
 
+            if props.siding_pattern == "brick" and props.add_grout:
+                mortar_mesh = bmesh.new()
+                JVSiding._build_mesh_from_geometry(mortar_mesh,
+                                                   *JVSiding._mortar_geometry(props, (props.length, props.height)))
+
             # cutouts
             if props.add_cutouts:
                 JVSiding._cutouts(mesh, props)
 
-                if props.siding_pattern == "brick" and props.add_grout:
-                    mortar_mesh = JVSiding._build_mesh_from_geometry(
-                        bmesh.new(),
-                        *JVSiding._mortar_geometry(props, (props.length, props.height))
-                    )
+                if mortar_mesh is not None:
+                    JVSiding._cutouts(mortar_mesh, props)
 
             # cut top and right
             if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):

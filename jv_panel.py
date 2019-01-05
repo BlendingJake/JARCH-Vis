@@ -23,6 +23,12 @@ class JVPanel(Panel):
         obj = context.object
 
         if obj is None or obj.type != "MESH":
+            # add operators
+            layout.separator()
+            box = layout.box()
+            for op_name, icon in self.jv_add_operators:
+                box.operator(op_name, icon=icon)
+
             return
 
         props = obj.jv_properties
