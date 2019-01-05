@@ -35,6 +35,7 @@ if "bpy" in locals():
         jv_flooring,
         jv_siding,
         jv_roofing,
+        jv_windows,
 
         jv_operators,
         jv_panel
@@ -51,6 +52,7 @@ else:
     from . import jv_flooring
     from . import jv_siding
     from . import jv_roofing
+    from . import jv_windows
 
     from . import jv_operators
     from . import jv_panel

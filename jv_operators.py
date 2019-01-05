@@ -1,3 +1,16 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import bpy
 import bmesh
 from . jv_types import get_object_type_handler
@@ -92,10 +105,6 @@ class JVConvert(bpy.types.Operator):
         if not all([i == 1 for i in context.object.scale]) or not all([i == 0 for i in context.object.rotation_euler]):
             self.report({"ERROR"}, "The scale and rotation must be applied on this object before conversion")
             return {"FINISHED"}
-
-        # create view layer if needed
-        if "JARCH VIS" not in context.scene.view_layers:
-            context.scene.view_layers.new(name="JARCH VIS")
 
         if len(props.face_groups) == 0:  # no face groups, so try and create one
             self.report({"ERROR"}, """Please enter edit mode and create a face group before trying to convert""")

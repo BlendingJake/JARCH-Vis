@@ -1,3 +1,17 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from math import radians
+
 from bpy.types import PropertyGroup, Object
 from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty, \
     CollectionProperty, StringProperty
@@ -12,7 +26,9 @@ def jv_on_property_update(_, context):
     if props is not None and props.update_automatically:
         handler = get_object_type_handler(props.object_type)
 
-        if handler is not None:
+        if props.convert_source_object is not None and not get_object_type_handler(props.object_type).is_convertible:
+            print("Trying to convert {} type object. Failing...".format(props.object_type))
+        else:
             handler.update(props, context)
 
 
@@ -102,8 +118,7 @@ class JVProperties(PropertyGroup):
             ("flooring", "Flooring", ""),
             ("siding", "Siding", ""),
             ("roofing", "Roofing", ""),
-            # ("stairs", "Stairs", ""),
-            # ("window", "Window", "")
+            ("windows", "Windows", "")
         ),
         default="none", description="The type of architecture to build", update=jv_on_property_update
     )
@@ -501,6 +516,122 @@ class JVProperties(PropertyGroup):
         name="Tile Gap",
         min=Units.H_INCH, default=1.5*Units.INCH, precision=4, step=100, subtype="DISTANCE",
         description="The distance between the half-circles on the tiles", update=jv_on_property_update
+    )
+
+    # WINDOW SPECIFIC --------------------------------------------------------------------------
+    jamb_width: FloatProperty(
+        name="Jamb Width",
+        min=2 * Units.INCH, default=4 * Units.INCH, subtype="DISTANCE",
+        description="The width of the jamb", update=jv_on_property_update
+    )
+
+    window_width_medium: FloatProperty(
+        name="Width",
+        min=Units.FOOT, default=32 * Units.INCH, subtype="DISTANCE",
+        description="The width of the windows", update=jv_on_property_update
+    )
+
+    window_width_wide: FloatProperty(
+        name="Width",
+        min=Units.FOOT, default=60 * Units.INCH, subtype="DISTANCE",
+        description="The width of the windows", update=jv_on_property_update
+    )
+
+    window_width_extra_wide: FloatProperty(
+        name="Width",
+        min=Units.FOOT, default=6 * Units.FOOT, subtype="DISTANCE",
+        description="The width of the windows", update=jv_on_property_update
+    )
+
+    window_height_tall: FloatProperty(
+        name="Height",
+        min=Units.FOOT, default=6 * Units.FOOT, subtype="DISTANCE",
+        description="The height of the windows", update=jv_on_property_update
+    )
+
+    window_height_medium: FloatProperty(
+        name="Height",
+        min=Units.FOOT, default=4 * Units.FOOT, subtype="DISTANCE",
+        description="The height of the gliding windows", update=jv_on_property_update
+    )
+
+    window_height_short: FloatProperty(
+        name="Height",
+        min=Units.FOOT, default=3 * Units.FOOT, subtype="DISTANCE",
+        description="The height of the gliding windows", update=jv_on_property_update
+    )
+
+    num_joined_windows: IntProperty(
+        name="Windows Joined Together",
+        min=1, default=1, update=jv_on_property_update
+    )
+
+    slide_right: BoolProperty(
+        name="Slide Right?",
+        default=True, update=jv_on_property_update
+    )
+
+    window_radius: FloatProperty(
+        name="Radius",
+        min=Units.FOOT, default=1.5 * Units.FOOT, subtype="DISTANCE",
+        description="The radius of the window", update=jv_on_property_update
+    )
+
+    window_side_count: IntProperty(
+        name="Sides",
+        min=3, default=3, update=jv_on_property_update
+    )
+
+    full_circle: BoolProperty(
+        name="Full Circle?",
+        default=True, update=jv_on_property_update
+    )
+
+    window_angle: FloatProperty(
+        name="Angle",
+        unit="ROTATION", min=radians(45), max=radians(270), default=radians(90), update=jv_on_property_update
+    )
+
+    window_roundness: FloatProperty(
+        name="Roundness",
+        max=100.0, min=1.0, default=25.0, subtype="PERCENTAGE", update=jv_on_property_update
+    )
+
+    window_resolution: IntProperty(
+        name="Resolution",
+        min=10, default=64, step=2, update=jv_on_property_update
+    )
+
+    slider: BoolProperty(
+        name="Slider?",
+        default=False, update=jv_on_property_update
+    )
+
+    bay_angle: FloatProperty(
+        name="Side Pane Angle",
+        min=radians(10), max=radians(75), default=radians(45), subtype="ANGLE", update=jv_on_property_update
+    )
+
+    window_depth: FloatProperty(
+        name="Window Depth",
+        min=Units.FOOT, default=2 * Units.FOOT, subtype="DISTANCE", update=jv_on_property_update
+    )
+
+    bow_segments: EnumProperty(
+        name="Segments",
+        items=(("2", "2", ""), ("4", "4", ""), ("6", "6", ""), ("8", "8", ""),
+               ("10", "10", ""), ("12", "12", ""), ("14", "14", "")),
+        update=jv_on_property_update
+    )
+
+    split_center_pane: BoolProperty(
+        name="Split Center Pane?",
+        default=False, update=jv_on_property_update
+    )
+
+    double_hung: BoolProperty(
+        name="Double Hung?",
+        default=True, update=jv_on_property_update
     )
 
 
