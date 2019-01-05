@@ -234,6 +234,8 @@ class JVSiding(JVBuilderBase):
 
         # merge mortar object with current object
         if mortar_mesh is not None:
+            JVSiding._add_material_index(mortar_mesh.faces, 1)
+
             main_obj = context.object
             bpy.ops.mesh.primitive_cube_add()
             context.object.location = main_obj.location
