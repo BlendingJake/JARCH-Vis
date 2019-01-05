@@ -89,7 +89,7 @@ class JVConvert(bpy.types.Operator):
         props = context.object.jv_properties
 
         # if the scale isn't (1.0, 1.0, 1.0) - raise a fuse
-        if not all([i == 1 for i in context.object.scale]) and not all([i == 0 for i in context.object.rotation_euler]):
+        if not all([i == 1 for i in context.object.scale]) or not all([i == 0 for i in context.object.rotation_euler]):
             self.report({"ERROR"}, "The scale and rotation must be applied on this object before conversion")
             return {"FINISHED"}
 

@@ -1,8 +1,9 @@
 import bpy
 import bmesh
 from random import uniform
-from mathutils import Vector
+from mathutils import Vector, Euler
 from typing import Union, List
+from math import radians, atan
 
 
 class JVBuilderBase:
@@ -339,26 +340,31 @@ class JVBuilderBase:
         mesh.faces.ensure_lookup_table()
 
     @classmethod
-    def _generate_mesh_from_converted_object(cls, props, context) -> bmesh.types.BMesh:
+    def _generate_mesh_from_converted_object(cls, props, context, rot_offset=(0, 0, 0), geometry_func_name="_geometry"):
         """
         Since the object is converted, go through each face group, creating a new mesh, cutting it,
         and then joining them all together into a mesh which is returned
         :param cls: the architecture class to use for generating the geometry
         :param props: JVProperties
-        :param context:
+        :param context: the current context
+        :param rot_offset: a rotation offset for use with siding as it is built vertically not horizontally
+        :param geometry_func_name: the name of the method on the class that generates the geometry. The method
+            must be take in props and dimensions and return verts and faces
         :return: the completed mesh
         """
         objects = []
         main_obj = context.object
         src = props.convert_source_object
+
         for fg in src.jv_properties.face_groups:  # face groups on original object
-            verts, faces = cls._geometry(props, tuple(fg.dimensions))
+            verts, faces = getattr(cls, geometry_func_name)(props, tuple(fg.dimensions))
             rotated_verts = []
 
             # rotate and shift vertices
+            rot = Euler([fg.rotation[i] + rot_offset[i] for i in range(3)])
             for v in verts:
                 vv = Vector(v)
-                vv.rotate(fg.rotation)
+                vv.rotate(rot)
                 vv += fg.location
                 rotated_verts.append(tuple(vv))
 
@@ -408,3 +414,33 @@ class JVBuilderBase:
         context.view_layer.objects.active = main_obj
 
         return bm
+
+    @staticmethod
+    def _slope_top(props, meshes):
+        # clock-wise is positive for angles in mathutils
+        center = Vector((props.length / 2, 0, props.height))
+        center += props.pitch_offset
+        angle = atan(props.pitch / 12)  # angle of depression
+
+        right_normal = Vector((1, 0, 0))
+        right_normal.rotate(Euler((0, angle + radians(90), 0)))
+        left_normal = Vector((1, 0, 0))
+        left_normal.rotate(Euler((0, radians(90) - angle, 0)))
+
+        JVBuilderBase._cut_meshes(meshes, [
+            (center, left_normal),
+            (center, right_normal)
+        ])
+
+    @staticmethod
+    def _mortar_geometry(props, dims: tuple):
+        # account for jointing
+        upper_x, upper_z = dims
+        th = props.thickness_thick * (1 - (props.grout_depth / 100)) + props.gap_uniform
+        lx = th if props.joint_left else 0
+        rx = th if props.joint_right else 0
+
+        verts = [(-lx, 0, 0), (upper_x + rx, 0, 0), (upper_x + rx, 0, upper_z), (-lx, 0, upper_z)]
+        faces = [(0, 3, 2, 1)]
+
+        return verts, faces

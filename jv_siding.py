@@ -1,13 +1,15 @@
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
-from mathutils import Vector, Euler
-from math import atan, radians, sqrt, sin, cos
+from math import radians, sqrt, sin, cos
 import bmesh
+import bpy
 
 
 class JVSiding(JVBuilderBase):
     @staticmethod
     def draw(props, layout):
+        converted = props.convert_source_object is not None
+
         layout.prop(props, "siding_pattern", icon="MOD_TRIANGULATE")
 
         layout.separator()
@@ -76,7 +78,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "batten_width_variance")
 
         # jointing
-        if props.siding_pattern == "brick":
+        if not converted and props.siding_pattern == "brick":
             layout.separator()
             row = layout.row()
             row.prop(props, "joint_left", icon="ALIGN_RIGHT")
@@ -134,99 +136,84 @@ class JVSiding(JVBuilderBase):
                 row.prop(props, "grout_depth", text="Mortar Depth")
 
         # slope
-        layout.separator()
-        box = layout.box()
-        row = box.row()
-        row.prop(props, "slope_top", icon="LINCURVE")
-        if props.slope_top:
-            row.prop(props, "pitch")
-            box.row().prop(props, "pitch_offset")
+        if not converted:
+            layout.separator()
+            box = layout.box()
+            row = box.row()
+            row.prop(props, "slope_top", icon="LINCURVE")
+            if props.slope_top:
+                row.prop(props, "pitch")
+                box.row().prop(props, "pitch_offset")
 
     @staticmethod
     def update(props, context):
-        mesh = JVSiding._start(context)
-        verts, faces = JVSiding._geometry(props)
+        mortar_mesh = None
+        if props.convert_source_object is not None:
+            mesh = JVSiding._generate_mesh_from_converted_object(props, context, rot_offset=(-radians(90), 0, 0))
 
-        mesh.clear()
-        for v in verts:
-            mesh.verts.new(v)
-        mesh.verts.ensure_lookup_table()
+            if props.siding_pattern == "brick" and props.add_grout:
+                mortar_mesh = JVSiding._generate_mesh_from_converted_object(props, context,
+                                                                            rot_offset=(-radians(90), 0, 0),
+                                                                            geometry_func_name="_mortar_geometry")
+        else:
+            mesh = JVSiding._start(context)
+            verts, faces = JVSiding._geometry(props, (props.length, props.height))
 
-        for f in faces:
-            mesh.faces.new([mesh.verts[i] for i in f])
-        mesh.faces.ensure_lookup_table()
+            mesh.clear()
+            for v in verts:
+                mesh.verts.new(v)
+            mesh.verts.ensure_lookup_table()
 
-        if props.add_cutouts:
-            JVSiding._cutouts(mesh, props)
+            for f in faces:
+                mesh.faces.new([mesh.verts[i] for i in f])
+            mesh.faces.ensure_lookup_table()
+
+            # cutouts
+            if props.add_cutouts:
+                JVSiding._cutouts(mesh, props)
+
+                if props.siding_pattern == "brick" and props.add_grout:
+                    mortar_mesh = JVSiding._build_mesh_from_geometry(
+                        bmesh.new(),
+                        *JVSiding._mortar_geometry(props, (props.length, props.height))
+                    )
+
+            # cut top and right
+            if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):
+                JVSiding._cut_meshes([mesh], [
+                    ((0, 0, props.height), (0, 0, -1)),  # top
+                    ((props.length, 0, 0), (-1, 0, 0))  # right
+                ])
+
+            # cut left
+            if props.siding_pattern == "scallop_shakes":
+                JVSiding._cut_meshes([mesh], [((0, 0, 0), (1, 0, 0))])
+
+            # cut slope
+            if props.slope_top:
+                meshes = [mesh]
+                if mortar_mesh is not None:
+                    meshes.append(mortar_mesh)
+
+                JVSiding._slope_top(props, meshes)
 
         original_edges = mesh.edges[:]
-
-        # create mortar mesh
-        mortar_mesh = None
-        mortar_original_edges = []
-        if props.siding_pattern == "brick" and props.add_grout:
-            mortar_mesh = bmesh.new()
-
-            # account for jointing
-            th = props.thickness_thick * (1 - (props.grout_depth / 100)) + props.gap_uniform
-            lx = th if props.joint_left else 0
-            rx = th if props.joint_right else 0
-
-            for v in ((-lx, 0, 0), (props.length+rx, 0, 0), (props.length+rx, 0, props.height), (-lx, 0, props.height)):
-                mortar_mesh.verts.new(v)
-            mortar_mesh.verts.ensure_lookup_table()
-
-            mortar_mesh.faces.new([mortar_mesh.verts[i] for i in (0, 3, 2, 1)])
-            mortar_mesh.faces.ensure_lookup_table()
-
-            mortar_original_edges = mortar_mesh.edges[:]
-
-        # cut top and right
-        if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):
-            JVSiding._cut_meshes([mesh], [
-                ((0, 0, props.height), (0, 0, -1)),  # top
-                ((props.length, 0, 0), (-1, 0, 0))  # right
-            ])
-
-        # cut left
-        if props.siding_pattern == "scallop_shakes":
-            JVSiding._cut_meshes([mesh], [((0, 0, 0), (1, 0, 0))])
-
-        # cut slope
-        if props.slope_top:
-            # clock-wise is positive for angles in mathutils
-            center = Vector((props.length / 2, 0, props.height))
-            center += props.pitch_offset
-            angle = atan(props.pitch / 12)  # angle of depression
-
-            right_normal = Vector((1, 0, 0))
-            right_normal.rotate(Euler((0, angle+radians(90), 0)))
-            left_normal = Vector((1, 0, 0))
-            left_normal.rotate(Euler((0, radians(90) - angle, 0)))
-
-            meshes = [mesh]
-            if mortar_mesh is not None:
-                meshes.append(mortar_mesh)
-
-            JVSiding._cut_meshes(meshes, [
-                (center, left_normal),
-                (center, right_normal)
-            ])
-
+        original_mortar_edges = [] if mortar_mesh is None else mortar_mesh.edges[:]
         new_geometry = []
+
         # solidify - add thickness to props.thickness level
         if props.siding_pattern in ("regular", "brick"):
             th = props.thickness_thick if props.siding_pattern == "brick" else props.thickness
-            new_geometry += JVSiding._solidify(mesh,
-                                               JVSiding._create_variance_function(props.vary_thickness, th,
-                                                                                  props.thickness_variance))
+            new_geometry = JVSiding._solidify(mesh,
+                                              JVSiding._create_variance_function(props.vary_thickness, th,
+                                                                                 props.thickness_variance))
         # solidify - add thickness, non-variable
         elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
-            new_geometry += JVSiding._solidify(mesh, props.thickness_thin)
+            new_geometry = JVSiding._solidify(mesh, props.thickness_thin)
 
         # solidify - just add slight thickness
         elif props.siding_pattern == "dutch_lap":
-            new_geometry += JVSiding._solidify(mesh, Units.ETH_INCH)
+            new_geometry = JVSiding._solidify(mesh, Units.ETH_INCH)
 
         # add main material index
         JVSiding._add_material_index(mesh.faces, 0)
@@ -235,39 +222,7 @@ class JVSiding(JVBuilderBase):
         if mortar_mesh is not None:
             th = props.thickness_thick * (1 - (props.grout_depth / 100))
             mortar_new_geometry = JVSiding._solidify(mortar_mesh, th)
-
-            # merge mortar mesh
-            mappings = {}
-            for v in mortar_mesh.verts:
-                mappings[v] = mesh.verts.new(v.co)
-            mesh.verts.ensure_lookup_table()
-
-            new_edges = set()  # should have a size of 12
-            face_mappings = {}
-            for f in mortar_mesh.faces:
-                face = mesh.faces.new([mappings[v] for v in f.verts])
-                face_mappings[f] = face
-                face.material_index = 1
-
-                for edge in face.edges:
-                    new_edges.add(edge)
-            mesh.faces.ensure_lookup_table()
-
-            mortar_mesh.free()
-
-            # determine where mortar_original_edges and mortar_new_geometry mapped in mesh.edges to all uv_seam handling
-            for edge in mortar_original_edges:  # should run 4*12 times in total
-                # find where edge maps
-                for cor_edge in new_edges:
-                    e1, e2 = mappings[edge.verts[0]], mappings[edge.verts[1]]
-                    ce1, ce2 = cor_edge.verts
-                    if (e1 is ce1 and e2 is ce2) or (e1 is ce2 and e2 is ce1):
-                        original_edges.append(cor_edge)
-
-            # map the extruded face to the corresponding face in the new mesh
-            for item in mortar_new_geometry:
-                if isinstance(item, bmesh.types.BMFace):
-                    new_geometry.append(face_mappings[item])
+            JVSiding._add_uv_seams_for_solidified_plane(mortar_new_geometry, original_mortar_edges, mortar_mesh)
 
         # add uv seams
         if props.siding_pattern != "shiplap":
@@ -275,17 +230,28 @@ class JVSiding(JVBuilderBase):
 
         JVSiding._finish(context, mesh)
 
+        # merge mortar object with current object
+        if mortar_mesh is not None:
+            main_obj = context.object
+            bpy.ops.mesh.primitive_cube_add()
+            context.object.location = main_obj.location
+
+            mortar_mesh.to_mesh(context.object.data)
+            main_obj.select_set(True)
+            context.view_layer.objects.active = main_obj
+            bpy.ops.object.join()  # merge the objects
+
     @staticmethod
-    def _geometry(props):
+    def _geometry(props, dims: tuple):
         verts, faces = [], []
 
         # dynamically call correct method as their names will match up with the style name
-        getattr(JVSiding, "_{}".format(props.siding_pattern))(props, verts, faces)
+        getattr(JVSiding, "_{}".format(props.siding_pattern))(dims, props, verts, faces)
 
         return verts, faces
 
     @staticmethod
-    def _regular(props, verts, faces):
+    def _regular(dims: tuple, props, verts, faces):
         length, width, gap = props.board_length_long, props.board_width_medium, props.gap_uniform
         batten_width, by = props.batten_width, -props.thickness
 
@@ -293,7 +259,7 @@ class JVSiding(JVBuilderBase):
         length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
         batten_width_variance = JVSiding._create_variance_function(props.vary_batten_width, batten_width,
                                                                    props.batten_width_variance)
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
 
         if props.siding_direction == "vertical":
             x = 0
@@ -370,7 +336,7 @@ class JVSiding(JVBuilderBase):
                 z += cur_width + gap
 
     @staticmethod
-    def _dutch_lap(props, verts, faces):
+    def _dutch_lap(dims: tuple, props, verts, faces):
         length, width, gap, th = props.board_length_long, props.board_width_medium, props.gap_uniform, props.thickness
         break_p = props.dutch_lap_breakpoint / 100
 
@@ -379,7 +345,7 @@ class JVSiding(JVBuilderBase):
         thickness_variance = JVSiding._create_variance_function(props.vary_thickness, th, props.thickness_variance)
 
         z = 0
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
         while z < upper_z:
             x = 0
 
@@ -408,7 +374,7 @@ class JVSiding(JVBuilderBase):
             z += cur_width + Units.ETH_INCH  # shift up width + thickness
 
     @staticmethod
-    def _shiplap(props, verts, faces):
+    def _shiplap(dims: tuple, props, verts, faces):
         length, width, th = props.board_length_long, props.board_width_medium, props.thickness
         gap_length, gap_width = props.gap_lengthwise, props.gap_widthwise
 
@@ -416,7 +382,7 @@ class JVSiding(JVBuilderBase):
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
         thickness_variance = JVSiding._create_variance_function(props.vary_thickness, th, props.thickness_variance)
 
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
         if props.siding_direction == "vertical":
             x = 0
             while x < upper_x:
@@ -469,14 +435,14 @@ class JVSiding(JVBuilderBase):
                 z += dz + gap_width
 
     @staticmethod
-    def _clapboard(props, verts, faces):
+    def _clapboard(dims: tuple, props, verts, faces):
         length, width, gap = props.board_length_long, props.board_width_medium, props.gap_uniform
         th = props.thickness_thin
         length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
 
         z = 0
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
         while z < upper_z:
             x = 0
 
@@ -501,7 +467,7 @@ class JVSiding(JVBuilderBase):
             z += vertical_width
 
     @staticmethod
-    def _tin_regular(props, verts, faces):
+    def _tin_regular(dims: tuple, props, verts, faces):
         ridge_steps = (
             (0, 0),
             (Units.H_INCH, Units.TQ_INCH),
@@ -519,9 +485,9 @@ class JVSiding(JVBuilderBase):
             (21*Units.ETH_INCH, Units.ETH_INCH)
         )
 
-        upper_x = props.length
+        upper_x = dims[0]
         offset_between_valley_accents = 23*Units.ETH_INCH
-        for z in (0, props.height):
+        for z in (0, dims[1]):
             x = 0
             while x < upper_x+offset_between_valley_accents:
                 for step in ridge_steps:
@@ -542,13 +508,13 @@ class JVSiding(JVBuilderBase):
             faces.append((i, i+1, i+offset+1, i+offset))
 
     @staticmethod
-    def _tin_angular(props, verts, faces):
+    def _tin_angular(dims: tuple, props, verts, faces):
         pan = 3*Units.INCH
         ridge_steps = ((0, 0), (Units.H_INCH, 5*Units.Q_INCH), (3*Units.H_INCH, 5*Units.Q_INCH), (2*Units.INCH, 0))
         valley_steps = ((0, 0), (pan, 0), (pan + Units.Q_INCH, Units.ETH_INCH), (pan + 3*Units.H_INCH, Units.ETH_INCH))
 
-        upper_x = props.length
-        for z in (0, props.height):
+        upper_x = dims[0]
+        for z in (0, dims[1]):
             x = 0
             while x < upper_x+pan:
                 for step in ridge_steps:
@@ -569,7 +535,7 @@ class JVSiding(JVBuilderBase):
             faces.append((i, i + 1, i + offset + 1, i + offset))
 
     @staticmethod
-    def _brick(props, verts, faces):
+    def _brick(dims: tuple, props, verts, faces):
         length, height, gap, th = props.brick_length, props.brick_height, props.gap_uniform, props.thickness_thick
 
         first_length_for_fixed_offset = length * (props.row_offset / 100)
@@ -581,7 +547,7 @@ class JVSiding(JVBuilderBase):
 
         z = 0
         odd = False
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
         while z < upper_z:
             if odd and props.joint_left:
                 x = -th - gap
@@ -617,7 +583,7 @@ class JVSiding(JVBuilderBase):
             odd = not odd
 
     @staticmethod
-    def _shakes(props, verts, faces):
+    def _shakes(dims: tuple, props, verts, faces):
         length, width, gap = props.shake_length, props.shake_width, props.gap_uniform
         th_y, hl = -2 * props.thickness_thin, length / 2
 
@@ -628,7 +594,7 @@ class JVSiding(JVBuilderBase):
         offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
                                                                    props.row_offset_variance)
         width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
 
         # bottom row backing layer
         verts += [
@@ -670,7 +636,7 @@ class JVSiding(JVBuilderBase):
             odd = not odd
 
     @staticmethod
-    def _scallop_shakes(props, verts, faces):
+    def _scallop_shakes(dims: tuple, props, verts, faces):
         length, width, gap, th = props.shake_length, props.shake_width, props.gap_uniform, props.thickness_thin
         rad, res = width / 2, props.scallop_resolution
         rest_z, ang_step = length - rad, radians(180 / (res+1))
@@ -683,7 +649,7 @@ class JVSiding(JVBuilderBase):
         offset_width_variance = JVSiding._create_variance_function(props.vary_row_offset, width / 2,
                                                                    props.row_offset_variance)
 
-        upper_x, upper_z = props.length, props.height
+        upper_x, upper_z = dims
         odd = False
         z = rad
         while z < upper_z:
