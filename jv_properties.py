@@ -177,6 +177,20 @@ class JVProperties(PropertyGroup):
         ), default="tin_regular", description="Roofing Pattern", update=jv_on_property_update
     )
 
+    window_pattern: EnumProperty(
+        name="Pattern",
+        items=(
+            ("regular", "Regular", ""),
+            ("bay", "Bay", ""),
+            ("bow", "Bow", ""),
+            ("polygon", "Polygon", ""),
+            ("circular", "Circular", ""),
+            ("arch", "Arch", ""),
+            ("gothic", "Gothic", ""),
+            ("oval", "Oval", "")
+        ), default="regular", description="Window Pattern", update=jv_on_property_update
+    )
+
     # OVERALL DIMENSIONS ------------------------------------------------------------------------
     length: FloatProperty(
         name="Total Length",
@@ -384,6 +398,14 @@ class JVProperties(PropertyGroup):
         update=jv_on_property_update
     )
 
+    orientation: EnumProperty(
+        name="Orientation",
+        items=(
+            ("vertical", "Vertical", ""),
+            ("horizontal", "Horizontal", "")
+        ), default="vertical", description="Orientation", update=jv_on_property_update
+    )
+
     # FLOORING SPECIFIC -------------------------------------------------------------------------
     tile_width: FloatProperty(
         name="Tile Width",
@@ -421,14 +443,6 @@ class JVProperties(PropertyGroup):
     )
 
     # SIDING SPECIFIC -------------------------------------------------------------------------
-    siding_direction: EnumProperty(
-        name="Siding Direction",
-        items=(
-            ("vertical", "Vertical", ""),
-            ("horizontal", "Horizontal", "")
-        ), default="vertical", description="Direction of siding", update=jv_on_property_update
-    )
-
     slope_top: BoolProperty(
         name="Slope Top?",
         default=False, description="Cut a slope on the top of the siding?", update=jv_on_property_update
@@ -525,6 +539,12 @@ class JVProperties(PropertyGroup):
         description="The width of the jamb", update=jv_on_property_update
     )
 
+    frame_width: FloatProperty(
+        name="Frame Width",
+        min=Units.ETH_INCH, default=1.5 * Units.INCH, subtype="DISTANCE",
+        description="The width of the frame around the glass", update=jv_on_property_update
+    )
+
     window_width_medium: FloatProperty(
         name="Width",
         min=Units.FOOT, default=32 * Units.INCH, subtype="DISTANCE",
@@ -562,13 +582,8 @@ class JVProperties(PropertyGroup):
     )
 
     num_joined_windows: IntProperty(
-        name="Windows Joined Together",
+        name="Window Gang Count",
         min=1, default=1, update=jv_on_property_update
-    )
-
-    slide_right: BoolProperty(
-        name="Slide Right?",
-        default=True, update=jv_on_property_update
     )
 
     window_radius: FloatProperty(
@@ -589,7 +604,7 @@ class JVProperties(PropertyGroup):
 
     window_angle: FloatProperty(
         name="Angle",
-        unit="ROTATION", min=radians(45), max=radians(270), default=radians(90), update=jv_on_property_update
+        unit="ROTATION", min=radians(15), max=radians(270), default=radians(90), update=jv_on_property_update
     )
 
     window_roundness: FloatProperty(
@@ -604,7 +619,7 @@ class JVProperties(PropertyGroup):
 
     slider: BoolProperty(
         name="Slider?",
-        default=False, update=jv_on_property_update
+        default=True, update=jv_on_property_update
     )
 
     bay_angle: FloatProperty(
@@ -612,26 +627,19 @@ class JVProperties(PropertyGroup):
         min=radians(10), max=radians(75), default=radians(45), subtype="ANGLE", update=jv_on_property_update
     )
 
+    bay_side_panes: IntProperty(
+        name="Number of Side Panes",
+        min=1, default=1, update=jv_on_property_update
+    )
+
     window_depth: FloatProperty(
         name="Window Depth",
         min=Units.FOOT, default=2 * Units.FOOT, subtype="DISTANCE", update=jv_on_property_update
     )
 
-    bow_segments: EnumProperty(
+    bow_segments: IntProperty(
         name="Segments",
-        items=(("2", "2", ""), ("4", "4", ""), ("6", "6", ""), ("8", "8", ""),
-               ("10", "10", ""), ("12", "12", ""), ("14", "14", "")),
-        update=jv_on_property_update
-    )
-
-    split_center_pane: BoolProperty(
-        name="Split Center Pane?",
-        default=False, update=jv_on_property_update
-    )
-
-    double_hung: BoolProperty(
-        name="Double Hung?",
-        default=True, update=jv_on_property_update
+        min=3, default=5, update=jv_on_property_update
     )
 
 

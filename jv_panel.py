@@ -24,7 +24,8 @@ class JVPanel(Panel):
     jv_add_operators = [
         ("object.jv_add_flooring", "MESH_GRID"),
         ("object.jv_add_siding", "MOD_TRIANGULATE"),
-        ("object.jv_add_roofing", "LINCURVE")
+        ("object.jv_add_roofing", "LINCURVE"),
+        ("object.jv_add_window", "MOD_WIREFRAME")
     ]
 
     jv_consistent_operators = [
@@ -57,7 +58,7 @@ class JVPanel(Panel):
                     handler.draw(props, layout)
 
                 # cutouts
-                if props.convert_source_object is None:
+                if props.convert_source_object is None and handler.is_convertible:
                     layout.separator()
                     box = layout.box()
                     box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")

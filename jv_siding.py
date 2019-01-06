@@ -48,7 +48,7 @@ class JVSiding(JVBuilderBase):
 
         if props.siding_pattern in ("regular", "shiplap"):
             layout.separator()
-            layout.prop(props, "siding_direction", icon="ORIENTATION_VIEW")
+            layout.prop(props, "orientation", icon="ORIENTATION_VIEW")
 
         if props.siding_pattern == "dutch_lap":
             layout.separator()
@@ -78,7 +78,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "scallop_resolution")
 
         # battens
-        if props.siding_pattern == "regular" and props.siding_direction == "vertical":
+        if props.siding_pattern == "regular" and props.orientation == "vertical":
             layout.separator()
             box = layout.box()
             box.prop(props, "battens", icon="SNAP_EDGE")
@@ -280,7 +280,7 @@ class JVSiding(JVBuilderBase):
                                                                    props.batten_width_variance)
         upper_x, upper_z = dims
 
-        if props.siding_direction == "vertical":
+        if props.orientation == "vertical":
             x = 0
             while x < upper_x:
                 z = 0
@@ -402,7 +402,7 @@ class JVSiding(JVBuilderBase):
         thickness_variance = JVSiding._create_variance_function(props.vary_thickness, th, props.thickness_variance)
 
         upper_x, upper_z = dims
-        if props.siding_direction == "vertical":
+        if props.orientation == "vertical":
             x = 0
             while x < upper_x:
                 z = 0

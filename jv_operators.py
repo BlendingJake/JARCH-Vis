@@ -62,6 +62,20 @@ class JVRoofingAdd(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class JVWindowsAdd(bpy.types.Operator):
+    bl_idname = "object.jv_add_window"
+    bl_label = "Add Window"
+    bl_description = "JARCH Vis: Add Window"
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        o = context.object
+
+        o.jv_properties.object_type = "windows"
+
+        return {"FINISHED"}
+
+
 # ---------------------------------------------------------------------------
 # Generic Operators
 # ---------------------------------------------------------------------------
@@ -294,6 +308,7 @@ classes = (
     JVFlooringAdd,
     JVSidingAdd,
     JVRoofingAdd,
+    JVWindowsAdd,
 
     JVDelete,
     JVUpdate,
