@@ -182,9 +182,9 @@ class JVProperties(PropertyGroup):
         items=(
             ("regular", "Regular", ""),
             ("arch", "Arch", ""),
+            ("polygon", "Polygon", "")
             # ("bay", "Bay", ""),
             # ("bow", "Bow", ""),
-            # ("polygon", "Polygon", ""),
             # ("circular", "Circular", ""),
             # ("gothic", "Gothic", ""),
             # ("ellipse", "Ellipse", "")

@@ -10,8 +10,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt
-
+from math import sqrt, radians
+from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
 from typing import Tuple, List
@@ -29,6 +29,9 @@ class JVWindows(JVBuilderBase):
             row = layout.row()
             row.prop(props, "window_width_medium")
             row.prop(props, "window_height_medium")
+        elif props.window_pattern == "polygon":
+            layout.separator()
+            layout.prop(props, "window_radius")
 
         layout.separator()
         layout.prop(props, "jamb_width")
@@ -42,6 +45,10 @@ class JVWindows(JVBuilderBase):
 
             if props.slider and props.window_pattern == "regular":
                 layout.prop(props, "orientation", icon="ORIENTATION_VIEW")
+
+        if props.window_pattern == "polygon":
+            layout.separator()
+            layout.prop(props, "window_side_count")
 
         if props.window_pattern == "arch":
             layout.separator()
@@ -207,6 +214,50 @@ class JVWindows(JVBuilderBase):
 
         glass_ids.extend((len(faces) - 2, len(faces) - 1))
         geometry_data.append((verts, faces, glass_ids))
+
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
+    def _polygon(props, mesh):
+        geometry_data = []
+
+        radius, jamb_w, jamb_th, sides = props.window_radius, props.jamb_width, Units.INCH, props.window_side_count
+        frame_width, frame_th, inset = props.frame_width, Units.INCH, Units.Q_INCH  # pane variables
+
+        ang_step = Euler((0, radians(360) / sides, 0))
+        hjamb_w, hframe_th, = jamb_w / 2, frame_th / 2
+
+        # jamb and pane
+        steps = [  # one set of steps for the jamb, one set of steps for the pane
+            (
+                (radius, -hjamb_w), (radius+jamb_th, -hjamb_w), (radius+jamb_th, hjamb_w), (radius, hjamb_w)
+            ),
+            (
+                (radius - frame_width, -hframe_th + inset), (radius - frame_width, -hframe_th),
+                (radius, -hframe_th), (radius, hframe_th),
+                (radius - frame_width, hframe_th), (radius - frame_width, hframe_th - inset)
+            )
+        ]
+
+        for sub_steps in steps:
+            verts, faces, glass_ids = [], [], []
+            for rad, y in sub_steps:
+                v = Vector((rad, 0, 0))
+                for _ in range(sides):
+                    verts.append((v[0], y, v[2]))
+                    v.rotate(ang_step)
+
+            JVWindows._loop_face_builder(len(sub_steps), sides, faces)
+            geometry_data.append((verts, faces, glass_ids))
+
+        # glass faces
+        verts, faces, glass_ids = geometry_data[-1]  # pane entry
+        p = len(verts) - (6 * sides)  # go back to start of first pane loop
+        faces.append([i for i in range(p, p+sides)])
+        p = len(verts) - sides
+        faces.append([i for i in range(p, p+sides)])
+
+        glass_ids.extend((len(faces) - 1, len(faces) - 2))
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
