@@ -10,6 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from math import sqrt
 
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -23,7 +24,7 @@ class JVWindows(JVBuilderBase):
     def draw(props, layout):
         layout.prop(props, "window_pattern", icon="MOD_WIREFRAME")
 
-        if props.window_pattern == "regular":
+        if props.window_pattern in ("regular", "arch"):
             layout.separator()
             row = layout.row()
             row.prop(props, "window_width_medium")
@@ -41,6 +42,14 @@ class JVWindows(JVBuilderBase):
 
             if props.slider:
                 layout.prop(props, "orientation", icon="ORIENTATION_VIEW")
+
+        if props.window_pattern == "arch":
+            layout.separator()
+            layout.prop(props, "window_roundness")
+
+        if props.window_pattern == "arch":
+            layout.separator()
+            layout.prop(props, "window_resolution")
 
         if props.window_pattern == "regular":
             layout.separator()
@@ -127,6 +136,33 @@ class JVWindows(JVBuilderBase):
             x = tx + width + jamb_th
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
+    def _arch(props, mesh):
+        verts, faces, glass_ids = [], [], []
+
+        # main values
+        width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
+        res, roundness = props.window_resolution, props.window_roundness
+        a, b, = width / 2, (width * roundness) / 2  # a, b for main window, need modified for jamb, inset frame, etc.
+        frame_width, jamb_th, frame_th, inset = props.frame_width, Units.INCH, Units.INCH, Units.Q_INCH
+
+        # useful to save calculations later
+        hjamb_w, hframe_width = jamb_w / 2, frame_width / 2
+        center_x, center_z = jamb_th + (width / 2), jamb_th + height - b
+
+        # jamb
+        steps = [  # start x, end x, y, z, amount to add to a and b
+            (jamb_th, jamb_th+width, -hjamb_w, jamb_th, 0),  # inner on -Y
+            (0, (2*jamb_th) + width, -hjamb_w, 0, jamb_th),  # outer on -Y
+            (0, (2 * jamb_th) + width, hjamb_w, 0, jamb_th),  # outer on Y
+            (jamb_th, jamb_th + width, hjamb_w, jamb_th, 0)  # inner on Y
+        ]
+
+        for sx, ex, y, sz, dab in steps:
+            verts += [(sx, y, sz), (ex, y, sz)]
+            for x, z in JVWindows._ellipse_iterator(a+dab, b+dab, res):
+                verts.append((center_x+x, y, center_z+z))
 
     @staticmethod
     def _rectangular_jamb_geometry(width: float, height: float, start_coord: tuple, jamb_width: float, keep_left=True,
@@ -228,3 +264,21 @@ class JVWindows(JVBuilderBase):
         glass_ids.extend((len(faces) - 1, len(faces) - 2))
 
         return verts, faces, glass_ids
+
+    @staticmethod
+    def _ellipse_iterator(a, b, res) -> Tuple[float, float]:
+        """
+        For an half-ellipse with x-axis radius of 'a' and y-axis radius of 'b' and the given resolution, return
+        the x, y coordinates of each point. Points are iterator in counter-clockwise fashion
+        :param a: the x-axis radius
+        :param b: the y-axis radius
+        :param res: the resolution/number of points returns for the half-ellipse
+        :return: x, y points on the half-ellipse
+        """
+        x_step = (2*a) / (res+1)
+        x = a
+        for _ in range(res + 2):  # two extra for end points
+            y = sqrt(1 - x**2 / a**2) * b
+
+            yield x, y
+            x -= x_step

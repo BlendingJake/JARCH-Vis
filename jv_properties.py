@@ -181,13 +181,13 @@ class JVProperties(PropertyGroup):
         name="Pattern",
         items=(
             ("regular", "Regular", ""),
-            ("bay", "Bay", ""),
-            ("bow", "Bow", ""),
-            ("polygon", "Polygon", ""),
-            ("circular", "Circular", ""),
             ("arch", "Arch", ""),
-            ("gothic", "Gothic", ""),
-            ("oval", "Oval", "")
+            # ("bay", "Bay", ""),
+            # ("bow", "Bow", ""),
+            # ("polygon", "Polygon", ""),
+            # ("circular", "Circular", ""),
+            # ("gothic", "Gothic", ""),
+            # ("ellipse", "Ellipse", "")
         ), default="regular", description="Window Pattern", update=jv_on_property_update
     )
 
