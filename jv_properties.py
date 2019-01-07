@@ -609,7 +609,8 @@ class JVProperties(PropertyGroup):
 
     window_roundness: FloatProperty(
         name="Roundness",
-        max=100.0, min=1.0, default=25.0, subtype="PERCENTAGE", update=jv_on_property_update
+        max=100.0, min=1.0, default=25.0, subtype="PERCENTAGE", update=jv_on_property_update,
+        description="The ellipse's height will be (width / 2) * roundness. A value of 100% will form a half-circle"
     )
 
     window_resolution: IntProperty(
