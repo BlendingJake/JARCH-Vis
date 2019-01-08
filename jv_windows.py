@@ -323,18 +323,13 @@ class JVWindows(JVBuilderBase):
         vpl = res + 2 + res
 
         steps = (
-            (  # a, b, y
-                (a, b, -hjamb_w), (a+jamb_th, b+jamb_th, -hjamb_w),
-                (a+jamb_th, b+jamb_th, hjamb_w), (a, b, hjamb_w)
+            (  # ab_offset, y
+                (0, -hjamb_w), (jamb_th, -hjamb_w),
+                (jamb_th, hjamb_w), (0, hjamb_w)
             ),
             (
-                (a-frame_width, b-frame_width, -hframe_th+inset),
-                (a-frame_width, b-frame_width, -hframe_th),
-                (a, b, -hframe_th),
-
-                (a, b, hframe_th),
-                (a-frame_width, b-frame_width, hframe_th),
-                (a-frame_width, b-frame_width, hframe_th-inset)
+                (-frame_width, -hframe_th+inset), (-frame_width, -hframe_th), (0, -hframe_th),
+                (0, hframe_th), (-frame_width, hframe_th), (-frame_width, hframe_th-inset)
             )
         )
 
@@ -342,11 +337,11 @@ class JVWindows(JVBuilderBase):
         for substep in steps:
             verts, faces, glass_ids = [], [], []
 
-            for aa, bb, yy in substep:
+            for ab_offset, yy in substep:
                 p = len(verts)
 
                 # lower half
-                for x, z in JVWindows._ellipse_iterator(aa, bb, res):
+                for x, z in JVWindows._ellipse_iterator(a+ab_offset, b+ab_offset, res):
                     verts.append((x, yy, z))  # negative because points are generate in CCW order, so flip side
 
                 # top half
