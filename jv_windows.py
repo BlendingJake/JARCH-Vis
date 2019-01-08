@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians, acos, sin, asin
+from math import sqrt, radians, acos
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -32,6 +32,11 @@ class JVWindows(JVBuilderBase):
         elif props.window_pattern == "polygon":
             layout.separator()
             layout.prop(props, "window_radius")
+        elif props.window_pattern == "ellipse":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "window_width_wide")
+            row.prop(props, "window_height_short")
 
         layout.separator()
         layout.prop(props, "jamb_width")
@@ -54,7 +59,7 @@ class JVWindows(JVBuilderBase):
             layout.separator()
             layout.prop(props, "window_roundness")
 
-        if props.window_pattern in ("arch", "gothic"):
+        if props.window_pattern in ("arch", "gothic", "ellipse"):
             layout.separator()
             layout.prop(props, "window_resolution")
 
@@ -209,10 +214,7 @@ class JVWindows(JVBuilderBase):
 
         # faces
         JVWindows._loop_face_builder(len(steps), vpl, faces)
-        faces.append([i for i in range(p, p+vpl, 1)])  # -Y glass face
-        faces.append([i for i in range(len(verts) - vpl, len(verts), 1)])  # +Y glass face
-
-        glass_ids.extend((len(faces) - 2, len(faces) - 1))
+        JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
         geometry_data.append((verts, faces, glass_ids))
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
@@ -307,6 +309,54 @@ class JVWindows(JVBuilderBase):
 
         # glass faces
         verts, faces, glass_ids = geometry_data[-1]  # get last entry which will be the pane's geometry
+        JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
+
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
+    def _ellipse(props, mesh):
+        a, b, jamb_w = props.window_width_wide / 2, props.window_height_short / 2, props.jamb_width
+        frame_width, frame_th, jamb_th, inset = props.frame_width, Units.INCH, Units.INCH, Units.Q_INCH
+
+        hjamb_w, hframe_th = jamb_w / 2, frame_th / 2
+        res = props.window_resolution // 2
+        vpl = res + 2 + res
+
+        steps = (
+            (  # a, b, y
+                (a, b, -hjamb_w), (a+jamb_th, b+jamb_th, -hjamb_w),
+                (a+jamb_th, b+jamb_th, hjamb_w), (a, b, hjamb_w)
+            ),
+            (
+                (a-frame_width, b-frame_width, -hframe_th+inset),
+                (a-frame_width, b-frame_width, -hframe_th),
+                (a, b, -hframe_th),
+
+                (a, b, hframe_th),
+                (a-frame_width, b-frame_width, hframe_th),
+                (a-frame_width, b-frame_width, hframe_th-inset)
+            )
+        )
+
+        geometry_data = []
+        for substep in steps:
+            verts, faces, glass_ids = [], [], []
+
+            for aa, bb, yy in substep:
+                p = len(verts)
+
+                # lower half
+                for x, z in JVWindows._ellipse_iterator(aa, bb, res):
+                    verts.append((x, yy, z))  # negative because points are generate in CCW order, so flip side
+
+                # top half
+                for x, y, z in verts[-2:p:-1]:  # get all except end two points in reverse order
+                    verts.append((x, y, -z))
+
+            JVWindows._loop_face_builder(len(substep), vpl, faces)
+            geometry_data.append((verts, faces, glass_ids))
+
+        verts, faces, glass_ids = geometry_data[-1]
         JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)

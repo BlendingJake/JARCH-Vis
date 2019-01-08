@@ -183,11 +183,11 @@ class JVProperties(PropertyGroup):
             ("regular", "Regular", ""),
             ("arch", "Arch", ""),
             ("polygon", "Polygon", ""),
-            ("gothic", "Gothic", "")
+            ("gothic", "Gothic", ""),
+            ("ellipse", "Ellipse", "")
             # ("bay", "Bay", ""),
             # ("bow", "Bow", ""),
             # ("circular", "Circular", ""),
-            # ("ellipse", "Ellipse", "")
         ), default="regular", description="Window Pattern", update=jv_on_property_update
     )
 
