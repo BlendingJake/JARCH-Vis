@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians, acos, sin
+from math import sqrt, radians, acos, sin, asin
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -252,12 +252,7 @@ class JVWindows(JVBuilderBase):
 
         # glass faces
         verts, faces, glass_ids = geometry_data[-1]  # pane entry
-        p = len(verts) - (6 * sides)  # go back to start of first pane loop
-        faces.append([i for i in range(p, p+sides)])
-        p = len(verts) - sides
-        faces.append([i for i in range(p, p+sides)])
-
-        glass_ids.extend((len(faces) - 1, len(faces) - 2))
+        JVWindows._close_glass_faces_in_loops(len(verts), sides, faces, glass_ids)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
@@ -268,47 +263,51 @@ class JVWindows(JVBuilderBase):
         width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
         res, frame_width, frame_th, jamb_th = props.window_resolution // 2, props.frame_width, Units.INCH, Units.INCH
 
-        hframe_th, hjamb_w, hwidth, cx, inset = frame_th / 2, jamb_w / 2, width / 2, jamb_th + (width / 2), Units.Q_INCH
+        hframe_th, hjamb_w, hwidth, inset = frame_th / 2, jamb_w / 2, width / 2, Units.Q_INCH
         vpl = 2 + (res + 2) + (res + 1)  # two bottom, res + 2 on right side, res + 1 on left side
+        level_z = height - hwidth*sqrt(3)  # the z value at which the arc begins (ignoring the thickness of the jamb)
 
+        left_x = width + (2*jamb_th)
+        cx = left_x / 2
         steps = [
-            # start x, start y,  start z,      end x,   height, half_width
-            (  # jamb
-                (jamb_th, -hjamb_w, jamb_th, jamb_th+width, height, hwidth),
-                (0, -hjamb_w, 0, width + (2*jamb_th), height + (2*jamb_th), hwidth+jamb_th),
-                (0, hjamb_w, 0, width + (2*jamb_th), height + (2*jamb_th), hwidth+jamb_th),
-                (jamb_th, hjamb_w, jamb_th, jamb_th+width, height, hwidth)
-            ), (  # pane
-                (jamb_th+frame_width, -hframe_th+inset, jamb_th+frame_width, jamb_th+width-frame_width,
-                 height-frame_width, hwidth-frame_width),
-                (jamb_th+frame_width, -hframe_th, jamb_th+frame_width, jamb_th+width-frame_width, height-frame_width,
-                 hwidth-frame_width),
-                (jamb_th, -hframe_th, jamb_th, jamb_th + width, height, hwidth),
+            (  # start xz  start y    end x which is also the radius
+                (jamb_th, -hjamb_w, jamb_th+width),
+                (0, -hjamb_w, width+(2*jamb_th)),
+                (0, hjamb_w, width+(2*jamb_th)),
+                (jamb_th, hjamb_w, jamb_th+width),
+            ),
+            (
+                (jamb_th+frame_width, -hframe_th+inset, jamb_th+width-frame_width),
+                (jamb_th+frame_width, -hframe_th, jamb_th+width-frame_width),
+                (jamb_th, -hframe_th, jamb_th+width),
 
-                (jamb_th, hframe_th, jamb_th, jamb_th + width, height, hwidth),
-                (jamb_th+frame_width, hframe_th, jamb_th+frame_width, jamb_th+width-frame_width, height-frame_width,
-                 hwidth-frame_width),
-                (jamb_th+frame_width, hframe_th-inset, jamb_th+frame_width, jamb_th+width-frame_width,
-                 height-frame_width, hwidth-frame_width)
+                (jamb_th, hframe_th, jamb_th+width),
+                (jamb_th+frame_width, hframe_th, jamb_th+width-frame_width),
+                (jamb_th+frame_width, hframe_th-inset, jamb_th+width-frame_width)
             )
         ]
+        # the centers of rotation are located at 0 and left_x and are on the outside of the jambs
         for substep in steps:
             verts, faces, glass_ids = [], [], []
 
-            for sx, sy, sz, ex, h, hw in substep:
-                verts += [(sx, sy, sz), (ex, sy, sz)]  # bottom two points
+            for sxz, sy, r in substep:
+                verts += [(sxz, sy, sxz), (r, sy, sxz)]  # bottom two points
 
                 # right side of arch
-                for x, z in JVWindows._gothic_arch_iterator(h, hw, res):
-                    verts.append((cx+x, sy, z))
+                for x, z in JVWindows._gothic_arc_iterator(r, cx, res):
+                    verts.append((x, sy, z+level_z))
 
-                iterator = iter(JVWindows._gothic_arch_iterator(h, hw, res, low_to_high=False))
+                iterator = iter(JVWindows._gothic_arc_iterator(r, cx, res, low_to_high=False))
                 next(iterator)  # skip highest entry as the previous loop already got it
                 for x, z in iterator:
-                    verts.append((cx-x, sy, z))
+                    verts.append((left_x-x, sy, z+level_z))
 
             JVWindows._loop_face_builder(len(substep), vpl, faces)
             geometry_data.append((verts, faces, glass_ids))
+
+        # glass faces
+        verts, faces, glass_ids = geometry_data[-1]  # get last entry which will be the pane's geometry
+        JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
@@ -422,31 +421,28 @@ class JVWindows(JVBuilderBase):
             x -= x_step
 
     @staticmethod
-    def _gothic_arch_iterator(height, half_width, res, low_to_high=True) -> Tuple[float, float]:
+    def _gothic_arc_iterator(radius, cx, res, low_to_high=True) -> Tuple[float, float]:
         """
-        Generate (x, z) coordinates for a gothic arch centered around x=0, z=0, with the center of the radius
-        at -half_width on the X-axis and (res + 2) number over vertices.
-        :param height: The total height of the gothic style window
-        :param half_width: half the width of the window, aka the distance from the center to the edge
-        :param res: the number of segments to insert on the arch. The actual number will be res + 2 for start and end
-        :param low_to_high: whether to start at the edge of the window and rotate to the center, or vice-versa
-        :return: (x, z) points offset from the center of the window on the x-axis and 0 on the z-axis
+        Generate (x, z) points on one side of a gothic arc with the given radius.
+        :param radius: the radius of the circle that forms the arc
+        :param cx: the x value of the center of the window
+        :param res: the number of segments on the arc, barring the start and end point
+        :param low_to_high: whether to start at the center and work outwards, or to start level and work to the top
+        :return a tuple of the (x, z) coordinates where x and z are the offset from the center of the arc
         """
-        r = half_width * 2
         # make angles negative because of how CCW rotation is negative in Blender
-        start_angle, end_angle = -0, -acos(half_width / r)
-        below_split = height - (r * sin(-end_angle))  # height below arc split
+        start_angle, end_angle = 0, -acos(cx / radius)
 
         if not low_to_high:  # swap order if not low to high
             start_angle, end_angle = end_angle, start_angle
 
         ang_step = Euler((0, (end_angle - start_angle) / (res + 1), 0))
 
-        v = Vector((r, 0, 0))
+        v = Vector((radius, 0, 0))
         v.rotate(Euler((0, start_angle, 0)))
 
         for _ in range(res + 2):
-            yield (v[0]-half_width, v[2]+below_split)  # shift x to be centered around x=0
+            yield (v[0], v[2])  # shift x to be centered around x=0
 
             v.rotate(ang_step)
 
@@ -476,3 +472,21 @@ class JVWindows(JVBuilderBase):
             e += 1
             p += 1
         faces.append((p, e, e+1-vpl, p+1-vpl))  # last face
+
+    @staticmethod
+    def _close_glass_faces_in_loops(v_len: int, vpl: int, faces: list, glass_ids: list):
+        """
+        Many of the windows are built by creating the jamb then the pane with sequential vertex loops. There will be
+        six loops for the pane, with the first loop forming the inside piece of glass, and the last loop forming the
+        outside piece of glass. Calculate those faces.
+        :param v_len: The number of vertices currently created
+        :param vpl: The number of vertices per vertex loop
+        :param faces: the list of faces
+        :param glass_ids: the list of face indices that need to have the glass material
+        """
+        p = v_len - (6 * vpl)  # go back to start of first pane loop
+        faces.append([i for i in range(p, p + vpl)])
+        p = v_len - vpl
+        faces.append([i for i in range(p, p + vpl)])
+
+        glass_ids.extend((len(faces) - 1, len(faces) - 2))
