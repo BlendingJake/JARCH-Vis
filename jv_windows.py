@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians
+from math import sqrt, radians, acos, sin
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -24,7 +24,7 @@ class JVWindows(JVBuilderBase):
     def draw(props, layout):
         layout.prop(props, "window_pattern", icon="MOD_WIREFRAME")
 
-        if props.window_pattern in ("regular", "arch"):
+        if props.window_pattern in ("regular", "arch", "gothic"):
             layout.separator()
             row = layout.row()
             row.prop(props, "window_width_medium")
@@ -54,7 +54,7 @@ class JVWindows(JVBuilderBase):
             layout.separator()
             layout.prop(props, "window_roundness")
 
-        if props.window_pattern == "arch":
+        if props.window_pattern in ("arch", "gothic"):
             layout.separator()
             layout.prop(props, "window_resolution")
 
@@ -262,6 +262,57 @@ class JVWindows(JVBuilderBase):
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
     @staticmethod
+    def _gothic(props, mesh):
+        geometry_data = []
+
+        width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
+        res, frame_width, frame_th, jamb_th = props.window_resolution // 2, props.frame_width, Units.INCH, Units.INCH
+
+        hframe_th, hjamb_w, hwidth, cx, inset = frame_th / 2, jamb_w / 2, width / 2, jamb_th + (width / 2), Units.Q_INCH
+        vpl = 2 + (res + 2) + (res + 1)  # two bottom, res + 2 on right side, res + 1 on left side
+
+        steps = [
+            # start x, start y,  start z,      end x,   height, half_width
+            (  # jamb
+                (jamb_th, -hjamb_w, jamb_th, jamb_th+width, height, hwidth),
+                (0, -hjamb_w, 0, width + (2*jamb_th), height + (2*jamb_th), hwidth+jamb_th),
+                (0, hjamb_w, 0, width + (2*jamb_th), height + (2*jamb_th), hwidth+jamb_th),
+                (jamb_th, hjamb_w, jamb_th, jamb_th+width, height, hwidth)
+            ), (  # pane
+                (jamb_th+frame_width, -hframe_th+inset, jamb_th+frame_width, jamb_th+width-frame_width,
+                 height-frame_width, hwidth-frame_width),
+                (jamb_th+frame_width, -hframe_th, jamb_th+frame_width, jamb_th+width-frame_width, height-frame_width,
+                 hwidth-frame_width),
+                (jamb_th, -hframe_th, jamb_th, jamb_th + width, height, hwidth),
+
+                (jamb_th, hframe_th, jamb_th, jamb_th + width, height, hwidth),
+                (jamb_th+frame_width, hframe_th, jamb_th+frame_width, jamb_th+width-frame_width, height-frame_width,
+                 hwidth-frame_width),
+                (jamb_th+frame_width, hframe_th-inset, jamb_th+frame_width, jamb_th+width-frame_width,
+                 height-frame_width, hwidth-frame_width)
+            )
+        ]
+        for substep in steps:
+            verts, faces, glass_ids = [], [], []
+
+            for sx, sy, sz, ex, h, hw in substep:
+                verts += [(sx, sy, sz), (ex, sy, sz)]  # bottom two points
+
+                # right side of arch
+                for x, z in JVWindows._gothic_arch_iterator(h, hw, res):
+                    verts.append((cx+x, sy, z))
+
+                iterator = iter(JVWindows._gothic_arch_iterator(h, hw, res, low_to_high=False))
+                next(iterator)  # skip highest entry as the previous loop already got it
+                for x, z in iterator:
+                    verts.append((cx-x, sy, z))
+
+            JVWindows._loop_face_builder(len(substep), vpl, faces)
+            geometry_data.append((verts, faces, glass_ids))
+
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
     def _rectangular_jamb_geometry(width: float, height: float, start_coord: tuple, jamb_width: float, keep_left=True,
                                    th=Units.INCH) -> Tuple[list, list, list]:
         """
@@ -369,6 +420,35 @@ class JVWindows(JVBuilderBase):
 
             yield x, y
             x -= x_step
+
+    @staticmethod
+    def _gothic_arch_iterator(height, half_width, res, low_to_high=True) -> Tuple[float, float]:
+        """
+        Generate (x, z) coordinates for a gothic arch centered around x=0, z=0, with the center of the radius
+        at -half_width on the X-axis and (res + 2) number over vertices.
+        :param height: The total height of the gothic style window
+        :param half_width: half the width of the window, aka the distance from the center to the edge
+        :param res: the number of segments to insert on the arch. The actual number will be res + 2 for start and end
+        :param low_to_high: whether to start at the edge of the window and rotate to the center, or vice-versa
+        :return: (x, z) points offset from the center of the window on the x-axis and 0 on the z-axis
+        """
+        r = half_width * 2
+        # make angles negative because of how CCW rotation is negative in Blender
+        start_angle, end_angle = -0, -acos(half_width / r)
+        below_split = height - (r * sin(-end_angle))  # height below arc split
+
+        if not low_to_high:  # swap order if not low to high
+            start_angle, end_angle = end_angle, start_angle
+
+        ang_step = Euler((0, (end_angle - start_angle) / (res + 1), 0))
+
+        v = Vector((r, 0, 0))
+        v.rotate(Euler((0, start_angle, 0)))
+
+        for _ in range(res + 2):
+            yield (v[0]-half_width, v[2]+below_split)  # shift x to be centered around x=0
+
+            v.rotate(ang_step)
 
     @staticmethod
     def _loop_face_builder(num_loops, vpl, faces):
