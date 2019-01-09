@@ -29,7 +29,7 @@ class JVWindows(JVBuilderBase):
             row = layout.row()
             row.prop(props, "window_width_medium")
             row.prop(props, "window_height_medium")
-        elif props.window_pattern == "polygon":
+        elif props.window_pattern in ("polygon", "circular"):
             layout.separator()
             layout.prop(props, "window_radius")
         elif props.window_pattern == "ellipse":
@@ -55,11 +55,19 @@ class JVWindows(JVBuilderBase):
             layout.separator()
             layout.prop(props, "window_side_count")
 
+        if props.window_pattern == "circular":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "full_circle", icon="MESH_CIRCLE")
+
+            if not props.full_circle:
+                row.prop(props, "window_angle")
+
         if props.window_pattern == "arch":
             layout.separator()
             layout.prop(props, "window_roundness")
 
-        if props.window_pattern in ("arch", "gothic", "ellipse"):
+        if props.window_pattern in ("arch", "gothic", "ellipse", "circular"):
             layout.separator()
             layout.prop(props, "window_resolution")
 
@@ -315,11 +323,29 @@ class JVWindows(JVBuilderBase):
 
     @staticmethod
     def _ellipse(props, mesh):
-        a, b, jamb_w = props.window_width_wide / 2, props.window_height_short / 2, props.jamb_width
-        frame_width, frame_th, jamb_th, inset = props.frame_width, Units.INCH, Units.INCH, Units.Q_INCH
+        geometry_data = JVWindows._ellipse_worker(props.window_width_widt, props.window_height_short,
+                                                  props.jamb_width, props.frame_width, props.window_resolution)
 
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
+    def _circular(props, mesh):
+        radius, res, jamb_w = props.window_radius, props.window_resolution, props.jamb_width
+        jamb_th, frame_width, frame_th, inset = Units.INCH, props.frame_width, Units.INCH, Units.Q_INCH
+
+        if props.full_circle:
+            geometry_data = JVWindows._ellipse_worker(radius, radius, jamb_w, frame_width, res,
+                                                      frame_th=frame_th, jamb_th=jamb_th, inset=inset)
+        else:
+            geometry_data = []
+
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    # WORKERS AND ITERATORS -------------------------------------------------------------------------------------
+    @staticmethod
+    def _ellipse_worker(a, b, jamb_w, frame_width, res, frame_th=Units.INCH, jamb_th=Units.INCH, inset=Units.Q_INCH):
         hjamb_w, hframe_th = jamb_w / 2, frame_th / 2
-        res = props.window_resolution // 2
+        res = res // 2
         vpl = res + 2 + res
 
         steps = (
@@ -328,8 +354,8 @@ class JVWindows(JVBuilderBase):
                 (jamb_th, hjamb_w), (0, hjamb_w)
             ),
             (
-                (-frame_width, -hframe_th+inset), (-frame_width, -hframe_th), (0, -hframe_th),
-                (0, hframe_th), (-frame_width, hframe_th), (-frame_width, hframe_th-inset)
+                (-frame_width, -hframe_th + inset), (-frame_width, -hframe_th), (0, -hframe_th),
+                (0, hframe_th), (-frame_width, hframe_th), (-frame_width, hframe_th - inset)
             )
         )
 
@@ -341,7 +367,7 @@ class JVWindows(JVBuilderBase):
                 p = len(verts)
 
                 # lower half
-                for x, z in JVWindows._ellipse_iterator(a+ab_offset, b+ab_offset, res):
+                for x, z in JVWindows._ellipse_iterator(a + ab_offset, b + ab_offset, res):
                     verts.append((x, yy, z))  # negative because points are generate in CCW order, so flip side
 
                 # top half
@@ -354,7 +380,7 @@ class JVWindows(JVBuilderBase):
         verts, faces, glass_ids = geometry_data[-1]
         JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
 
-        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+        return geometry_data
 
     @staticmethod
     def _rectangular_jamb_geometry(width: float, height: float, start_coord: tuple, jamb_width: float, keep_left=True,
