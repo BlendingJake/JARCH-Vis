@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians, acos
+from math import sqrt, radians, acos, asin, sin
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -331,13 +331,62 @@ class JVWindows(JVBuilderBase):
     @staticmethod
     def _circular(props, mesh):
         radius, res, jamb_w = props.window_radius, props.window_resolution, props.jamb_width
+        ang = props.window_angle
         jamb_th, frame_width, frame_th, inset = Units.INCH, props.frame_width, Units.INCH, Units.Q_INCH
+
+        hjamb_w, hframe_th = jamb_w / 2, frame_width / 2
 
         if props.full_circle:
             geometry_data = JVWindows._ellipse_worker(radius, radius, jamb_w, frame_width, res,
                                                       frame_th=frame_th, jamb_th=jamb_th, inset=inset)
         else:
             geometry_data = []
+            start_angle, end_angle = ang - radians(180), -radians(180)  # start angle from -X axis
+            hangle = (end_angle + start_angle) / 2
+
+            steps = (
+                (  # radius, y value  z value
+                    (radius, -hjamb_w, jamb_th), (radius+jamb_th, -hjamb_w, 0),
+                    (radius+jamb_th, hjamb_w, 0), (radius, hjamb_w, jamb_th)
+                ),
+                (
+                    (radius-frame_width, -hframe_th+inset, jamb_th+frame_width),
+                    (radius-frame_width, -hframe_th, jamb_th+frame_width),
+                    (radius, -hframe_th, jamb_th),
+
+                    (radius, hframe_th, jamb_th),
+                    (radius-frame_width, hframe_th, jamb_th+frame_width),
+                    (radius-frame_width, hframe_th-inset, jamb_th+frame_width),
+                )
+            )
+
+            vpl = res + 3
+            for substep in steps:
+                verts, faces, glass_ids = [], [], []
+                for rad, y, z in substep:
+                    cv = Vector((z / sin(abs(hangle)), 0, 0))
+                    cv.rotate(Euler((0, hangle, 0)))  # rotate center vector to proper place
+
+                    verts.append((cv[0], y, cv[2]))
+
+                    # we have to clip the angles slightly because our center of radius is at (0, 0, 0), but we don't
+                    # want to rotate all the way down to the axis for a point that is Z up from its
+                    d_theta = asin(z / rad)
+                    sa, ea = start_angle - d_theta, end_angle + d_theta
+                    ang_step = Euler((0, (ea-sa) / (res + 1), 0))
+
+                    v = Vector((rad, 0, 0))
+                    v.rotate(Euler((0, sa, 0)))
+                    for _ in range(res + 2):  # plus two for both end points
+                        verts.append((v[0], y, v[2]))
+                        v.rotate(ang_step)
+
+                JVWindows._loop_face_builder(len(substep), vpl, faces)
+                geometry_data.append((verts, faces, glass_ids))
+
+            # glass ids
+            verts, faces, glass_ids = geometry_data[-1]
+            JVWindows._close_glass_faces_in_loops(len(verts), vpl, faces, glass_ids)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 

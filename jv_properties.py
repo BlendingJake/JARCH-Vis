@@ -604,7 +604,7 @@ class JVProperties(PropertyGroup):
 
     window_angle: FloatProperty(
         name="Angle",
-        unit="ROTATION", min=radians(15), max=radians(270), default=radians(90), update=jv_on_property_update
+        unit="ROTATION", min=radians(15), default=radians(90), update=jv_on_property_update
     )
 
     window_roundness: FloatProperty(
