@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians, acos, asin, sin
+from math import sqrt, radians, acos, asin, sin, cos
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -323,7 +323,7 @@ class JVWindows(JVBuilderBase):
 
     @staticmethod
     def _ellipse(props, mesh):
-        geometry_data = JVWindows._ellipse_worker(props.window_width_widt, props.window_height_short,
+        geometry_data = JVWindows._ellipse_worker(props.window_width_wide, props.window_height_short,
                                                   props.jamb_width, props.frame_width, props.window_resolution)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
@@ -529,16 +529,17 @@ class JVWindows(JVBuilderBase):
         the x, y coordinates of each point. Points are iterator in counter-clockwise fashion
         :param a: the x-axis radius
         :param b: the y-axis radius
-        :param res: the resolution/number of points returns for the half-ellipse
+        :param res: (res + 2) points will be generated on the ellipse
         :return: x, y points on the half-ellipse
         """
-        x_step = (2*a) / (res+1)
-        x = a
-        for _ in range(res + 2):  # two extra for end points
-            y = sqrt(1 - min(1, x**2 / a**2)) * b  # rounding errors can cause x**2 / a**2 > 1
+        ang_step = radians(180) / (res + 1)
 
-            yield x, y
-            x -= x_step
+        theta = 0
+        for _ in range(res + 2):  # two extra for end points
+            x, y = a*cos(theta), b*sin(theta)
+
+            yield (x, y)
+            theta += ang_step
 
     @staticmethod
     def _gothic_arc_iterator(radius, cx, res, low_to_high=True) -> Tuple[float, float]:
