@@ -229,6 +229,15 @@ class JVBuilderBase:
         mesh.verts.ensure_lookup_table()
 
     @staticmethod
+    def _transform_vertex_positions(vertices, rotation=Euler((0, 0, 0)), translation=Vector((0, 0, 0)),
+                                    origin=Vector((0, 0, 0))):
+
+        for i in range(len(vertices)):
+            c = Vector(vertices[i]) - origin
+            c.rotate(rotation)
+            vertices[i] = tuple(c)
+
+    @staticmethod
     def _add_material_index(faces, index: int):
         for f in faces:
             f.material_index = index

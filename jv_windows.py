@@ -140,7 +140,7 @@ class JVWindows(JVBuilderBase):
                 y = -pane_th / 2
 
             geometry_data.append(JVWindows._rectangular_pane_geometry(pane_width, pane_height, (x+jamb_th, y, z),
-                                                                      th=pane_th, pad=frame_width))
+                                                                      frame_th=pane_th, fw=frame_width))
 
             # # create second pane if needed
             if props.slider:
@@ -151,7 +151,7 @@ class JVWindows(JVBuilderBase):
                     x += pane_width - frame_width
 
                 geometry_data.append(JVWindows._rectangular_pane_geometry(pane_width, pane_height, (x+jamb_th, y, z),
-                                                                          th=pane_th, pad=frame_width))
+                                                                          frame_th=pane_th, fw=frame_width))
 
             x = tx + width + jamb_th
 
@@ -197,8 +197,8 @@ class JVWindows(JVBuilderBase):
             pane_height = center_z / 2 + frame_width
             geometry_data.append(JVWindows._rectangular_pane_geometry(width, pane_height,
                                                                       (jamb_th, -hframe_th, jamb_th),
-                                                                      pad=frame_width, inset=inset,
-                                                                      th=frame_th))
+                                                                      fw=frame_width, inset=inset,
+                                                                      frame_th=frame_th))
 
             sy, sz = frame_th / 2, jamb_th + pane_height - frame_width
 
@@ -214,7 +214,6 @@ class JVWindows(JVBuilderBase):
         ]
 
         # vertices
-        p = len(verts)
         for sx, ex, y, sz, dab in steps:
             verts += [(sx, y, sz), (ex, y, sz)]
             for x, z in JVWindows._ellipse_iterator(a+dab, b+dab, res):
@@ -390,6 +389,27 @@ class JVWindows(JVBuilderBase):
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
+    @staticmethod
+    def _bow(props, mesh):
+        jamb_w, frame_width, frame_th, jamb_th = props.jamb_width, props.frame_width, Units.INCH, Units.INCH
+        angle_per_pane, radius = radians(180) / props.bow_segments, props.window_width_wide / 2
+        pane_angle = (radians(180) - angle_per_pane) / 2  # how much the pane is rotated from the radius
+        pane_width, height = 2 * radius * cos(angle_per_pane), props.window_height_medium
+        inset = Units.Q_INCH
+
+        jw = jamb_w * cos(radians(90) - pane_angle)
+
+        geometry_data = []
+        corner_vector = Vector((-radius, 0, 0))
+        cur_pane_angle = -pane_angle
+        for _ in range(props.bow_segments):
+            # create pane at +frame_th/2 so that the corner of the pane is at (0, 0, 0)
+            verts, faces, glass_ids = JVWindows._rectangular_pane_geometry(pane_width, height, (0, frame_th/2, 0),
+                                                                           fw=frame_width, inset=inset,
+                                                                           frame_th=frame_th)
+
+            JVWindows._transform_vertex_positions(verts, Euler((cur_pane_angle)))
+
     # WORKERS AND ITERATORS -------------------------------------------------------------------------------------
     @staticmethod
     def _ellipse_worker(a, b, jamb_w, frame_width, res, frame_th=Units.INCH, jamb_th=Units.INCH, inset=Units.Q_INCH):
@@ -487,31 +507,31 @@ class JVWindows(JVBuilderBase):
         return verts, faces, glass_ids
 
     @staticmethod
-    def _rectangular_pane_geometry(w: float, h: float, start_coord: tuple, th=1.5 * Units.INCH, inset=Units.Q_INCH,
-                                   pad=Units.INCH) -> Tuple[list, list, list]:
+    def _rectangular_pane_geometry(w: float, h: float, start_coord: tuple, frame_th=1.5*Units.INCH, inset=Units.Q_INCH,
+                                   fw=Units.INCH) -> Tuple[list, list, list]:
         """
         Create the geometry needed to build a rectangular window pane
         :param w: the width of the pane
         :param h: the height of the pane
         :param start_coord: the start coordinate
-        :param th: the thickness of the pane
+        :param frame_th: the thickness of the pane
         :param inset: how much to inset when going from the frame to glass part of the pane
-        :param pad: thick the frame of the pane is
+        :param fw: thick the frame of the pane is
         :return:
         """
         verts, faces, glass_ids = [], [], []
         x, y, z = start_coord
-        fy, gy = th / 2, (th - (2*inset)) / 2  # half of the frame y and half of the glass y
+        fy, gy = frame_th / 2, (frame_th - (2*inset)) / 2  # half of the frame y and half of the glass y
 
         # start with inset-glass vertices then move out and around, ending at inset-glass vertices on the other side
         verts += [
-            (x+pad, y-gy, z+pad), (x+w-pad, y-gy, z+pad), (x+w-pad, y-gy, z+h-pad), (x+pad, y-gy, z+h-pad),
-            (x+pad, y-fy, z+pad), (x+w-pad, y-fy, z+pad), (x+w-pad, y-fy, z+h-pad), (x+pad, y-fy, z+h-pad),
+            (x+fw, y-gy, z+fw), (x+w-fw, y-gy, z+fw), (x+w-fw, y-gy, z+h-fw), (x+fw, y-gy, z+h-fw),
+            (x+fw, y-fy, z+fw), (x+w-fw, y-fy, z+fw), (x+w-fw, y-fy, z+h-fw), (x+fw, y-fy, z+h-fw),
             (x, y-fy, z), (x+w, y-fy, z), (x+w, y-fy, z+h), (x, y-fy, z+h),
 
             (x, y+fy, z), (x+w, y+fy, z), (x+w, y+fy, z+h), (x, y+fy, z+h),
-            (x+pad, y+fy, z+pad), (x+w-pad, y+fy, z+pad), (x+w-pad, y+fy, z+h-pad), (x+pad, y+fy, z+h-pad),
-            (x+pad, y+gy, z+pad), (x+w-pad, y+gy, z+pad), (x+w-pad, y+gy, z+h-pad), (x+pad, y+gy, z+h-pad),
+            (x+fw, y+fy, z+fw), (x+w-fw, y+fy, z+fw), (x+w-fw, y+fy, z+h-fw), (x+fw, y+fy, z+h-fw),
+            (x+fw, y+gy, z+fw), (x+w-fw, y+gy, z+fw), (x+w-fw, y+gy, z+h-fw), (x+fw, y+gy, z+h-fw),
         ]
 
         JVWindows._loop_face_builder(6, 4, faces)
