@@ -10,7 +10,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from math import sqrt, radians, acos, asin, sin, cos
+from math import sqrt, radians, acos, asin, sin, cos, tan
 from mathutils import Vector, Euler
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
@@ -37,12 +37,16 @@ class JVWindows(JVBuilderBase):
             row = layout.row()
             row.prop(props, "window_width_wide")
             row.prop(props, "window_height_short")
+        elif props.window_pattern in ("bow", "bay"):
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "window_width_wide")
+            row.prop(props, "window_height_medium")
 
         layout.separator()
-        layout.prop(props, "jamb_width")
-
-        layout.separator()
-        layout.prop(props, "frame_width")
+        row = layout.row()
+        row.prop(props, "jamb_width")
+        row.prop(props, "frame_width")
 
         if props.window_pattern in ("regular", "arch"):
             layout.separator()
@@ -62,6 +66,16 @@ class JVWindows(JVBuilderBase):
 
             if not props.full_circle:
                 row.prop(props, "window_angle")
+
+        if props.window_pattern == "bay":
+            layout.separator()
+            row = layout.row()
+            row.prop(props, "bay_angle")
+            row.prop(props, "window_depth")
+
+        if props.window_pattern == "bow":
+            layout.separator()
+            layout.prop(props, "bow_segments")
 
         if props.window_pattern == "arch":
             layout.separator()
@@ -363,7 +377,8 @@ class JVWindows(JVBuilderBase):
             for substep in steps:
                 verts, faces, glass_ids = [], [], []
                 for rad, y, z in substep:
-                    cv = Vector((z / sin(abs(hangle)), 0, 0))
+                    # determine the location of the center vertex
+                    cv = Vector((z / sin(abs(hangle)), 0, 0))  # adjust z so cv[2]=z and x ends up between whatever
                     cv.rotate(Euler((0, hangle, 0)))  # rotate center vector to proper place
 
                     verts.append((cv[0], y, cv[2]))
@@ -393,24 +408,220 @@ class JVWindows(JVBuilderBase):
     def _bow(props, mesh):
         jamb_w, frame_width, frame_th, jamb_th = props.jamb_width, props.frame_width, Units.INCH, Units.INCH
         angle_per_pane, radius = radians(180) / props.bow_segments, props.window_width_wide / 2
-        pane_angle = (radians(180) - angle_per_pane) / 2  # how much the pane is rotated from the radius
-        pane_width, height = 2 * radius * cos(angle_per_pane), props.window_height_medium
+        pane_start_angle = (radians(180) - angle_per_pane) / 2  # how much the pane is rotated from the radius
+        pane_width, height = 2 * radius * sin(angle_per_pane / 2), props.window_height_medium
         inset = Units.Q_INCH
 
-        jw = jamb_w * cos(radians(90) - pane_angle)
+        hjw = (jamb_w * cos(radians(90) - pane_start_angle)) / 2
+        pane_center_radius = radius + (frame_th / 2)
 
         geometry_data = []
-        corner_vector = Vector((-radius, 0, 0))
-        cur_pane_angle = -pane_angle
-        for _ in range(props.bow_segments):
+        corner_vector, angle_step = Vector((-radius, 0, 0)), Euler((0, 0, -angle_per_pane))
+        cur_pane_angle = pane_start_angle
+
+        inner_jamb, outer_jamb = Vector((-pane_center_radius+hjw, 0, 0)), Vector((-pane_center_radius-hjw, 0, 0))
+
+        jamb_verts, jamb_faces = [], []
+        # initial jamb vertices
+        for x in (-pane_center_radius+hjw, -pane_center_radius-hjw):
+            for z in (0, height + 2*jamb_th):
+                jamb_verts.append((x, -jamb_th, z))
+
+        for x in (-pane_center_radius+hjw, -pane_center_radius-hjw):
+            for z in (jamb_th, height + jamb_th):
+                jamb_verts.append((x, 0, z))
+
+        for i in range(props.bow_segments):
             # create pane at +frame_th/2 so that the corner of the pane is at (0, 0, 0)
-            verts, faces, glass_ids = JVWindows._rectangular_pane_geometry(pane_width, height, (0, frame_th/2, 0),
+            verts, faces, glass_ids = JVWindows._rectangular_pane_geometry(pane_width, height, (0, frame_th/2, jamb_th),
                                                                            fw=frame_width, inset=inset,
                                                                            frame_th=frame_th)
 
-            JVWindows._transform_vertex_positions(verts, Euler((cur_pane_angle)))
+            JVWindows._transform_vertex_positions(verts, rotation=Euler((0, 0, cur_pane_angle)),
+                                                  after_translation=corner_vector)
+
+            geometry_data.append((verts, faces, glass_ids))
+
+            # vertical filler strips
+            geometry_data.append(
+                (*JVWindows._bay_bow_vertical_filler_strip(corner_vector, cur_pane_angle + radians(90),
+                                                           angle_per_pane/2 if i == 0 else angle_per_pane,
+                                                           height, frame_th, shift=(0, 0, jamb_th)),
+                 []
+                 ))
+
+            # jamb vertices
+            if i > 0:
+                for bz, tz in ((0, height + 2*jamb_th), (jamb_th, jamb_th+height)):
+                    for x, y in (inner_jamb[:2], outer_jamb[:2]):
+                        jamb_verts.append((x, y, bz))
+                        jamb_verts.append((x, y, tz))
+
+            # move to next pane
+            inner_jamb.rotate(angle_step)
+            outer_jamb.rotate(angle_step)
+
+            corner_vector.rotate(angle_step)
+            cur_pane_angle -= angle_per_pane
+
+        # last triangle filler
+        geometry_data.append(
+            (*JVWindows._bay_bow_vertical_filler_strip(corner_vector, 0, radians(90) - pane_start_angle,
+                                                       height, frame_th, shift=(0, 0, jamb_th)), []))
+
+        # last set of jamb vertices
+        for x in (pane_center_radius-hjw, pane_center_radius+hjw):
+            for z in (0, height + 2*jamb_th):
+                jamb_verts.append((x, -jamb_th, z))
+
+        for x in (pane_center_radius-hjw, pane_center_radius+hjw):
+            for z in (jamb_th, height + jamb_th):
+                jamb_verts.append((x, 0, z))
+
+        # jamb faces
+        JVWindows._bay_bow_jamb_faces(len(jamb_verts), jamb_faces, props.bow_segments)
+
+        geometry_data.append((jamb_verts, jamb_faces, []))
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
+
+    @staticmethod
+    def _bay(props, mesh):
+        width, height, pane_angle = props.window_width_wide, props.window_height_medium, props.bay_angle
+        depth = props.window_depth
+        jamb_w, jamb_th, frame_w, frame_th = props.jamb_width, Units.INCH, props.frame_width, Units.INCH
+        inset = Units.Q_INCH
+
+        pane_x = depth / tan(pane_angle)
+        small_width, large_width = depth / sin(pane_angle), width - 2*pane_x
+        geometry_data = []
+
+        # panes
+        for angle, pw, corner in (
+            (pane_angle, small_width, Vector((-width/2, 0, 0))),  # left
+            (0, large_width, Vector((-large_width/2, depth, 0))),  # middle
+            (-pane_angle, small_width, Vector((large_width/2, depth, 0)))  # right
+        ):
+            verts, faces, glass_ids = JVWindows._rectangular_pane_geometry(pw, height, (0, frame_th/2, jamb_th),
+                                                                           frame_th=frame_th, fw=frame_w, inset=inset)
+            JVWindows._transform_vertex_positions(verts, Euler((0, 0, angle)), after_translation=corner)
+            geometry_data.append((verts, faces, glass_ids))
+
+        # end filler strips
+        geometry_data.extend((
+            (*JVWindows._bay_bow_vertical_filler_strip(Vector((-width/2, 0, 0)), radians(180) - pane_angle/2,
+                                                       pane_angle/2, height, frame_th, shift=(0, 0, jamb_th)), []),
+            (*JVWindows._bay_bow_vertical_filler_strip(Vector((width/2, 0, 0)), 0, pane_angle/2,
+                                                       height, frame_th, shift=(0, 0, jamb_th)), [])
+        ))
+
+        # in between
+        for x, angle in ((-large_width/2, radians(90)), (large_width/2, radians(90)-pane_angle)):
+            geometry_data.append((
+                *JVWindows._bay_bow_vertical_filler_strip(Vector((x, depth, 0)), angle, pane_angle, height, frame_th,
+                                                          shift=(0, 0, jamb_th)), []
+            ))
+
+        # jamb
+        hjw = (jamb_w * cos(radians(90)-pane_angle)) / 2
+        jamb_verts, jamb_faces = [], []
+        cx = width/2 + frame_th/2
+
+        # starting jamb vertices
+        for x in (-cx+hjw, -cx-hjw):
+            for z in (0, height + 2*jamb_th):
+                jamb_verts.append((x, -jamb_th, z))
+
+        for x in (-cx+hjw, -cx-hjw):
+            for z in (jamb_th, height + jamb_th):
+                jamb_verts.append((x, 0, z))
+
+        # main jamb vertices
+
+        for corner, inside_sign in ((Vector((-large_width/2, depth, 0)), -1), (Vector((large_width/2, depth, 0)), 1)):
+            inside = Vector((-inside_sign * (hjw - frame_th/2), 0, 0))
+            outside = Vector((-inside_sign * (hjw+frame_th), 0, 0))
+
+            inside.rotate(Euler((0, 0, inside_sign * pane_angle/2)))
+            outside.rotate(Euler((0, 0, -inside_sign * (radians(90) + pane_angle/2))))
+
+            inside += corner
+            outside += corner
+
+            for bz, tz in ((0, height + 2*jamb_th), (jamb_th, height+jamb_th)):
+                for x, y in (inside[:2], outside[:2]):
+                    jamb_verts.append((x, y, bz))
+                    jamb_verts.append((x, y, tz))
+
+        # closing jamb vertices
+        for x in (cx-hjw, cx+hjw):
+            for z in (0, height + 2*jamb_th):
+                jamb_verts.append((x, -jamb_th, z))
+
+        for x in (cx-hjw, cx+hjw):
+            for z in (jamb_th, height + jamb_th):
+                jamb_verts.append((x, 0, z))
+
+        # jamb faces
+        JVWindows._bay_bow_jamb_faces(len(jamb_verts), jamb_faces, 3)
+
+        geometry_data.append((jamb_verts, jamb_faces, []))
+        JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
     # WORKERS AND ITERATORS -------------------------------------------------------------------------------------
+    @staticmethod
+    def _bay_bow_jamb_faces(vertex_count: int, faces: list, sides: int):
+        """
+        Create the faces for the jamb on bay and bow windows
+        :param vertex_count: the number of vertices that jamb contains
+        :param faces: the list to add the faces to
+        :param sides: the number of sides the window has
+        """
+        # jamb faces
+        p = 0
+        for _ in range(sides):
+            faces.extend((
+                (p, p+8, p+10, p+2), (p, p+8, p+12, p+4), (p+4, p+12, p+14, p+6), (p+2, p+6, p+14, p+10),
+                (p+5, p+13, p+15, p+7), (p+5, p+13, p+9, p+1), (p+1, p+9, p+11, p+3), (p+3, p+7, p+15, p+11)
+            ))
+
+            p += 8
+
+        # vertical jamb faces
+        for p in (0, vertex_count-8):
+            faces.extend((
+                (p, p+1, p+3, p+2), (p, p+4, p+5, p+1), (p+2, p+3, p+7, p+6), (p+4, p+5, p+7, p+6)
+            ))
+
+    @staticmethod
+    def _bay_bow_vertical_filler_strip(corner_v: Vector, start_angle: float, angle: float, height: float,
+                                       frame_th: float, shift=(0, 0, 0)) -> Tuple[list, list]:
+        """
+        Create the triangular filler strip found between bay and bow windows. Return vertices and faces.
+        :param corner_v: the location of the corner of the frame
+        :param start_angle: the angle, measured from the +X axis, with positive being CCW of corner_v
+        :param angle: how wide the angle is for the triangle
+        :param height: the height of the strip
+        :param frame_th: the thickness of the frame
+        :param shift: Amount to add to all x, y, and z positions
+        :return: the vertices and faces of the strip
+        """
+        verts, faces = [], []
+        dx, dy, dz = shift
+
+        v1 = Vector((frame_th, 0, 0))
+        v2 = v1.copy()
+
+        v1.rotate(Euler((0, 0, start_angle)))
+        v2.rotate(Euler((0, 0, start_angle+angle)))
+
+        for x, y in (corner_v[:2], (corner_v + v1)[:2], (corner_v + v2)[:2]):
+            verts.append((dx+x, dy+y, dz))
+            verts.append((dx+x, dy+y, dz+height))
+
+        faces.extend(((0, 2, 3, 1), (2, 4, 5, 3), (4, 0, 1, 5), (1, 3, 5), (0, 4, 2)))
+
+        return verts, faces
+
     @staticmethod
     def _ellipse_worker(a, b, jamb_w, frame_width, res, frame_th=Units.INCH, jamb_th=Units.INCH, inset=Units.Q_INCH):
         hjamb_w, hframe_th = jamb_w / 2, frame_th / 2

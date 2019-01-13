@@ -185,9 +185,9 @@ class JVProperties(PropertyGroup):
             ("polygon", "Polygon", ""),
             ("gothic", "Gothic", ""),
             ("ellipse", "Ellipse", ""),
-            ("circular", "Circular", "")
-            # ("bay", "Bay", ""),
-            # ("bow", "Bow", ""),
+            ("circular", "Circular", ""),
+            ("bow", "Bow", ""),
+            ("bay", "Bay", "")
         ), default="regular", description="Window Pattern", update=jv_on_property_update
     )
 
@@ -625,12 +625,7 @@ class JVProperties(PropertyGroup):
 
     bay_angle: FloatProperty(
         name="Side Pane Angle",
-        min=radians(10), max=radians(75), default=radians(45), subtype="ANGLE", update=jv_on_property_update
-    )
-
-    bay_side_panes: IntProperty(
-        name="Number of Side Panes",
-        min=1, default=1, update=jv_on_property_update
+        min=radians(10), max=radians(90), default=radians(45), subtype="ANGLE", update=jv_on_property_update
     )
 
     window_depth: FloatProperty(
@@ -640,7 +635,7 @@ class JVProperties(PropertyGroup):
 
     bow_segments: IntProperty(
         name="Segments",
-        min=3, default=5, update=jv_on_property_update
+        min=2, default=5, update=jv_on_property_update
     )
 
 

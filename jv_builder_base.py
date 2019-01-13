@@ -220,21 +220,20 @@ class JVBuilderBase:
                     JVBuilderBase._group_connected_faces_worker(linked_face, all_faces, visited_faces, group)
 
     @staticmethod
-    def _rotate_mesh_vertices(mesh, rotation, origin=Vector((0, 0, 0))):
+    def _rotate_mesh_vertices(mesh, rotation):
         for vert in mesh.verts:
-            pos = vert.co - origin
-            pos.rotate(rotation)
-            vert.co = pos
+            vert.co.rotate(rotation)
 
         mesh.verts.ensure_lookup_table()
 
     @staticmethod
-    def _transform_vertex_positions(vertices, rotation=Euler((0, 0, 0)), translation=Vector((0, 0, 0)),
-                                    origin=Vector((0, 0, 0))):
-
+    def _transform_vertex_positions(vertices, rotation=Euler((0, 0, 0)), before_translation=Vector((0, 0, 0)),
+                                    after_translation=Vector((0, 0, 0))):
         for i in range(len(vertices)):
-            c = Vector(vertices[i]) - origin
+            c = Vector(vertices[i])
+            c += before_translation
             c.rotate(rotation)
+            c += after_translation
             vertices[i] = tuple(c)
 
     @staticmethod
