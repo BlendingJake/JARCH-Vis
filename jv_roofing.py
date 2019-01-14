@@ -121,6 +121,7 @@ class JVRoofing(JVBuilderBase):
         JVRoofing._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVRoofing._finish(context, mesh)
+        JVRoofing._uv_unwrap()
 
     @staticmethod
     def _geometry(props, dims: tuple):

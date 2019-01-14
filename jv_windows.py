@@ -96,6 +96,7 @@ class JVWindows(JVBuilderBase):
         getattr(JVWindows, "_{}".format(props.window_pattern))(props, mesh)
 
         JVWindows._finish(context, mesh)
+        JVWindows._uv_unwrap(by_seams=False)
 
     @staticmethod
     def _update_mesh_from_geometry_lists(mesh, geometry_lists: List[Tuple[list, list, list]]):

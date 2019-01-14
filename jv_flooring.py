@@ -134,6 +134,7 @@ class JVFlooring(JVBuilderBase):
         JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
 
         JVFlooring._finish(context, mesh)
+        JVFlooring._uv_unwrap()
 
     @staticmethod
     def _geometry(props, dims: tuple):

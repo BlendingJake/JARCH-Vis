@@ -53,6 +53,19 @@ class JVBuilderBase:
         return bm
 
     @staticmethod
+    def _uv_unwrap(by_seams=True):
+        bpy.ops.object.editmode_toggle()
+
+        bpy.ops.mesh.select_all(action="SELECT")
+
+        if by_seams:
+            bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
+        else:
+            bpy.ops.uv.smart_project()
+
+        bpy.ops.object.editmode_toggle()
+
+    @staticmethod
     def _finish(context, bm: bmesh.types.BMesh):
         bm.normal_update()
         bm.to_mesh(context.object.data)

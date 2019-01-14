@@ -260,6 +260,8 @@ class JVSiding(JVBuilderBase):
             context.view_layer.objects.active = main_obj
             bpy.ops.object.join()  # merge the objects
 
+        JVSiding._uv_unwrap()
+
     @staticmethod
     def _geometry(props, dims: tuple):
         verts, faces = [], []
