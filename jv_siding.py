@@ -19,7 +19,7 @@ import bpy
 
 
 class JVSiding(JVBuilderBase):
-    is_convertible = True
+    is_cutable = True
 
     @staticmethod
     def draw(props, layout):

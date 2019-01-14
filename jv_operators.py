@@ -210,7 +210,7 @@ class JVConvert(bpy.types.Operator):
             context.object.location = src.location
             context.object.jv_properties.convert_source_object = src
             src.hide_viewport = True
-            context.object.jv_properties.object_type = "flooring"  # will automatically call update
+            context.object.jv_properties.object_type_converted = "roofing"  # will cause an automatic update
 
         return {"FINISHED"}
 

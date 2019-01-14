@@ -122,6 +122,17 @@ class JVProperties(PropertyGroup):
         default="none", description="The type of architecture to build", update=jv_on_property_update
     )
 
+    object_type_converted: EnumProperty(
+        name="Type",
+        items=(
+            ("none", "None", ""),
+            ("flooring", "Flooring", ""),
+            ("siding", "Siding", ""),
+            ("roofing", "Roofing", "")
+        ),
+        default="none", description="The type of architecture to build", update=jv_on_property_update
+    )
+
     update_automatically: BoolProperty(
         name="Update Automatically?",
         default=True, description="Update the mesh anytime a property is changed?", update=jv_on_property_update

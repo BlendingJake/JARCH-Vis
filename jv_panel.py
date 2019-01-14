@@ -50,15 +50,20 @@ class JVPanel(Panel):
             if props.object_type == "none":  # convert
                 layout.operator("object.jv_convert", icon="MOD_EXPLODE")
             elif props.object_type != "none":
-                layout.prop(props, "object_type", icon="MATERIAL")
+                converted = props.convert_source_object is not None
+
+                if converted:
+                    layout.prop(props, "object_type_converted", icon="MATERIAL")
+                else:
+                    layout.prop(props, "object_type", icon="MATERIAL")
                 layout.separator()
 
-                handler = get_object_type_handler(props.object_type)
+                handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
                 if handler is not None:
                     handler.draw(props, layout)
 
                 # cutouts
-                if props.convert_source_object is None and handler.is_convertible:
+                if props.convert_source_object is None and handler.is_cutable:
                     layout.separator()
                     box = layout.box()
                     box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")

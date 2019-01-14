@@ -18,7 +18,7 @@ from . jv_utils import Units
 
 
 class JVRoofing(JVBuilderBase):
-    is_convertible = True
+    is_cutable = True
 
     @staticmethod
     def draw(props, layout):

@@ -20,7 +20,7 @@ from math import radians, atan
 
 
 class JVBuilderBase:
-    is_convertible = False
+    is_cutable = False
 
     @staticmethod
     def draw(props, layout):
