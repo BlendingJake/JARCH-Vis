@@ -166,7 +166,7 @@ class JVConvert(bpy.types.Operator):
                             edges.add(edge)
 
                     fg.bisecting_planes.clear()  # remove any planes from a previous conversion
-                    determine_bisecting_planes(edges, vertices, fg, faces[0].normal, fg.location)
+                    determine_bisecting_planes(edges, vertices, fg, faces[0].normal)
                     fg_mesh.free()
                 else:
                     # if the face group isn't convex, then we have to create a boolean object to use as a cutter

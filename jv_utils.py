@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from mathutils import Vector, Euler
-from typing import List
+from typing import List, Tuple
 from bpy.types import MeshPolygon, MeshVertex
 from math import atan, radians, acos
 
@@ -25,6 +25,33 @@ class Units:
     Q_INCH: float = H_INCH / 2  # 1/4 inch
     ETH_INCH: float = INCH / 8  # 1/8th inch
     STH_INCH: float = INCH / 16  # 1/16th inch
+
+
+class CuboidalRegion:
+    """
+    A representation of a cube-shaped region defined by six planes. Can be used to tell if a point is contained
+    within the cube.
+    """
+    def __init__(self, planes: List[Tuple[tuple, tuple]]):
+        """
+        Take a list of the defining planes. Each plane is defined by it's "center" and its normal. All plane normals
+        should point towards the center of the cube.
+        :param planes: tuples of (plane center, plane normal)
+        """
+        self.planes = [(Vector(co), Vector(no)) for co, no in planes]  # convert to vectors for easier math later
+
+    def __contains__(self, item):
+        """
+        Determine if the item/point is in the cube by determining if it is on the positive sides of all the planes using
+        the dot product.
+        :param item: a Vector to check whether or not it is in the plane
+        :return: a boolean indicating whether the point is in the cube or not
+        """
+        for center, normal in self.planes:
+            if normal.dot(item - center) < 0:
+                return False
+        else:
+            return True
 
 
 def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[MeshVertex], fg):
@@ -91,14 +118,13 @@ def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[
     fg.location = loc
 
 
-def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector, corner_loc: Vector):
+def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector):
     """
     Calculate vectors that are in the plane of the face group, perpendicular to the edge, and pointer inward
     :param edges: the set of boundary edges for the face group (bmesh.types.BMEdge)
     :param vertices: all vertices in the face group (bpy.types.MeshVertex)
     :param fg: the face group itself
     :param normal: the normal of the faces in the face group
-    :param corner_loc: the origin/bottom-left corner of the face group
     """
     face_group_center = Vector((0, 0, 0))
     for vertex in vertices:

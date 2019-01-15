@@ -17,6 +17,7 @@ from random import uniform
 from mathutils import Vector, Euler
 from typing import Union, List
 from math import radians, atan
+from . jv_utils import CuboidalRegion
 
 
 class JVBuilderBase:
@@ -376,13 +377,13 @@ class JVBuilderBase:
                     mins[i] = min(mins[i], corner[i])
                     maxs[i] = max(maxs[i], corner[i])
 
-            lx, ly, lz, ux, uy, uz = *mins, *maxs  # lower and upper bounds
+            cuboid = CuboidalRegion(planes)
 
             # remove faces
             to_remove = []
             for face in mesh.faces:
                 c = face.calc_center_median()
-                if lx <= c.x <= ux and ly <= c.y <= uy and lz <= c.z <= uz:
+                if c in cuboid:
                     to_remove.append(face)
 
             for face in to_remove:

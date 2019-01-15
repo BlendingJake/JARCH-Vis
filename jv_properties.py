@@ -98,19 +98,19 @@ class FaceGroup(PropertyGroup):
 class Cutout(PropertyGroup):
     center: FloatVectorProperty(
         name="Center",
-        default=(0.0, 0.0, 0.0), step=50, precision=3, subtype="TRANSLATION", size=3,
+        default=(0.0, 0.0, 0.0), step=1, precision=3, subtype="TRANSLATION", size=3,
         description="The position of the center of the cutout", update=jv_on_property_update
     )
 
     rotation: FloatVectorProperty(
         name="Rotation",
-        default=(0.0, 0.0, 0.0), step=50, precision=3, subtype="EULER", size=3,
+        default=(0.0, 0.0, 0.0), step=2, precision=3, subtype="EULER", size=3,
         description="The rotation of the cutout", update=jv_on_property_update
     )
 
     dimensions: FloatVectorProperty(
         name="Dimensions",
-        default=(Units.FOOT, Units.FOOT, Units.FOOT), step=50, precision=3, unit="LENGTH", size=3, min=0.0,
+        default=(Units.FOOT, Units.FOOT, Units.FOOT), step=1, precision=3, unit="LENGTH", size=3, min=0.0,
         description="The the dimensions of the cutout", update=jv_on_property_update
     )
 
@@ -234,7 +234,7 @@ class JVProperties(PropertyGroup):
 
     # CUTOUTS -----------------------------------------------------------------------------------
     add_cutouts: BoolProperty(
-        name="Add Cutouts?",
+        name="Cutouts?",
         description="Add box cutouts for things like windows or doors?", update=jv_on_property_update
     )
 
@@ -318,19 +318,19 @@ class JVProperties(PropertyGroup):
 
     thickness_thin: FloatProperty(
         name="Thickness",
-        min=Units.ETH_INCH, default=5*Units.STH_INCH, step=100, precision=4, subtype="DISTANCE",
+        min=Units.ETH_INCH, default=5*Units.STH_INCH, step=1, precision=4, subtype="DISTANCE",
         description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
     )
 
     thickness: FloatProperty(
         name="Thickness",
-        min=Units.ETH_INCH, default=1.5 * Units.INCH, step=100, subtype="DISTANCE",
+        min=Units.ETH_INCH, default=1.5 * Units.INCH, step=1, subtype="DISTANCE",
         description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
     )
 
     thickness_thick: FloatProperty(
         name="Thickness",
-        min=1*Units.ETH_INCH, default=2.5*Units.INCH, step=75, precision=3, subtype="DISTANCE",
+        min=1*Units.ETH_INCH, default=2.5*Units.INCH, step=1, precision=3, subtype="DISTANCE",
         description="The thickness of each board, tile, shingle, etc.", update=jv_on_property_update
     )
 
@@ -348,19 +348,19 @@ class JVProperties(PropertyGroup):
 
     gap_uniform: FloatProperty(
         name="Gap",
-        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=100, precision=5,
+        min=0.00, default=1 * Units.STH_INCH, subtype="DISTANCE", step=1, precision=5,
         description="The gap around each board or tile", update=jv_on_property_update
     )
 
     gap_widthwise: FloatProperty(
         name="Gap - Widthwise",
-        min=0.00, default=Units.ETH_INCH, subtype="DISTANCE", step=100, precision=4,
+        min=0.00, default=Units.ETH_INCH, subtype="DISTANCE", step=1, precision=4,
         description="The gap between the board or tile in the width direction", update=jv_on_property_update
     )
 
     gap_lengthwise: FloatProperty(
         name="Gap - Lengthwise",
-        min=0.00, default=Units.STH_INCH, subtype="DISTANCE", step=100, precision=4,
+        min=0.00, default=Units.STH_INCH, subtype="DISTANCE", step=1, precision=4,
         description="The gap between the board or tile in the length direction", update=jv_on_property_update
     )
 
@@ -388,19 +388,19 @@ class JVProperties(PropertyGroup):
 
     grout_depth: FloatProperty(
         name="Grout Depth",
-        min=0.00, max=100.00, default=5.00, precision=4, step=100, subtype="PERCENTAGE",
+        min=0.00, max=100.00, default=5.00, precision=4, step=5, subtype="PERCENTAGE",
         description="The depth of the grout is depth*thickness", update=jv_on_property_update
     )
 
     shake_width: FloatProperty(
         name="Shake Width",
-        min=1*Units.INCH, default=4*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1*Units.INCH, default=4*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The width of each shake", update=jv_on_property_update
     )
 
     shake_length: FloatProperty(
         name="Shake Length",
-        min=1*Units.INCH, default=6*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1*Units.INCH, default=6*Units.INCH, precision=4, step=2, subtype="DISTANCE",
         description="The length of each shake, the actual exposure will be length/2", update=jv_on_property_update
     )
 
@@ -450,13 +450,13 @@ class JVProperties(PropertyGroup):
 
     side_length: FloatProperty(
         name="Polygon Side Length",
-        min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1 * Units.INCH, default=4 * Units.INCH, precision=4, step=2, subtype="DISTANCE",
         description="The length of each side in the regular polygon", update=jv_on_property_update
     )
 
     alternating_row_width: FloatProperty(
         name="Alternating Row Width",
-        min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1 * Units.INCH, default=3 * Units.INCH, precision=4, step=2, subtype="DISTANCE",
         description="The width of the tiles in the alternating rows", update=jv_on_property_update
     )
 
@@ -504,13 +504,13 @@ class JVProperties(PropertyGroup):
 
     brick_height: FloatProperty(
         name="Brick Width",
-        min=1*Units.INCH, default=9*Units.Q_INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1*Units.INCH, default=9*Units.Q_INCH, precision=4, step=1, subtype="DISTANCE",
         description="The height of each brick", update=jv_on_property_update
     )
 
     brick_length: FloatProperty(
         name="Brick Length",
-        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The length of each brick", update=jv_on_property_update
     )
 
@@ -529,7 +529,7 @@ class JVProperties(PropertyGroup):
     # ROOFING SPECIFIC -------------------------------------------------------------------------
     pan_width: FloatProperty(
         name="Pan Width",
-        min=1*Units.INCH, default=Units.FOOT, precision=4, step=75, subtype="DISTANCE",
+        min=1*Units.INCH, default=Units.FOOT, precision=4, step=1, subtype="DISTANCE",
         description="The width of each pan", update=jv_on_property_update
     )
 
@@ -540,13 +540,13 @@ class JVProperties(PropertyGroup):
 
     terracotta_radius: FloatProperty(
         name="Tile Radius",
-        min=Units.INCH, default=2*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=Units.INCH, default=2*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The radius of the half-circle on the tile", update=jv_on_property_update
     )
 
     terracotta_gap: FloatProperty(
         name="Tile Gap",
-        min=Units.H_INCH, default=1.5*Units.INCH, precision=4, step=100, subtype="DISTANCE",
+        min=Units.H_INCH, default=1.5*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The distance between the half-circles on the tiles", update=jv_on_property_update
     )
 

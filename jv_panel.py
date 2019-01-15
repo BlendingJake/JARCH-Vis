@@ -75,9 +75,9 @@ class JVPanel(Panel):
                             box.separator()
                             ib = box.box()
 
-                            ib.row().prop(cutout, "center"),
-                            ib.row().prop(cutout, "rotation"),
-                            ib.row().prop(cutout, "dimensions"),
+                            ib.row().prop(cutout, "center")
+                            ib.row().prop(cutout, "dimensions")
+                            ib.row().prop(cutout, "rotation")
                             ib.prop(cutout, "local", icon="EMPTY_ARROWS")
 
                             op = ib.operator("object.jv_delete_cutout", icon="REMOVE")
