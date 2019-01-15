@@ -308,42 +308,66 @@ class JVBuilderBase:
                 edge.seam = True
 
     @staticmethod
-    def _cutouts(mesh: bmesh.types.BMesh, props):
+    def _cutouts(mesh: bmesh.types.BMesh, props, object_matrix):
         """
         For each added cutout, bisect the mesh according to the 6 faces of the cutout cubes. Then manually
         remove all faces from the mesh that are contained within the cutout cubes.
         :param mesh: the bmesh mesh
         :param props: all JV properties
+        :param object_matrix: the matrix of the base object, needed for non-local cutouts
         """
         mesh.normal_update()
 
+        trans, rot, _ = object_matrix.decompose()
+        inv_rot = rot.inverted().to_euler()
+
         for cutout in props.cutouts:
-            x, y, z, dx, dy, dz = *cutout.offset, *cutout.dimensions
-            planes = (  # plane center and normal
-                ((x, 0, 0), (1, 0, 0)),
-                ((x+dx, 0, 0), (-1, 0, 0)),
-                ((0, y, 0), (0, 1, 0)),
-                ((0, y+dy, 0), (0, -1, 0)),
-                ((0, 0, z), (0, 0, 1)),
-                ((0, 0, z+dz), (0, 0, -1))
+            hx, hy, hz = Vector(cutout.dimensions) / 2
+            center_normals = (
+                ((hx, 0, 0), (-1, 0, 0)),
+                ((-hx, 0, 0), (1, 0, 0)),
+                ((0, +hy, 0), (0, -1, 0)),
+                ((0, -hy, 0), (0, 1, 0)),
+                ((0, 0, +hz), (0, 0, -1)),
+                ((0, 0, -hz), (0, 0, 1))
             )
 
+            planes = []
+            for c, n in center_normals:
+                p_center, p_normal = Vector(c), Vector(n)
+
+                p_center.rotate(cutout.rotation)
+                p_normal.rotate(cutout.rotation)
+
+                if cutout.local:
+                    p_center += p_center
+                else:
+                    # TODO: get non-local coordinates working properly
+                    p_center.rotate(inv_rot)
+                    p_center -= trans
+                    p_normal.rotate(inv_rot)
+
+                planes.append((tuple(p_center), tuple(p_normal)))
+
             for plane_co, plane_normal in planes:
-                bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001, plane_co=plane_co, plane_no=plane_normal)
+                bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
+                                       plane_co=plane_co, plane_no=plane_normal)
 
                 mesh.verts.ensure_lookup_table()
                 mesh.edges.ensure_lookup_table()
                 mesh.faces.ensure_lookup_table()
 
-            # remove faces
-            to_remove = []
-            for face in mesh.faces:
-                c = face.calc_center_median()
-                if x <= c.x <= x+dx and y <= c.y <= y+dy and z <= c.z <= z+dz:
-                    to_remove.append(face)
+            # TODO: determine better way to determine if faces need removed
 
-            for face in to_remove:
-                mesh.faces.remove(face)
+            # remove faces
+            # to_remove = []
+            # for face in mesh.faces:
+            #     c = face.calc_center_median()
+            #     if x <= c.x <= x+dx and y <= c.y <= y+dy and z <= c.z <= z+dz:
+            #         to_remove.append(face)
+            #
+            # for face in to_remove:
+            #     mesh.faces.remove(face)
 
             JVBuilderBase._clean_mesh(mesh)
 

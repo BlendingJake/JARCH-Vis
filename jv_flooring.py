@@ -107,7 +107,7 @@ class JVFlooring(JVBuilderBase):
             JVFlooring._build_mesh_from_geometry(mesh, verts, faces)
 
             if props.add_cutouts:
-                JVFlooring._cutouts(mesh, props)
+                JVFlooring._cutouts(mesh, props, context.object.matrix_world)
 
             # cut if needed
             if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",

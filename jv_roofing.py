@@ -103,7 +103,7 @@ class JVRoofing(JVBuilderBase):
 
             # cutouts
             if props.add_cutouts:
-                JVRoofing._cutouts(mesh, props)
+                JVRoofing._cutouts(mesh, props, context.object.matrix_world)
 
             # TODO: mirror
 

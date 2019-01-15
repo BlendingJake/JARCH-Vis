@@ -190,10 +190,10 @@ class JVSiding(JVBuilderBase):
 
             # cutouts
             if props.add_cutouts:
-                JVSiding._cutouts(mesh, props)
+                JVSiding._cutouts(mesh, props, context.object.matrix_world)
 
                 if mortar_mesh is not None:
-                    JVSiding._cutouts(mortar_mesh, props)
+                    JVSiding._cutouts(mortar_mesh, props, context.object.matrix_world)
 
             # cut top and right
             if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):

@@ -13,6 +13,7 @@
 
 import bpy
 import bmesh
+from bpy.props import IntProperty
 from . jv_types import get_object_type_handler
 from . jv_utils import Units, determine_face_group_scale_rot_loc, determine_bisecting_planes
 
@@ -218,12 +219,6 @@ class JVConvert(bpy.types.Operator):
 # ---------------------------------------------------------------------------
 # UIList Handlers
 # ---------------------------------------------------------------------------
-class OBJECT_UL_cutouts(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.prop(item, "offset")
-        layout.prop(item, "dimensions")
-
-
 class OBJECT_UL_face_groups(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         layout.label(text="{} face(s)".format(len(item.face_indices.split(","))))
@@ -241,8 +236,6 @@ class JVAddCutout(bpy.types.Operator):
     def execute(self, context):
         props = context.object.jv_properties
         props.cutouts.add()
-        props.cutouts_index = min(len(props.cutouts)-1, props.cutouts_index+1)
-
         bpy.ops.object.jv_update()
 
         return {"FINISHED"}
@@ -253,13 +246,13 @@ class JVDeleteCutout(bpy.types.Operator):
     bl_label = "Delete Cutout"
     bl_description = "JARCH Vis: Delete Cutout"
 
+    index: IntProperty(name="Cutout Index")
+
     def execute(self, context):
         props = context.object.jv_properties
 
-        if 0 <= props.cutouts_index < len(props.cutouts):
-            props.cutouts.remove(props.cutouts_index)
-            props.cutouts_index = max(0, props.cutouts_index-1)
-
+        if 0 <= self.index < len(props.cutouts):
+            props.cutouts.remove(self.index)
             bpy.ops.object.jv_update()
 
         return {"FINISHED"}
@@ -314,7 +307,6 @@ classes = (
     JVUpdate,
     JVConvert,
 
-    OBJECT_UL_cutouts,
     OBJECT_UL_face_groups,
 
     JVAddCutout,

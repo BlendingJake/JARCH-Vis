@@ -69,12 +69,22 @@ class JVPanel(Panel):
                     box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")
 
                     if props.add_cutouts:
-                        row = box.row()
-                        row.template_list("OBJECT_UL_cutouts", "", props, "cutouts", props, "cutouts_index", rows=5)
+                        for i in range(len(props.cutouts)):
+                            cutout = props.cutouts[i]
 
-                        column = row.column()
-                        column.operator("object.jv_add_cutout", text="", icon="ADD")
-                        column.operator("object.jv_delete_cutout", text="", icon="REMOVE")
+                            box.separator()
+                            ib = box.box()
+
+                            ib.row().prop(cutout, "center"),
+                            ib.row().prop(cutout, "rotation"),
+                            ib.row().prop(cutout, "dimensions"),
+                            ib.prop(cutout, "local", icon="EMPTY_ARROWS")
+
+                            op = ib.operator("object.jv_delete_cutout", icon="REMOVE")
+                            op.index = i
+
+                        box.separator()
+                        box.operator("object.jv_add_cutout", icon="ADD")
 
                 layout.separator()
                 box = layout.box()

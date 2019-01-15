@@ -96,16 +96,28 @@ class FaceGroup(PropertyGroup):
 
 
 class Cutout(PropertyGroup):
-    offset: FloatVectorProperty(
-        name="Offset",
+    center: FloatVectorProperty(
+        name="Center",
         default=(0.0, 0.0, 0.0), step=10, precision=3, subtype="TRANSLATION", size=3,
-        description="The offset of the cutout from the bottom-left corner", update=jv_on_property_update
+        description="The position of the center of the cutout", update=jv_on_property_update
+    )
+
+    rotation: FloatVectorProperty(
+        name="Rotation",
+        default=(0.0, 0.0, 0.0), step=10, precision=3, subtype="EULER", size=3,
+        description="The rotation of the cutout", update=jv_on_property_update
     )
 
     dimensions: FloatVectorProperty(
         name="Dimensions",
         default=(Units.FOOT, Units.FOOT, Units.FOOT), step=10, precision=3, unit="LENGTH", size=3, min=0.0,
         description="The the dimensions of the cutout", update=jv_on_property_update
+    )
+
+    local: BoolProperty(
+        name="Local Coordinates?", default=False,
+        description="Are offset and rotation values in reference to the object's origin?",
+        update=jv_on_property_update
     )
 
 
@@ -228,10 +240,6 @@ class JVProperties(PropertyGroup):
 
     cutouts: CollectionProperty(
         name="Cutouts", type=Cutout
-    )
-
-    cutouts_index: IntProperty(
-        name="Cutout Index"
     )
 
     # OBJECT STYLES ------------------------------------------------------------------------------
