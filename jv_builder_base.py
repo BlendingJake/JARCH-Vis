@@ -317,9 +317,8 @@ class JVBuilderBase:
         :param object_matrix: the matrix of the base object, needed for non-local cutouts
         """
         mesh.normal_update()
-
-        trans, rot, _ = object_matrix.decompose()
-        inv_rot = rot.inverted().to_euler()
+        inv_matrix = object_matrix.inverted()
+        _, inv_rot, _ = inv_matrix.decompose()
 
         for cutout in props.cutouts:
             hx, hy, hz = Vector(cutout.dimensions) / 2
@@ -332,19 +331,17 @@ class JVBuilderBase:
                 ((0, 0, -hz), (0, 0, 1))
             )
 
+            # transform plane centers and normals
             planes = []
             for c, n in center_normals:
                 p_center, p_normal = Vector(c), Vector(n)
 
                 p_center.rotate(cutout.rotation)
                 p_normal.rotate(cutout.rotation)
+                p_center += cutout.center
 
-                if cutout.local:
-                    p_center += p_center
-                else:
-                    # TODO: get non-local coordinates working properly
-                    p_center.rotate(inv_rot)
-                    p_center -= trans
+                if not cutout.local:
+                    p_center = inv_matrix @ p_center  # using new infix matrix multiplication
                     p_normal.rotate(inv_rot)
 
                 planes.append((tuple(p_center), tuple(p_normal)))
@@ -357,17 +354,39 @@ class JVBuilderBase:
                 mesh.edges.ensure_lookup_table()
                 mesh.faces.ensure_lookup_table()
 
-            # TODO: determine better way to determine if faces need removed
+            # determine corner locations to know what geometry to remove
+            corners = []
+            for lz in (-hz, hz):
+                for ly in (-hy, hy):
+                    for lx in (-hx, hx):
+                        corners.append(Vector((lx, ly, lz)))
+
+            # transform cutout corners
+            for i in range(len(corners)):
+                corners[i].rotate(cutout.rotation)
+                corners[i] += cutout.center
+
+                if not cutout.local:
+                    corners[i] = inv_matrix @ corners[i]
+
+            # find min and maxes of the corners to know the cutouts bounds
+            mins, maxs = list(corners[0]), list(corners[0])
+            for corner in corners:
+                for i in range(3):
+                    mins[i] = min(mins[i], corner[i])
+                    maxs[i] = max(maxs[i], corner[i])
+
+            lx, ly, lz, ux, uy, uz = *mins, *maxs  # lower and upper bounds
 
             # remove faces
-            # to_remove = []
-            # for face in mesh.faces:
-            #     c = face.calc_center_median()
-            #     if x <= c.x <= x+dx and y <= c.y <= y+dy and z <= c.z <= z+dz:
-            #         to_remove.append(face)
-            #
-            # for face in to_remove:
-            #     mesh.faces.remove(face)
+            to_remove = []
+            for face in mesh.faces:
+                c = face.calc_center_median()
+                if lx <= c.x <= ux and ly <= c.y <= uy and lz <= c.z <= uz:
+                    to_remove.append(face)
+
+            for face in to_remove:
+                mesh.faces.remove(face)
 
             JVBuilderBase._clean_mesh(mesh)
 

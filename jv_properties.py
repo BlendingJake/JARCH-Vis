@@ -98,19 +98,19 @@ class FaceGroup(PropertyGroup):
 class Cutout(PropertyGroup):
     center: FloatVectorProperty(
         name="Center",
-        default=(0.0, 0.0, 0.0), step=10, precision=3, subtype="TRANSLATION", size=3,
+        default=(0.0, 0.0, 0.0), step=50, precision=3, subtype="TRANSLATION", size=3,
         description="The position of the center of the cutout", update=jv_on_property_update
     )
 
     rotation: FloatVectorProperty(
         name="Rotation",
-        default=(0.0, 0.0, 0.0), step=10, precision=3, subtype="EULER", size=3,
+        default=(0.0, 0.0, 0.0), step=50, precision=3, subtype="EULER", size=3,
         description="The rotation of the cutout", update=jv_on_property_update
     )
 
     dimensions: FloatVectorProperty(
         name="Dimensions",
-        default=(Units.FOOT, Units.FOOT, Units.FOOT), step=10, precision=3, unit="LENGTH", size=3, min=0.0,
+        default=(Units.FOOT, Units.FOOT, Units.FOOT), step=50, precision=3, unit="LENGTH", size=3, min=0.0,
         description="The the dimensions of the cutout", update=jv_on_property_update
     )
 
