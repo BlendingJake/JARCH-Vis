@@ -334,13 +334,14 @@ class JVBuilderBase:
             )
 
             # transform plane centers and normals
+            center_offset = Vector((hx, hy, hz))
             planes = []
             for c, n in center_normals:
                 p_center, p_normal = Vector(c), Vector(n)
 
                 p_center.rotate(cutout.rotation)
                 p_normal.rotate(cutout.rotation)
-                p_center += cutout.center
+                p_center += cutout.location + center_offset
 
                 if not cutout.local:
                     p_center = inv_matrix @ p_center  # using new infix matrix multiplication
@@ -366,7 +367,7 @@ class JVBuilderBase:
             # transform cutout corners
             for i in range(len(corners)):
                 corners[i].rotate(cutout.rotation)
-                corners[i] += cutout.center
+                corners[i] += cutout.location
 
                 if not cutout.local:
                     corners[i] = inv_matrix @ corners[i]

@@ -61,20 +61,20 @@ as a regular JV object, except the overall dimension values.
 ##### Cutouts
 Cutouts provide an easy way to cut rectangles out of siding, roofing, and
 flooring objects. Cutouts can even be added to objects that have been
-converted. To add cutouts, first check the `Cutouts?` box, then click
+converted. To add a cutout, first check the `Cutouts?` box, then click
 `Add Cutout`. Every cutout has the following options:
 
-* `Center` - the X, Y, and Z position of the center of the cutout
+* `Location` - the X, Y, and Z position of the corner of the cutout
 * `Dimensions` - the X, Y, and Z dimensions of the cutout
 * `Rotation` - the X, Y, and Z rotation of the cutout
-* `Local` - whether or not the center and rotation of the cutout is in
-local coordinates
+* `Local` - whether or not the location and rotation of the cutout are in
+local coordinates or not
 
 A cutout can be removed by clicking the `Remove Cutout` button right below
 the `Local` option.
 
 > The `Local` option for a cutout can dramatically change where the
-cutout is located. If `Local` is checked, then the `Center` and `Rotation`
+cutout is located. If `Local` is checked, then the `Location` and `Rotation`
 values are offsets from object's origin and rotation. If `Local` is not
 checked, then the values are in reference to the world and are absolute
 positions.

@@ -45,9 +45,10 @@ class JVWindows(JVBuilderBase):
             row.prop(props, "window_height_medium")
 
         layout.separator()
+        layout.prop(props, "jamb_width")
         row = layout.row()
-        row.prop(props, "jamb_width")
         row.prop(props, "frame_width")
+        row.prop(props, "frame_thickness")
 
         if props.window_pattern in ("regular", "arch"):
             layout.separator()
@@ -127,7 +128,7 @@ class JVWindows(JVBuilderBase):
     @staticmethod
     def _regular(props, mesh):
         width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
-        frame_width, pane_th, jamb_th = props.frame_width, 1.5 * Units.INCH, Units.INCH
+        frame_width, pane_th, jamb_th = props.frame_width, props.frame_thickness, Units.INCH
 
         if props.orientation == "vertical":
             pane_width = width
@@ -182,7 +183,7 @@ class JVWindows(JVBuilderBase):
         width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
         res, roundness = props.window_resolution, props.window_roundness / 100
         a, b, = width / 2, (width * roundness) / 2  # a, b for main window, need modified for jamb, inset frame, etc.
-        frame_width, jamb_th, frame_th, inset = props.frame_width, Units.INCH, Units.INCH, Units.Q_INCH
+        frame_width, jamb_th, frame_th, inset = props.frame_width, Units.INCH, props.frame_thickness, Units.Q_INCH
 
         # useful to save calculations later
         hjamb_w, hframe_width, hframe_th = jamb_w / 2, frame_width / 2, frame_th / 2
@@ -244,10 +245,11 @@ class JVWindows(JVBuilderBase):
 
     @staticmethod
     def _polygon(props, mesh):
+        # TODO: adjust frame_width and jamb_th to work with the angle
         geometry_data = []
 
         radius, jamb_w, jamb_th, sides = props.window_radius, props.jamb_width, Units.INCH, props.window_side_count
-        frame_width, frame_th, inset = props.frame_width, Units.INCH, Units.Q_INCH  # pane variables
+        frame_width, frame_th, inset = props.frame_width, props.frame_thickness, Units.Q_INCH  # pane variables
 
         ang_step = Euler((0, radians(360) / sides, 0))
         hjamb_w, hframe_th, = jamb_w / 2, frame_th / 2
@@ -258,9 +260,9 @@ class JVWindows(JVBuilderBase):
                 (radius, -hjamb_w), (radius+jamb_th, -hjamb_w), (radius+jamb_th, hjamb_w), (radius, hjamb_w)
             ),
             (
-                (radius - frame_width, -hframe_th + inset), (radius - frame_width, -hframe_th),
+                (radius-frame_width, -hframe_th + inset), (radius-frame_width, -hframe_th),
                 (radius, -hframe_th), (radius, hframe_th),
-                (radius - frame_width, hframe_th), (radius - frame_width, hframe_th - inset)
+                (radius-frame_width, hframe_th), (radius-frame_width, hframe_th - inset)
             )
         ]
 
@@ -286,7 +288,8 @@ class JVWindows(JVBuilderBase):
         geometry_data = []
 
         width, height, jamb_w = props.window_width_medium, props.window_height_medium, props.jamb_width
-        res, frame_width, frame_th, jamb_th = props.window_resolution // 2, props.frame_width, Units.INCH, Units.INCH
+        res, frame_width, frame_th = props.window_resolution // 2, props.frame_width, props.frame_thickness
+        jamb_th = Units.INCH
 
         hframe_th, hjamb_w, hwidth, inset = frame_th / 2, jamb_w / 2, width / 2, Units.Q_INCH
         vpl = 2 + (res + 2) + (res + 1)  # two bottom, res + 2 on right side, res + 1 on left side
@@ -339,7 +342,8 @@ class JVWindows(JVBuilderBase):
     @staticmethod
     def _ellipse(props, mesh):
         geometry_data = JVWindows._ellipse_worker(props.window_width_wide, props.window_height_short,
-                                                  props.jamb_width, props.frame_width, props.window_resolution)
+                                                  props.jamb_width, props.frame_width, props.window_resolution,
+                                                  frame_th=props.frame_thickness)
 
         JVWindows._update_mesh_from_geometry_lists(mesh, geometry_data)
 
@@ -347,7 +351,7 @@ class JVWindows(JVBuilderBase):
     def _circular(props, mesh):
         radius, res, jamb_w = props.window_radius, props.window_resolution, props.jamb_width
         ang = props.window_angle
-        jamb_th, frame_width, frame_th, inset = Units.INCH, props.frame_width, Units.INCH, Units.Q_INCH
+        jamb_th, frame_width, frame_th, inset = Units.INCH, props.frame_width, props.frame_thickness, Units.Q_INCH
 
         hjamb_w, hframe_th = jamb_w / 2, frame_width / 2
 
@@ -408,7 +412,7 @@ class JVWindows(JVBuilderBase):
 
     @staticmethod
     def _bow(props, mesh):
-        jamb_w, frame_width, frame_th, jamb_th = props.jamb_width, props.frame_width, Units.INCH, Units.INCH
+        jamb_w, frame_width, frame_th, jamb_th = props.jamb_width, props.frame_width, props.frame_thickness, Units.INCH
         angle_per_pane, radius = radians(180) / props.bow_segments, props.window_width_wide / 2
         pane_start_angle = (radians(180) - angle_per_pane) / 2  # how much the pane is rotated from the radius
         pane_width, height = 2 * radius * sin(angle_per_pane / 2), props.window_height_medium
@@ -490,7 +494,7 @@ class JVWindows(JVBuilderBase):
     def _bay(props, mesh):
         width, height, pane_angle = props.window_width_wide, props.window_height_medium, props.bay_angle
         depth = props.window_depth
-        jamb_w, jamb_th, frame_w, frame_th = props.jamb_width, Units.INCH, props.frame_width, Units.INCH
+        jamb_w, jamb_th, frame_w, frame_th = props.jamb_width, Units.INCH, props.frame_width, props.frame_thickness
         inset = Units.Q_INCH
 
         pane_x = depth / tan(pane_angle)

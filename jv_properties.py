@@ -93,10 +93,10 @@ class FaceGroup(PropertyGroup):
 
 
 class Cutout(PropertyGroup):
-    center: FloatVectorProperty(
-        name="Center",
+    location: FloatVectorProperty(
+        name="Location",
         default=(0.0, 0.0, 0.0), step=1, precision=3, subtype="TRANSLATION", size=3,
-        description="The position of the center of the cutout", update=jv_on_property_update
+        description="The position of the lower-bottom-left corner", update=jv_on_property_update
     )
 
     rotation: FloatVectorProperty(
@@ -550,7 +550,7 @@ class JVProperties(PropertyGroup):
     # WINDOW SPECIFIC --------------------------------------------------------------------------
     jamb_width: FloatProperty(
         name="Jamb Width",
-        min=2 * Units.INCH, default=4 * Units.INCH, subtype="DISTANCE",
+        min=1 * Units.INCH, default=4 * Units.INCH, subtype="DISTANCE",
         description="The width of the jamb", update=jv_on_property_update
     )
 
@@ -558,6 +558,12 @@ class JVProperties(PropertyGroup):
         name="Frame Width",
         min=Units.ETH_INCH, default=1.5 * Units.INCH, subtype="DISTANCE",
         description="The width of the frame around the glass", update=jv_on_property_update
+    )
+
+    frame_thickness: FloatProperty(
+        name="Frame Thickness",
+        min=Units.H_INCH, default=Units.INCH, step=1, precision=3, subtype="DISTANCE",
+        description="The thickness of the frame surrounding the glass pane", update=jv_on_property_update
     )
 
     window_width_medium: FloatProperty(

@@ -34,11 +34,11 @@ class CuboidalRegion:
     """
     def __init__(self, planes: List[Tuple[tuple, tuple]]):
         """
-        Take a list of the defining planes. Each plane is defined by it's "center" and its normal. All plane normals
-        should point towards the center of the cube.
-        :param planes: tuples of (plane center, plane normal)
+        Take a list of the defining planes. Each plane is defined by a point on that plane and its normal.
+        All plane normals should point towards the center of the cube.
+        :param planes: tuples of (point on plane, plane normal)
         """
-        self.planes = [(Vector(co), Vector(no)) for co, no in planes]  # convert to vectors for easier math later
+        self.planes = [(Vector(po), Vector(no)) for po, no in planes]  # convert to vectors for easier math later
 
     def __contains__(self, item):
         """
@@ -47,8 +47,8 @@ class CuboidalRegion:
         :param item: a Vector to check whether or not it is in the plane
         :return: a boolean indicating whether the point is in the cube or not
         """
-        for center, normal in self.planes:
-            if normal.dot(item - center) < 0:
+        for pos, normal in self.planes:
+            if normal.dot(item - pos) < 0:
                 return False
         else:
             return True

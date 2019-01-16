@@ -76,7 +76,7 @@ class JVPanel(Panel):
                             box.separator()
                             ib = box.box()
 
-                            ib.row().prop(cutout, "center")
+                            ib.row().prop(cutout, "location")
                             ib.row().prop(cutout, "dimensions")
                             ib.row().prop(cutout, "rotation")
                             ib.prop(cutout, "local", icon="EMPTY_ARROWS")
