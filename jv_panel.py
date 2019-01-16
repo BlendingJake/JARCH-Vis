@@ -22,10 +22,10 @@ class JVPanel(Panel):
     bl_region_type = "TOOLS"
 
     jv_add_operators = [
-        ("object.jv_add_flooring", "MESH_GRID"),
-        ("object.jv_add_siding", "MOD_TRIANGULATE"),
-        ("object.jv_add_roofing", "LINCURVE"),
-        ("object.jv_add_window", "MOD_WIREFRAME")
+        ("flooring", "Add Flooring", "MESH_GRID"),
+        ("siding", "Add Siding", "MOD_TRIANGULATE"),
+        ("roofing", "Add Roofing", "LINCURVE"),
+        ("windows", "Add Window", "MOD_WIREFRAME")
     ]
 
     jv_consistent_operators = [
@@ -40,8 +40,9 @@ class JVPanel(Panel):
             # add operators
             layout.separator()
             box = layout.box()
-            for op_name, icon in self.jv_add_operators:
-                box.operator(op_name, icon=icon)
+            for tp, label, icon in self.jv_add_operators:
+                op = box.operator("object.jv_add_object", text=label, icon=icon)
+                op.object_type = tp
 
             return
 
@@ -100,8 +101,9 @@ class JVPanel(Panel):
             # add operators
             layout.separator()
             box = layout.box()
-            for op_name, icon in self.jv_add_operators:
-                box.operator(op_name, icon=icon)
+            for tp, label, icon in self.jv_add_operators:
+                op = box.operator("object.jv_add_object", text=label, icon=icon)
+                op.object_type = tp
 
         elif context.mode == "EDIT_MESH":
             if props.object_type == "none":

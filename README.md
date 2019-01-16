@@ -5,6 +5,7 @@ JARCH Vis is add-on for Blender 3D that helps create certain
 architectural objects in a way that makes them easily customizable.
 
 The architecture types that can be created are:
+
 * Siding
 * Flooring
 * Windows
@@ -15,12 +16,12 @@ The JARCH Vis (JV) panel is found in the 3D Viewport Toolbar, under a
 section called "JARCH Vis." There is always at least four buttons within
 that panel, allowing an object of each architecture type to be easily
 added to the scene. If a JV object is selected, then the options
-specific to the architecture type of the selected object will be displayed in
-the panel.
+specific to the architecture type of the selected object will be
+displayed in the panel.
 
 Modifying any value within the panel will automatically update the mesh
-object, assuming that the "Update Automatically?" option is selected. If
-that option is unchecked, then the "Update Object" button has to be
+object, assuming that the `Update Automatically?` option is selected. If
+that option is unchecked, then the `Update Object` button has to be
 clicked to get the object to update. If the mesh object is really large
 or complicated, then it might be a good idea to not update automatically.
 
@@ -28,7 +29,7 @@ or complicated, then it might be a good idea to not update automatically.
 There are times when you might want to add objects that aren't
 rectangular. This can be done by converting an object made up of planes
 into a JV object. To convert an object, start by entering editmode.
-Then, select all faces that are in the same plane/group and click the "+"
+Then, select all faces that are in the same plane/group and click the `+`
 button in the JV panel. Repeat for all groups of faces.
 
 ##### Face Group
@@ -41,7 +42,7 @@ expected results.
 JV has two ways to use the face groups as cutter objects. One way is with
 the boolean modifier, which supports non-convex face groups. However,
 the boolean modifier sometimes returns odd results. If the face group
-is convex, then check the "Convex?" option, which will cause JV to use a
+is convex, then check the `Convex?` option, which will cause JV to use a
 different method of cutting the face group.
 
 ##### Convex
@@ -53,9 +54,30 @@ parts missing from the interior of the shape.
 
 Once all face groups have been added, exit editmode and make sure that
 the rotation and scale have been applied for the object: `CTRL+A ->
-Rotation & Scale`. After that, just click "Convert Object" within the JV
+Rotation & Scale`. After that, just click `Convert Object` within the JV
 panel. The newly converted JV object will have most of the same options
 as a regular JV object, except the overall dimension values.
+
+##### Cutouts
+Cutouts provide an easy way to cut rectangles out of siding, roofing, and
+flooring objects. Cutouts can even be added to objects that have been
+converted. To add cutouts, first check the `Cutouts?` box, then click
+`Add Cutout`. Every cutout has the following options:
+
+* `Center` - the X, Y, and Z position of the center of the cutout
+* `Dimensions` - the X, Y, and Z dimensions of the cutout
+* `Rotation` - the X, Y, and Z rotation of the cutout
+* `Local` - whether or not the center and rotation of the cutout is in
+local coordinates
+
+A cutout can be removed by clicking the `Remove Cutout` button right below
+the `Local` option.
+
+> The `Local` option for a cutout can dramatically change where the
+cutout is located. If `Local` is checked, then the `Center` and `Rotation`
+values are offsets from object's origin and rotation. If `Local` is not
+checked, then the values are in reference to the world and are absolute
+positions.
 
 #### Materials
 The faces within JV objects are created in such a way that materials
@@ -82,15 +104,15 @@ option that is `Add Mesh: JARCH Vis`.
 
 ## Revision Log
 ### JV 2.0.0 for Blender 2.8x
-Version 2.0.0 represents a massive change in JARCH Vis. The entire add-on
-was re-written from the ground up. Changing the user-interface,
+Version 2.0.0 represents a massive change in JARCH Vis. The entire add-on was re-written from the ground up. Changing the user-interface,
 simplifying the backing code, allowing new architecture types to be
 added more easily, and updating JV to work with Blender 2.8x.
-It is important to note that backwards compatibility
-has been broken. JV objects created with previous versions of JV will
+It is important to note that backwards compatibility has been broken.
+JV objects created with previous versions of JV will
 not work with this newest version.
 
 Changes in no particular order include:
+
 * Stairs have been removed for the time being
 * Two new patterns of flooring: Corridor and Octagons
 * Hexagons and Octagons can have dots/cubes added between the tiles
@@ -114,5 +136,5 @@ at a lower resolution
 ## Goals
 1. Add a much more customizable and faster version of stone siding
 then previously existed
-1. Add Stairs back in
+1. Add stairs back in
 1. Add railing

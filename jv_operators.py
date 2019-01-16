@@ -13,73 +13,30 @@
 
 import bpy
 import bmesh
-from bpy.props import IntProperty
+from bpy.props import IntProperty, StringProperty
 from . jv_types import get_object_type_handler
 from . jv_utils import Units, determine_face_group_scale_rot_loc, determine_bisecting_planes
 
 
 # ---------------------------------------------------------------------------
-# Architecture Specific Operators
-# ---------------------------------------------------------------------------
-class JVFlooringAdd(bpy.types.Operator):
-    bl_idname = "object.jv_add_flooring"
-    bl_label = "Add Flooring"
-    bl_description = "JARCH Vis: Add Flooring"
-
-    def execute(self, context):
-        bpy.ops.mesh.primitive_cube_add()
-        o = context.object
-
-        o.jv_properties.object_type = "flooring"
-
-        return {"FINISHED"}
-
-
-class JVSidingAdd(bpy.types.Operator):
-    bl_idname = "object.jv_add_siding"
-    bl_label = "Add Siding"
-    bl_description = "JARCH Vis: Add Siding"
-
-    def execute(self, context):
-        bpy.ops.mesh.primitive_cube_add()
-        o = context.object
-
-        o.jv_properties.object_type = "siding"
-
-        return {"FINISHED"}
-
-
-class JVRoofingAdd(bpy.types.Operator):
-    bl_idname = "object.jv_add_roofing"
-    bl_label = "Add Roofing"
-    bl_description = "JARCH Vis: Add Roofing"
-
-    def execute(self, context):
-        bpy.ops.mesh.primitive_cube_add()
-        o = context.object
-
-        o.jv_properties.object_type = "roofing"
-
-        return {"FINISHED"}
-
-
-class JVWindowsAdd(bpy.types.Operator):
-    bl_idname = "object.jv_add_window"
-    bl_label = "Add Window"
-    bl_description = "JARCH Vis: Add Window"
-
-    def execute(self, context):
-        bpy.ops.mesh.primitive_cube_add()
-        o = context.object
-
-        o.jv_properties.object_type = "windows"
-
-        return {"FINISHED"}
-
-
-# ---------------------------------------------------------------------------
 # Generic Operators
 # ---------------------------------------------------------------------------
+class JVAddObject(bpy.types.Operator):
+    bl_idname = "object.jv_add_object"
+    bl_label = "Add JARCH Vis Object"
+    bl_description = "Add JARCH Vis Object"
+
+    object_type: StringProperty()
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add()
+        o = context.object
+
+        o.jv_properties.object_type = self.object_type
+
+        return {"FINISHED"}
+
+
 class JVDelete(bpy.types.Operator):
     bl_idname = "object.jv_delete"
     bl_label = "Delete Object"
@@ -304,11 +261,7 @@ class JVDeleteFaceGroup(bpy.types.Operator):
 
 
 classes = (
-    JVFlooringAdd,
-    JVSidingAdd,
-    JVRoofingAdd,
-    JVWindowsAdd,
-
+    JVAddObject,
     JVDelete,
     JVUpdate,
     JVConvert,
