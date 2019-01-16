@@ -112,7 +112,7 @@ class Cutout(PropertyGroup):
     )
 
     local: BoolProperty(
-        name="Local Coordinates?", default=False,
+        name="Local Coordinates?", default=True,
         description="Are offset and rotation values in reference to the object's origin?",
         update=jv_on_property_update
     )
@@ -545,6 +545,10 @@ class JVProperties(PropertyGroup):
         name="Tile Gap",
         min=Units.H_INCH, default=1.5*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The distance between the half-circles on the tiles", update=jv_on_property_update
+    )
+
+    mirror: BoolProperty(
+        name="Mirror?", default=False, description="Mirror roofing across X-axis?", update=jv_on_property_update
     )
 
     # WINDOW SPECIFIC --------------------------------------------------------------------------
