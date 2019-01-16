@@ -245,11 +245,15 @@ class JVWindows(JVBuilderBase):
 
     @staticmethod
     def _polygon(props, mesh):
-        # TODO: adjust frame_width and jamb_th to work with the angle
         geometry_data = []
 
         radius, jamb_w, jamb_th, sides = props.window_radius, props.jamb_width, Units.INCH, props.window_side_count
         frame_width, frame_th, inset = props.frame_width, props.frame_thickness, Units.Q_INCH  # pane variables
+        interior_angle = ((sides - 2) * radians(180)) / sides
+
+        # adjust so these are the widths/thicknesses perpendicular to the sides
+        jamb_th /= sin(interior_angle / 2)
+        frame_width /= sin(interior_angle / 2)
 
         ang_step = Euler((0, radians(360) / sides, 0))
         hjamb_w, hframe_th, = jamb_w / 2, frame_th / 2
