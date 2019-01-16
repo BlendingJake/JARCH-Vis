@@ -47,9 +47,9 @@ class JVPanel(Panel):
 
         props = obj.jv_properties
         if context.mode == "OBJECT":
-            if props.object_type == "none":  # convert
+            if props.object_type == "none" and props.object_type_converted == "none":  # convert
                 layout.operator("object.jv_convert", icon="MOD_EXPLODE")
-            elif props.object_type != "none":
+            elif props.object_type != "none" or props.object_type_converted != "none":
                 converted = props.convert_source_object is not None
 
                 if converted:
@@ -63,7 +63,7 @@ class JVPanel(Panel):
                     handler.draw(props, layout)
 
                 # cutouts
-                if props.convert_source_object is None and handler.is_cutable:
+                if handler.is_cutable:
                     layout.separator()
                     box = layout.box()
                     box.prop(props, "add_cutouts", icon="MOD_BOOLEAN")

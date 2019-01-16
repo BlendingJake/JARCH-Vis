@@ -19,6 +19,7 @@ from . jv_utils import Units
 
 class JVRoofing(JVBuilderBase):
     is_cutable = True
+    is_convertible = True
 
     @staticmethod
     def draw(props, layout):
@@ -101,11 +102,11 @@ class JVRoofing(JVBuilderBase):
             rotation = Euler((rot, 0, 0))
             JVRoofing._rotate_mesh_vertices(mesh, rotation)
 
-            # cutouts
-            if props.add_cutouts:
-                JVRoofing._cutouts(mesh, props, context.object.matrix_world)
-
             # TODO: mirror
+
+        # cutouts
+        if props.add_cutouts:
+            JVRoofing._cutouts(mesh, props, context.object.matrix_world)
 
         original_edges = mesh.edges[:]
 

@@ -19,6 +19,7 @@ from typing import Tuple, List
 
 class JVWindows(JVBuilderBase):
     is_cutable = False
+    is_convertible = False
 
     @staticmethod
     def draw(props, layout):

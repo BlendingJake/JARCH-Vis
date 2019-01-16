@@ -22,6 +22,7 @@ from . jv_utils import CuboidalRegion
 
 class JVBuilderBase:
     is_cutable = False
+    is_convertible = False
 
     @staticmethod
     def draw(props, layout):

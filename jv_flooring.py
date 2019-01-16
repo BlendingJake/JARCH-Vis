@@ -17,6 +17,7 @@ from math import sqrt, cos, tan, radians
 
 class JVFlooring(JVBuilderBase):
     is_cutable = True
+    is_convertible = True
 
     @staticmethod
     def draw(props, layout):
@@ -106,9 +107,6 @@ class JVFlooring(JVBuilderBase):
             verts, faces = JVFlooring._geometry(props, (props.length, props.width))
             JVFlooring._build_mesh_from_geometry(mesh, verts, faces)
 
-            if props.add_cutouts:
-                JVFlooring._cutouts(mesh, props, context.object.matrix_world)
-
             # cut if needed
             if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
                                           "octagons", "windmill"):
@@ -118,6 +116,9 @@ class JVFlooring(JVBuilderBase):
                     ((props.length, 0, 0), (-1, 0, 0)),  # right
                     ((0, props.width, 0), (0, -1, 0))  # top
                 ])
+
+        if props.add_cutouts:
+                JVFlooring._cutouts(mesh, props, context.object.matrix_world)
 
         original_edges = mesh.edges[:]  # used to determine where seams should be added
 

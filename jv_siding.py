@@ -20,6 +20,7 @@ import bpy
 
 class JVSiding(JVBuilderBase):
     is_cutable = True
+    is_convertible = True
 
     @staticmethod
     def draw(props, layout):
@@ -188,13 +189,6 @@ class JVSiding(JVBuilderBase):
                 JVSiding._build_mesh_from_geometry(mortar_mesh,
                                                    *JVSiding._mortar_geometry(props, (props.length, props.height)))
 
-            # cutouts
-            if props.add_cutouts:
-                JVSiding._cutouts(mesh, props, context.object.matrix_world)
-
-                if mortar_mesh is not None:
-                    JVSiding._cutouts(mortar_mesh, props, context.object.matrix_world)
-
             # cut top and right
             if props.siding_pattern in ("dutch_lap", "shiplap", "tin_regular", "tin_angular", "scallop_shakes"):
                 JVSiding._cut_meshes([mesh], [
@@ -213,6 +207,13 @@ class JVSiding(JVBuilderBase):
                     meshes.append(mortar_mesh)
 
                 JVSiding._slope_top(props, meshes)
+
+        # cutouts
+        if props.add_cutouts:
+            JVSiding._cutouts(mesh, props, context.object.matrix_world)
+
+            if mortar_mesh is not None:
+                JVSiding._cutouts(mortar_mesh, props, context.object.matrix_world)
 
         original_edges = mesh.edges[:]
         original_mortar_edges = [] if mortar_mesh is None else mortar_mesh.edges[:]

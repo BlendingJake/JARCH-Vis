@@ -86,7 +86,10 @@ class JVDelete(bpy.types.Operator):
     bl_description = "JARCH Vis: Delete Object"
 
     def execute(self, context):
-        handler = get_object_type_handler(context.object.jv_properties.object_type)
+        props = context.object.jv_properties
+        converted = props.convert_source_object is not None
+
+        handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
 
         if handler is not None:
             handler.delete(context.object.jv_properties, context)
@@ -100,7 +103,10 @@ class JVUpdate(bpy.types.Operator):
     bl_description = "JARCH Vis: Update Object"
 
     def execute(self, context):
-        handler = get_object_type_handler(context.object.jv_properties.object_type)
+        props = context.object.jv_properties
+        converted = props.convert_source_object is not None
+
+        handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
 
         if handler is not None:
             handler.update(context.object.jv_properties, context)

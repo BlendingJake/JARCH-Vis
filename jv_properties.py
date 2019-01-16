@@ -23,12 +23,9 @@ def jv_on_property_update(_, context):
     props = context.object.jv_properties
 
     if props is not None and props.update_automatically:
-        handler = get_object_type_handler(props.object_type)
-
-        if props.convert_source_object is not None and not get_object_type_handler(props.object_type).is_convertible:
-            print("Trying to convert {} type object. Failing...".format(props.object_type))
-        else:
-            handler.update(props, context)
+        converted = props.convert_source_object is not None
+        handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
+        handler.update(props, context)
 
 
 def jv_on_face_group_index_update(_, context):
