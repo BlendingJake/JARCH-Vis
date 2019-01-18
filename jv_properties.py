@@ -179,7 +179,8 @@ class JVProperties(PropertyGroup):
             ("tin_angular", "Tin - Angular", ""),
             ("brick", "Brick", ""),
             ("shakes", "Shakes", ""),
-            ("scallop_shakes", "Scallop Shakes", "")
+            ("scallop_shakes", "Scallop Shakes", ""),
+            ("stone", "Stone", "")
         ), default="regular", description="Siding Pattern", update=jv_on_property_update
     )
 
@@ -507,7 +508,7 @@ class JVProperties(PropertyGroup):
 
     brick_length: FloatProperty(
         name="Brick Length",
-        min=1*Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        min=Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
         description="The length of each brick", update=jv_on_property_update
     )
 
@@ -521,6 +522,18 @@ class JVProperties(PropertyGroup):
         name="Joint Right?",
         default=False, description="Leave 'thickness + gap' overhang on even rows to allow jointing?",
         update=jv_on_property_update
+    )
+
+    stone_length: FloatProperty(
+        name="Stone Length",
+        min=Units.INCH, default=1.5*Units.FOOT, precision=4, step=1, subtype="DISTANCE",
+        description="The length of each stone", update=jv_on_property_update
+    )
+
+    stone_width: FloatProperty(
+        name="Stone Width",
+        min=Units.INCH, default=8*Units.INCH, precision=4, step=1, subtype="DISTANCE",
+        description="The width of each stone", update=jv_on_property_update
     )
 
     # ROOFING SPECIFIC -------------------------------------------------------------------------
