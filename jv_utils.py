@@ -1,290 +1,152 @@
-# This file is part of JARCH Vis
-#
-# JARCH Vis is free software: you can redistribute it and/or modify
+# This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# JARCH Vis is distributed in the hope that it will be useful,
+# This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with JARCH Vis.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# constants
-METRIC_INCH = 39.3701
-METRIC_FOOT = 3.28084
-I = 1 / METRIC_INCH
-HI = 0.5 / METRIC_INCH
-
-
-def delete_materials(self, context):
-    import bpy
-    o = context.object
-    if not o.jv_is_material:
-        for i in o.data.materials:
-            bpy.ops.object.material_slot_remove()
-
-        for i in bpy.data.materials:
-            if i.users == 0:
-                bpy.data.materials.remove(i)
+from mathutils import Vector, Euler
+from typing import List, Tuple
+from bpy.types import MeshPolygon, MeshVertex
+from math import atan, radians, acos
 
 
-def preview_materials(self, context):
-    import bpy
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for space in area.spaces:
-                if space.type == 'VIEW_3D':
-                    if bpy.context.object.jv_is_preview:
-                        space.viewport_shade = 'RENDERED'
-                    else:
-                        space.viewport_shade = "SOLID"
+class Units:
+    FOOT: float = 1 / 3.248
+    INCH: float = FOOT / 12
+    TQ_INCH: float = INCH * 0.75  # 3/4 inch
+    H_INCH: float = INCH / 2  # 1/2 inch
+    Q_INCH: float = H_INCH / 2  # 1/4 inch
+    ETH_INCH: float = INCH / 8  # 1/8th inch
+    STH_INCH: float = INCH / 16  # 1/16th inch
 
 
-def unwrap_object(self, context):
-    import bpy
+class CuboidalRegion:
+    """
+    A representation of a cube-shaped region defined by six planes. Can be used to tell if a point is contained
+    within the cube.
+    """
+    def __init__(self, planes: List[Tuple[tuple, tuple]]):
+        """
+        Take a list of the defining planes. Each plane is defined by a point on that plane and its normal.
+        All plane normals should point towards the center of the cube.
+        :param planes: tuples of (point on plane, plane normal)
+        """
+        self.planes = [(Vector(po), Vector(no)) for po, no in planes]  # convert to vectors for easier math later
 
-    o = context.object
-    for ob in context.selected_objects:
-        ob.select = False
-    o.select = True
-    context.scene.objects.active = o
-
-    bpy.ops.object.editmode_toggle()
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.cube_project()
-    bpy.ops.object.editmode_toggle()
-
-
-def random_uvs(self, context):
-    import bpy
-    import bmesh
-    from mathutils import Vector
-    from random import uniform
-    bpy.ops.object.editmode_toggle()
-    bpy.ops.mesh.select_all(action="SELECT")
-    obj = bpy.context.object
-    me = obj.data
-    bm = bmesh.from_edit_mesh(me)
-
-    uv_layer = bm.loops.layers.uv.verify()
-    bm.faces.layers.tex.verify()
-    # adjust UVs
-    for f in bm.faces:
-        offset = Vector((uniform(-1.0, 1.0), uniform(-1.0, 1.0)))
-        for v in f.loops:
-            luv = v[uv_layer]
-            luv.uv = (luv.uv + offset).xy
-
-    bmesh.update_edit_mesh(me)
-    bpy.ops.object.editmode_toggle()
-
-
-def update_roofing_facegroup_selection(self, context):
-    import bpy
-    # updates which faces are selected based on which face group is selected in the UI##
-    ob = context.object
-    bpy.ops.object.editmode_toggle()
-
-    if len(ob.jv_face_groups) >= 1:
-        fg = ob.jv_face_groups[ob.jv_face_group_index]
-
-        if "+" in fg.data:  # older version
-            while len(ob.jv_face_groups):
-                ob.jv_face_groups.remove(len(ob.jv_face_groups) - 1)
-            ob.jv_face_group_index = 0
-            ob.jv_face_group_ct = 0
+    def __contains__(self, item):
+        """
+        Determine if the item/point is in the cube by determining if it is on the positive sides of all the planes using
+        the dot product.
+        :param item: a Vector to check whether or not it is in the plane
+        :return: a boolean indicating whether the point is in the cube or not
+        """
+        for pos, normal in self.planes:
+            if normal.dot(item - pos) < 0:
+                return False
         else:
-            # deselect all faces and edges
-            for f in ob.data.polygons:
-                f.select = False
-            for e in ob.data.edges:
-                e.select = False
-            for v in ob.data.vertices:
-                v.select = False
-
-            temp_l = []
-            for i in fg.data.split(","):
-                if int(i) < len(ob.data.polygons):
-                    temp_l.append(round_tuple(tuple(ob.data.polygons[int(i)].center), 4))
-
-            # select correct faces
-            for f in temp_l:
-                for face_in_obj in ob.data.polygons:
-                    if round_tuple(tuple(face_in_obj.center), 4) == f:
-                        face_in_obj.select = True
-
-            # make sure selection list is up to date
-            bpy.ops.object.editmode_toggle()
-            bpy.ops.object.editmode_toggle()
-
-    bpy.ops.object.editmode_toggle()
+            return True
 
 
-# convert
-def convert(num, to):
-    if to == "ft":
-        out = num / 3.28084
-    else:
-        out = num / 39.3701
-    re = round(out, 5)
-    return re
+def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[MeshVertex], fg):
+    """
+    Determine the rotation of the faces from a plane lying in the X-Y plane with normal (0, 0, 1).
+    Rotate the face points into the X-Y plane using that rotation and then determine the offset of the
+    bottom-left corner from the origin and the X-Y dimensions of the faces
+    :param faces: a list of bpy.types.MeshPolygons that make up the face group
+    :param vertices: a list of bpy.types.MeshVertexs that make up the face group
+    :param fg: the face group to assign the rot, loc, and dim values to
+    """
+    # ROTATION - the amount of rotation needed to get a point in X-Y plane to the face
+    normal = Vector(faces[0].normal)
 
-
-# point rotation
-def point_rotation(data, origin, rot):
-    from math import sin, cos
-    # Takes in a single tuple (x, y) or a tuple of tuples ((x, y), (x, y)) and rotates them rot or [rot1, rot2] radians
-    # around origin where rot1, rot2 match up to tuples in data so each point can have a separate rotation,
-    # returns new (x, y) or ((x, y), (x, y)) values###
-    data_list = []
-    if isinstance(data[0], float) or isinstance(data[0], int):
-        data_list.append(data)
-    else:
-        data_list = data
-
-    if isinstance(rot, float) or isinstance(rot, int):
-        rot_list = [rot] * len(data_list)
-    else:
-        rot_list = rot
-
-    out_list = []
-    ct = 0
-    for point in data_list:
-        new_point = (point[0] - origin[0], point[1] - origin[1])
-        x = new_point[0]
-        y = new_point[1]
-        cur_rot = rot_list[ct]
-        new_x = (x * cos(cur_rot)) - (y * sin(cur_rot))
-        new_y = (x * sin(cur_rot)) - (y * cos(cur_rot))
-        out = (new_x + origin[0], new_y + origin[1])
-        out_list.append((out[0], out[1]))
-        ct += 1
-
-    if isinstance(data[0], float) or isinstance(data[0], int):
-        return out_list[0]
-    else:
-        return out_list
-
-
-# find objects rotation
-def object_rotation(obj):
-    from math import atan, radians    
-    # get list of vertices
-    verts = [(obj.matrix_world * i.co).to_tuple() for i in obj.data.vertices]
-    # create temporary list then round any numbers that are really small to zero
-    v1_temp = verts[0]
-    v1 = []
-    for num in v1_temp:
-        if -0.00001 < num < 0.00001:
-            num = 0.0
-        v1.append(round(num, 5))
-    # find numbers that work with the original number
-    v2_temp = 0
-    for i in verts:
-        i2 = []
-        for num in i:  # round off numbers if close
-            if -0.00001 < num < 0.00001:
-                num = 0.0
-            i2.append(round(num, 5))
-        # are number correct?
-        if (i2[0] != v1[0] and i2[1] == v1[1]) or (i2[0] == v1[0] and i2[1] != v1[1]) or (i2[0] != v1[0] and i2[1] != v1[1]) and v2_temp == 0:
-            v2_temp = i2
-    # calculate angle
-    if v2_temp != 0:
-        skip = True if v2_temp[0] != v1[0] and v2_temp[1] == v1[1] else False  # plane is inline with x-axis
-
-        if not skip:
-            v2 = (v2_temp[0] - v1[0], v2_temp[1] - v1[1], v2_temp[2] - v1[2])
-            if v2[0] != 0:
-                angle = atan(v2[1] / v2[0])
-            else:
-                angle = radians(90)
+    # determine how much you have to rotate to go from the +Z axis to the normal vector
+    # theta = rotation on x-axis. atan is defined from (-90, 90), modify rotation to be from +Y axis not +X
+    if normal[0] != 0:
+        theta = atan(normal[1] / normal[0])
+        if normal[0] < 0:
+            theta -= radians(90)
         else:
-            angle = 0
-    else:
-        angle = radians(90)
+            theta += radians(90)
 
-    return angle
-
-
-# TODO: fix to account for rotation on x-axis
-# figure exact object dimensions
-def object_dimensions(obj):
-    from math import sqrt
-    
-    verts = [(obj.matrix_world * i.co).to_tuple() for i in obj.data.vertices]
-    sx, bx, sy, by, sz, bz = 0, 0, 0, 0, 0, 0
-
-    for val in verts:
-        # x axis
-        if val[0] < sx:
-            sx = val[0]
-        elif val[0] > bx:
-            bx = val[0]
-        # y axis
-        if val[1] < sy:
-            sy = val[1]
-        elif val[1] > by:
-            by = val[1]
-        # z axis
-        if val[2] < sz:
-            sz = val[2]
-        elif val[2] > bz:
-            bz = val[2]
-    # lengths
-    x = (round(bx - sx, 5)) * obj.scale[0]
-    y = (round(by - sy, 5)) * obj.scale[1]
-    z = (round(bz - sz, 5)) * obj.scale[2]
-
-    dia = sqrt(x ** 2 + y ** 2)
-    
-    return [dia, z]
-
-
-def round_tuple(tup, digits):
-    temp = []
-    for i in tup:
-        temp.append(round(i, digits))
-    return tuple(temp)
-
-
-def rot_from_normal(normal):
-    from math import radians, atan, acos
-    theta = radians(90)
-    if normal[0]:
-        theta = abs(atan(normal[1] / normal[0]))
-
-    if normal[0] <= 0:
+    else:  # either on +Y or -Y axis
         if normal[1] > 0:
-            theta = radians(180) - theta
+            theta = radians(180)
         else:
-            theta += radians(180)
-    elif normal[1] < 0:
-        theta *= -1
+            theta = 0
 
-    phi = acos(normal[2])
+    rho = acos(normal[2])
+    rot = Euler((rho, 0, theta))
 
-    return 0, phi, theta
+    # determine how much you have to go to rotate all the points into the X-Y plane
+    # do z rotation before x rotation to ensure everything ends up properly
+    inv_rot1 = Euler((0, 0, -theta))
+    inv_rot2 = Euler((-rho, 0, 0))
+
+    # rotate all points into the X-Y plane
+    vertices = [Vector(v.co) for v in vertices]
+    for v in vertices:
+        v.rotate(inv_rot1)
+        v.rotate(inv_rot2)
+
+    # DIMENSIONS and LOCATION
+    min_x, min_y, min_z, max_x, max_y, max_z = *vertices[0], *vertices[0]
+    for vert in vertices:
+        min_x = min(min_x, vert[0])
+        max_x = max(max_x, vert[0])
+
+        min_y = min(min_y, vert[1])
+        max_y = max(max_y, vert[1])
+
+        min_z = min(min_z, vert[2])
+        max_z = max(max_z, vert[2])
+
+    # ultimately ignore z as the points have been rotated into the X-Y plane
+    fg.rotation = rot
+    fg.dimensions = (max_x-min_x, max_y-min_y)
+
+    loc = Vector((min_x, min_y, min_z))
+    loc.rotate(Euler((rho, 0, 0)))
+    loc.rotate(Euler((0, 0, theta)))
+
+    fg.location = loc
 
 
-# adds all values from v into l
-def append_all(original_list: list, values: list):
-    for i in values:
-        original_list.append(i)
+def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector):
+    """
+    Calculate vectors that are in the plane of the face group, perpendicular to the edge, and pointer inward
+    :param edges: the set of boundary edges for the face group (bmesh.types.BMEdge)
+    :param vertices: all vertices in the face group (bpy.types.MeshVertex)
+    :param fg: the face group itself
+    :param normal: the normal of the faces in the face group
+    """
+    face_group_center = Vector((0, 0, 0))
+    for vertex in vertices:
+        face_group_center += Vector(vertex.co)
+    face_group_center /= len(vertices)
 
+    for edge in edges:
+        v1, v2, = edge.verts[0].co, edge.verts[1].co
+        edge_v = Vector((v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]))
 
-def apply_modifier_boolean(bpy, ob, bool_name: str):
-    bpy.ops.object.modifier_add(type="BOOLEAN")
-    pos = len(ob.modifiers) - 1
-    bpy.context.object.modifiers[pos].object = bpy.data.objects[bool_name]
-    bpy.context.object.modifiers[pos].solver = "CARVE"
-    bpy.ops.object.modifier_apply(apply_as="DATA", modifier=ob.modifiers[0].name)
+        bisecting_plane = fg.bisecting_planes.add()
+        edge_center = Vector(((v2[0]+v1[0]) / 2, (v2[1]+v1[1]) / 2, (v2[2]+v1[2]) / 2))
+        bisecting_plane.center = edge_center
 
+        # the cross product of the edge and the normal of the face will be perpendicular to both and in the plane
+        edge_normal = edge_v.cross(normal)
+        edge_normal_neg = edge_normal.copy()
+        edge_normal_neg.negate()
 
-def round_rad(deg: float, r=4) -> float:
-    from math import radians
-    return round(radians(deg), r)
+        # see if the edge_normal or it's inverse is closer to the center of the faces. Pick the one closer
+        discerner = Vector(bisecting_plane.center) - face_group_center + normal
+        if edge_normal.angle(discerner) < edge_normal_neg.angle(discerner):
+            edge_normal = edge_normal_neg
+
+        bisecting_plane.normal = edge_normal
