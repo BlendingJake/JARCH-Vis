@@ -524,3 +524,22 @@ class JVBuilderBase:
         faces = [(0, 3, 2, 1)]
 
         return verts, faces
+
+    @staticmethod
+    def _mirror(mesh, axis='X'):
+        """
+        Duplicate and mirror existing geometry across the specified axis
+        :param mesh: the mesh to duplicate and mirror
+        :param axis: the axis to mirror across, must be in {'X', 'Y', 'Z'}
+        :return:
+        """
+        # duplicate geometry
+        new_geom = bmesh.ops.duplicate(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:])["geom"]
+
+        i = {'X': 1, 'Y': 0, 'Z': 2}[axis.upper()]
+        for item in new_geom:
+            if isinstance(item, bmesh.types.BMVert):
+                item.co[i] *= -1
+
+        mesh.verts.ensure_lookup_table()
+        mesh.faces.ensure_lookup_table()

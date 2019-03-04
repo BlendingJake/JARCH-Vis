@@ -14,6 +14,8 @@
 from . jv_builder_base import JVBuilderBase
 from . jv_utils import Units
 from math import radians, sqrt, sin, cos
+import numpy as np
+from scipy.spatial import Delaunay
 import bmesh
 import bpy
 
@@ -46,6 +48,10 @@ class JVSiding(JVBuilderBase):
             row = layout.row()
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
+        elif props.siding_pattern == "stone":
+            row = layout.row()
+            row.prop(props, "stone_length")
+            row.prop(props, "stone_width")
 
         if props.siding_pattern in ("regular", "shiplap"):
             layout.separator()
@@ -56,7 +62,7 @@ class JVSiding(JVBuilderBase):
             layout.prop(props, "dutch_lap_breakpoint")
 
         # width variance
-        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard", "shakes"):
+        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard", "shakes", "stone"):
             layout.separator()
             row = layout.row()
 
@@ -65,7 +71,7 @@ class JVSiding(JVBuilderBase):
                 row.prop(props, "width_variance")
 
         # length variance
-        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard"):
+        if props.siding_pattern in ("regular", "shiplap", "dutch_lap", "clapboard", "stone"):
             layout.separator()
             row = layout.row()
 
@@ -113,11 +119,11 @@ class JVSiding(JVBuilderBase):
                 row.prop(props, "row_offset")
 
         # thickness and variance
-        if props.siding_pattern not in ("tin_regular", "tin_angular"):
+        if props.siding_pattern not in ("tin_regular", "tin_angular", "stone"):
             layout.separator()
             box = layout.box()
 
-            if props.siding_pattern == "brick":
+            if props.siding_pattern in ("brick", "stone"):
                 box.prop(props, "thickness_thick")
             elif props.siding_pattern in ("clapboard", "shakes", "scallop_shakes"):
                 box.prop(props, "thickness_thin")
@@ -125,7 +131,7 @@ class JVSiding(JVBuilderBase):
                 box.prop(props, "thickness")
 
             # NOTE: we cannot have varying thickness if battens are involved
-            if props.siding_pattern in ("dutch_lap", "brick", "shiplap") or \
+            if props.siding_pattern in ("dutch_lap", "brick", "shiplap", "stone") or \
                     (props.siding_pattern == "regular" and not props.battens):
                 row = box.row()
                 row.prop(props, "vary_thickness", icon="RNDCURVE")
@@ -133,7 +139,7 @@ class JVSiding(JVBuilderBase):
                     row.prop(props, "thickness_variance")
 
         # gaps
-        if props.siding_pattern in ("regular", "dutch_lap", "clapboard", "brick", "shakes", "scallop_shakes"):
+        if props.siding_pattern in ("regular", "dutch_lap", "clapboard", "brick", "shakes", "scallop_shakes", "stone"):
             layout.separator()
             row = layout.row()
             row.prop(props, "gap_uniform")
@@ -144,7 +150,7 @@ class JVSiding(JVBuilderBase):
             row.prop(props, "gap_lengthwise")
 
         # grout/mortar
-        if props.siding_pattern == "brick":
+        if props.siding_pattern in ("brick", "stone"):
             layout.separator()
             row = layout.row()
             row.prop(props, "add_grout", text="Add Mortar?", icon="MOD_WIREFRAME")
@@ -700,3 +706,61 @@ class JVSiding(JVBuilderBase):
                 x += width + gap
             odd = not odd
             z += rest_z
+
+    @staticmethod
+    def _stone(dims: tuple, props, verts, faces):
+        length, width = props.stone_length, props.stone_width
+
+        # generate points
+        length_variance = JVSiding._create_variance_function(props.vary_length, length, props.length_variance)
+        width_variance = JVSiding._create_variance_function(props.vary_width, width, props.width_variance)
+
+        points = JVSiding._generate_stone_points(*dims, length, width, length_variance, width_variance)
+
+        # triangulate
+        triangles = Delaunay(points)
+
+        # create bmesh for easier handling
+        mesh = bmesh.new()
+        for v in points:
+            mesh.verts.new((v[0], 0, v[1]))
+        mesh.verts.ensure_lookup_table()
+
+        for face in triangles.simplices:
+            mesh.faces.new([mesh.verts[i] for i in face])
+        mesh.faces.ensure_lookup_table()
+
+        # join triangles into rectangles
+
+        # join rectangles in randomized way
+
+        # shrink and disconnect faces
+
+        # subdivide if needed
+
+        pass
+
+    @staticmethod
+    def _generate_stone_points(upper_x: float, upper_z: float, length: float, width: float, lv: callable, wv: callable):
+        """
+        Generate a grid of points that is basically spaced every length in the x-direction and every width in the
+        z-direction. Offset each point by (lv, wv) which are functions that return random offsets.
+        :param upper_x: x-value limit
+        :param upper_z: z-value limit
+        :param length: average length
+        :param width: average width
+        :param lv: a function that returns offsets in length
+        :param wv: a function that returns offsets in width
+        :return: a numpy array of the x, z points
+        """
+        points = []
+        z = 0
+        while z < upper_z:
+            x = 0
+            while x < upper_x:
+                points.append((x+lv(), z+wv()))
+                x += length + lv()
+
+            z += width+lv()
+
+        return np.array(points)

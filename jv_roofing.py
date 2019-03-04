@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from . jv_builder_base import JVBuilderBase
-from mathutils import Euler
+from mathutils import Euler, Vector
 from math import atan, cos, radians, sin, asin
 from . jv_utils import Units
 
@@ -76,6 +76,11 @@ class JVRoofing(JVBuilderBase):
             layout.separator()
             layout.prop(props, "gap_uniform")
 
+        # mirror
+        if props.convert_source_object is None:
+            layout.separator()
+            layout.prop(props, "mirror", icon="MOD_MIRROR")
+
     @staticmethod
     def update(props, context):
         if props.convert_source_object is not None:
@@ -102,7 +107,13 @@ class JVRoofing(JVBuilderBase):
             rotation = Euler((rot, 0, 0))
             JVRoofing._rotate_mesh_vertices(mesh, rotation)
 
-            # TODO: mirror
+            # mirror
+            if props.mirror:
+                shift = Vector((0, -props.width, 0))
+                for v in mesh.verts:
+                    v.co += shift
+
+                JVRoofing._mirror(mesh)
 
         # cutouts
         if props.add_cutouts:
