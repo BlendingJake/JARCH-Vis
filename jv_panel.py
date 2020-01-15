@@ -14,12 +14,13 @@
 from bpy.types import Panel
 from . jv_types import get_object_type_handler
 
-
+#updated for 2.8 UI menu
 class JVPanel(Panel):
     bl_idname = "OBJECT_PT_jv_panel"
     bl_label = "JARCH Vis"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
+    bl_category="JARCH Vis"
 
     jv_add_operators = [
         ("flooring", "Add Flooring", "MESH_GRID"),
