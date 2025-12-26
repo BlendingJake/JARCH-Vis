@@ -1,26 +1,20 @@
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from math import radians
-from bpy.types import PropertyGroup, Object
+from typing import Optional
+
+from bpy.types import Context, PropertyGroup, Object
 from bpy.props import PointerProperty, EnumProperty, FloatProperty, BoolProperty, IntProperty, FloatVectorProperty, \
     CollectionProperty, StringProperty
-from . jv_utils import Units
-from . jv_types import get_object_type_handler
 import bpy
 
+from .jv_utils import Units
+from .jv_types import get_object_type_handler
 
-def jv_on_property_update(_, context):
-    props = context.object.jv_properties
+
+def jv_on_property_update(_, context: Context):
+    if context.object is None:
+        props = None
+    else:
+        props: Optional[JVProperties] = getattr(context.object, "jv_properties", None)
 
     if props is not None and props.update_automatically:
         converted = props.convert_source_object is not None
@@ -28,11 +22,17 @@ def jv_on_property_update(_, context):
         handler.update(props, context)
 
 
-def jv_on_face_group_index_update(_, context):
-    props = context.object.jv_properties
+def jv_on_face_group_index_update(_, context: Context):
+    if context.object is None:
+        props = None
+    else:
+        props: Optional[JVProperties] = getattr(context.object, "jv_properties", None)
+
+    if props is None:
+        return
 
     if 0 <= props.face_groups_index < len(props.face_groups):
-        indices = set([int(i) for i in props.face_groups[props.face_groups_index].face_indices.split(",")])
+        indices = set(int(i) for i in props.face_groups[props.face_groups_index].face_indices.split(","))
         bpy.ops.object.editmode_toggle()
 
         # deselect everything before selecting the correct faces
@@ -672,6 +672,7 @@ def register():
     register_class(Cutout)
     register_class(FaceGroup)
     register_class(JVProperties)
+
     Object.jv_properties = PointerProperty(
         type=JVProperties,
         name="jv_properties",
@@ -684,6 +685,7 @@ def unregister():
     from bpy.types import Object
 
     del Object.jv_properties
+
     unregister_class(JVProperties)
     unregister_class(FaceGroup)
     unregister_class(Cutout)

@@ -1,0 +1,16 @@
+schema_version = "1.0.0"
+
+id = "jarch_vis"
+version = "3.0.0"
+name = "JARCH Vis"
+tagline = "Enable the creation of architectural objects like flooring, siding, stairs, roofing, and windows."
+maintainer = "Jacob Morris"
+type = "add-on"
+
+tags = ["Add Mesh", "Modeling"]
+
+blender_version_min = "4.2.0"
+
+license = [
+    "SPDX:GPL-3.0-or-later"
+]
