@@ -11,10 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from mathutils import Vector, Euler
-from typing import List, Tuple
-from bpy.types import MeshPolygon, MeshVertex
 from math import atan, radians, acos
+from typing import List, Tuple
+
+from mathutils import Vector, Euler
+from bpy.types import MeshPolygon, MeshVertex
 
 
 class Units:
@@ -32,13 +33,16 @@ class CuboidalRegion:
     A representation of a cube-shaped region defined by six planes. Can be used to tell if a point is contained
     within the cube.
     """
+
     def __init__(self, planes: List[Tuple[tuple, tuple]]):
         """
         Take a list of the defining planes. Each plane is defined by a point on that plane and its normal.
         All plane normals should point towards the center of the cube.
         :param planes: tuples of (point on plane, plane normal)
         """
-        self.planes = [(Vector(po), Vector(no)) for po, no in planes]  # convert to vectors for easier math later
+        self.planes = [
+            (Vector(po), Vector(no)) for po, no in planes
+        ]  # convert to vectors for easier math later
 
     def __contains__(self, item):
         """
@@ -54,7 +58,9 @@ class CuboidalRegion:
             return True
 
 
-def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[MeshVertex], fg):
+def determine_face_group_scale_rot_loc(
+    faces: List[MeshPolygon], vertices: List[MeshVertex], fg
+):
     """
     Determine the rotation of the faces from a plane lying in the X-Y plane with normal (0, 0, 1).
     Rotate the face points into the X-Y plane using that rotation and then determine the offset of the
@@ -109,7 +115,7 @@ def determine_face_group_scale_rot_loc(faces: List[MeshPolygon], vertices: List[
 
     # ultimately ignore z as the points have been rotated into the X-Y plane
     fg.rotation = rot
-    fg.dimensions = (max_x-min_x, max_y-min_y)
+    fg.dimensions = (max_x - min_x, max_y - min_y)
 
     loc = Vector((min_x, min_y, min_z))
     loc.rotate(Euler((rho, 0, 0)))
@@ -132,11 +138,19 @@ def determine_bisecting_planes(edges: set, vertices: set, fg, normal: Vector):
     face_group_center /= len(vertices)
 
     for edge in edges:
-        v1, v2, = edge.verts[0].co, edge.verts[1].co
+        (
+            v1,
+            v2,
+        ) = (
+            edge.verts[0].co,
+            edge.verts[1].co,
+        )
         edge_v = Vector((v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]))
 
         bisecting_plane = fg.bisecting_planes.add()
-        edge_center = Vector(((v2[0]+v1[0]) / 2, (v2[1]+v1[1]) / 2, (v2[2]+v1[2]) / 2))
+        edge_center = Vector(
+            ((v2[0] + v1[0]) / 2, (v2[1] + v1[1]) / 2, (v2[2] + v1[2]) / 2)
+        )
         bisecting_plane.center = edge_center
 
         # the cross product of the edge and the normal of the face will be perpendicular to both and in the plane

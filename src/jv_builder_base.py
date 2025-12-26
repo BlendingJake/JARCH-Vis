@@ -17,7 +17,7 @@ from random import uniform
 from mathutils import Vector, Euler
 from typing import Union, List
 from math import radians, atan
-from . jv_utils import CuboidalRegion
+from .jv_utils import CuboidalRegion
 
 
 class JVBuilderBase:
@@ -108,7 +108,9 @@ class JVBuilderBase:
         visited = set()
         start_th = 0 if callable(thickness) else thickness
 
-        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=start_th)["geom"]
+        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=start_th)[
+            "geom"
+        ]
 
         # manually add thickness if 'thickness' is callable
         if callable(thickness):
@@ -136,7 +138,9 @@ class JVBuilderBase:
         variance /= 100  # convert to decimal
 
         if vary:
-            return lambda: uniform(base_amount * (1 - variance), base_amount * (1 + variance))
+            return lambda: uniform(
+                base_amount * (1 - variance), base_amount * (1 + variance)
+            )
         else:
             return lambda: base_amount
 
@@ -151,8 +155,14 @@ class JVBuilderBase:
         for mesh in meshes:
             for plane in planes:
                 pos, normal = plane
-                geom = bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
-                                              plane_co=pos, plane_no=normal, clear_inner=remove_geom)
+                geom = bmesh.ops.bisect_plane(
+                    mesh,
+                    geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:],
+                    dist=0.001,
+                    plane_co=pos,
+                    plane_no=normal,
+                    clear_inner=remove_geom,
+                )
 
                 if fill_holes:
                     JVBuilderBase._fill_holes(mesh, geom["geom_cut"])
@@ -181,14 +191,18 @@ class JVBuilderBase:
         for v in verts:
             if v not in visited_verts:
                 group = set()
-                JVBuilderBase._get_connected_edges(v, verts, visited_verts, edges, group)
+                JVBuilderBase._get_connected_edges(
+                    v, verts, visited_verts, edges, group
+                )
                 grouped_edges.append(group)
 
         for group in grouped_edges:
             bmesh.ops.edgenet_fill(mesh, edges=list(group))
 
     @staticmethod
-    def _get_connected_edges(v, all_vs: set, visited_vs: set, edges: Union[dict, set], g: set):
+    def _get_connected_edges(
+        v, all_vs: set, visited_vs: set, edges: Union[dict, set], g: set
+    ):
         """
         Starting at a given vertex 'v', follow all attached edges that are in 'edges' and collect them together into 'g'
         The follow aspect is recursive, and the end result will be all connected edges being put in 'g'
@@ -205,8 +219,12 @@ class JVBuilderBase:
                 g.add(edge)
 
                 for vert in edge.verts:
-                    if vert in all_vs and vert not in visited_vs:  # if we have a vertex we haven't visited yet
-                        JVBuilderBase._get_connected_edges(vert, all_vs, visited_vs, edges, g)
+                    if (
+                        vert in all_vs and vert not in visited_vs
+                    ):  # if we have a vertex we haven't visited yet
+                        JVBuilderBase._get_connected_edges(
+                            vert, all_vs, visited_vs, edges, g
+                        )
 
     @staticmethod
     def _group_connected_faces(faces: set) -> List[set]:
@@ -226,13 +244,17 @@ class JVBuilderBase:
         return groups
 
     @staticmethod
-    def _group_connected_faces_worker(face: bmesh.types.BMFace, all_faces, visited_faces, group):
+    def _group_connected_faces_worker(
+        face: bmesh.types.BMFace, all_faces, visited_faces, group
+    ):
         group.add(face)
         visited_faces.add(face)
         for edge in face.edges:
             for linked_face in edge.link_faces:
                 if linked_face in all_faces and linked_face not in visited_faces:
-                    JVBuilderBase._group_connected_faces_worker(linked_face, all_faces, visited_faces, group)
+                    JVBuilderBase._group_connected_faces_worker(
+                        linked_face, all_faces, visited_faces, group
+                    )
 
     @staticmethod
     def _rotate_mesh_vertices(mesh, rotation):
@@ -242,8 +264,12 @@ class JVBuilderBase:
         mesh.verts.ensure_lookup_table()
 
     @staticmethod
-    def _transform_vertex_positions(vertices, rotation=Euler((0, 0, 0)), before_translation=Vector((0, 0, 0)),
-                                    after_translation=Vector((0, 0, 0))):
+    def _transform_vertex_positions(
+        vertices,
+        rotation=Euler((0, 0, 0)),
+        before_translation=Vector((0, 0, 0)),
+        after_translation=Vector((0, 0, 0)),
+    ):
         for i in range(len(vertices)):
             c = Vector(vertices[i])
             c += before_translation
@@ -290,7 +316,9 @@ class JVBuilderBase:
         for v in new_vertices:
             if v not in visited_vertices:
                 group = set()
-                JVBuilderBase._get_connected_edges(v, new_vertices, visited_vertices, new_edges, group)
+                JVBuilderBase._get_connected_edges(
+                    v, new_vertices, visited_vertices, new_edges, group
+                )
                 grouped_edges.append(group)
 
         # mark top edges
@@ -330,7 +358,7 @@ class JVBuilderBase:
                 ((0, +hy, 0), (0, -1, 0)),
                 ((0, -hy, 0), (0, 1, 0)),
                 ((0, 0, +hz), (0, 0, -1)),
-                ((0, 0, -hz), (0, 0, 1))
+                ((0, 0, -hz), (0, 0, 1)),
             )
 
             # transform plane centers and normals
@@ -344,14 +372,21 @@ class JVBuilderBase:
                 p_center += cutout.location + center_offset
 
                 if not cutout.local:
-                    p_center = inv_matrix @ p_center  # using new infix matrix multiplication
+                    p_center = (
+                        inv_matrix @ p_center
+                    )  # using new infix matrix multiplication
                     p_normal.rotate(inv_rot)
 
                 planes.append((tuple(p_center), tuple(p_normal)))
 
             for plane_co, plane_normal in planes:
-                bmesh.ops.bisect_plane(mesh, geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:], dist=0.001,
-                                       plane_co=plane_co, plane_no=plane_normal)
+                bmesh.ops.bisect_plane(
+                    mesh,
+                    geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:],
+                    dist=0.001,
+                    plane_co=plane_co,
+                    plane_no=plane_normal,
+                )
 
                 mesh.verts.ensure_lookup_table()
                 mesh.edges.ensure_lookup_table()
@@ -420,7 +455,9 @@ class JVBuilderBase:
         mesh.faces.ensure_lookup_table()
 
     @classmethod
-    def _generate_mesh_from_converted_object(cls, props, context, rot_offset=(0, 0, 0), geometry_func_name="_geometry"):
+    def _generate_mesh_from_converted_object(
+        cls, props, context, rot_offset=(0, 0, 0), geometry_func_name="_geometry"
+    ):
         """
         Since the object is converted, go through each face group, creating a new mesh, cutting it,
         and then joining them all together into a mesh which is returned
@@ -470,7 +507,7 @@ class JVBuilderBase:
             else:
                 bpy.ops.object.modifier_add(type="BOOLEAN")
                 new_obj.modifiers["Boolean"].object = fg.boolean_object
-                bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Boolean")
+                bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Boolean")
 
             mesh.free()
 
@@ -507,10 +544,9 @@ class JVBuilderBase:
         left_normal = Vector((1, 0, 0))
         left_normal.rotate(Euler((0, radians(90) - angle, 0)))
 
-        JVBuilderBase._cut_meshes(meshes, [
-            (center, left_normal),
-            (center, right_normal)
-        ])
+        JVBuilderBase._cut_meshes(
+            meshes, [(center, left_normal), (center, right_normal)]
+        )
 
     @staticmethod
     def _mortar_geometry(props, dims: tuple):
@@ -520,13 +556,18 @@ class JVBuilderBase:
         lx = th if props.joint_left else 0
         rx = th if props.joint_right else 0
 
-        verts = [(-lx, 0, 0), (upper_x + rx, 0, 0), (upper_x + rx, 0, upper_z), (-lx, 0, upper_z)]
+        verts = [
+            (-lx, 0, 0),
+            (upper_x + rx, 0, 0),
+            (upper_x + rx, 0, upper_z),
+            (-lx, 0, upper_z),
+        ]
         faces = [(0, 3, 2, 1)]
 
         return verts, faces
 
     @staticmethod
-    def _mirror(mesh, axis='X'):
+    def _mirror(mesh, axis="X"):
         """
         Duplicate and mirror existing geometry across the specified axis
         :param mesh: the mesh to duplicate and mirror
@@ -534,9 +575,11 @@ class JVBuilderBase:
         :return:
         """
         # duplicate geometry
-        new_geom = bmesh.ops.duplicate(mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:])["geom"]
+        new_geom = bmesh.ops.duplicate(
+            mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:]
+        )["geom"]
 
-        i = {'X': 1, 'Y': 0, 'Z': 2}[axis.upper()]
+        i = {"X": 1, "Y": 0, "Z": 2}[axis.upper()]
         for item in new_geom:
             if isinstance(item, bmesh.types.BMVert):
                 item.co[i] *= -1

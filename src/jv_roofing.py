@@ -11,10 +11,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from . jv_builder_base import JVBuilderBase
+from .jv_builder_base import JVBuilderBase
 from mathutils import Euler, Vector
 from math import atan, cos, radians, sin, asin
-from . jv_utils import Units
+from .jv_utils import Units
 
 
 class JVRoofing(JVBuilderBase):
@@ -59,7 +59,12 @@ class JVRoofing(JVBuilderBase):
                 row.prop(props, "row_offset")
 
         # thickness
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes", "terracotta"):
+        if props.roofing_pattern in (
+            "shingles_3_tab",
+            "shingles_architectural",
+            "shakes",
+            "terracotta",
+        ):
             layout.separator()
             layout.prop(props, "thickness_thin")
 
@@ -87,20 +92,31 @@ class JVRoofing(JVBuilderBase):
             mesh = JVRoofing._generate_mesh_from_converted_object(props, context)
         else:
             mesh = JVRoofing._start(context)
-            verts, faces = JVRoofing._geometry(props, (props.length, props.width / cos(atan(props.pitch / 12))))
+            verts, faces = JVRoofing._geometry(
+                props, (props.length, props.width / cos(atan(props.pitch / 12)))
+            )
             JVRoofing._build_mesh_from_geometry(mesh, verts, faces)
 
             # overall dimension cutting - length
-            if props.roofing_pattern in ("tin_regular", "tin_angular", "tin_standing_seam", "shingles_3_tab",
-                                         "shingles_architectural", "terracotta"):
-                JVRoofing._cut_meshes([mesh], [
-                    ((props.length, 0, 0), (-1, 0, 0))
-                ])
+            if props.roofing_pattern in (
+                "tin_regular",
+                "tin_angular",
+                "tin_standing_seam",
+                "shingles_3_tab",
+                "shingles_architectural",
+                "terracotta",
+            ):
+                JVRoofing._cut_meshes([mesh], [((props.length, 0, 0), (-1, 0, 0))])
             # overall dimension cutting - width
-            if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "terracotta"):
-                JVRoofing._cut_meshes([mesh], [
-                    ((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))
-                ])
+            if props.roofing_pattern in (
+                "shingles_3_tab",
+                "shingles_architectural",
+                "terracotta",
+            ):
+                JVRoofing._cut_meshes(
+                    [mesh],
+                    [((0, props.width / cos(atan(props.pitch / 12)), 0), (0, -1, 0))],
+                )
 
             # rotate
             rot = atan(props.pitch / 12)
@@ -123,7 +139,12 @@ class JVRoofing(JVBuilderBase):
 
         # solidify
         new_geometry = []
-        if props.roofing_pattern in ("shingles_3_tab", "shingles_architectural", "shakes", "terracotta"):
+        if props.roofing_pattern in (
+            "shingles_3_tab",
+            "shingles_architectural",
+            "shakes",
+            "terracotta",
+        ):
             new_geometry += JVRoofing._solidify(mesh, props.thickness_thin)
 
         # main material index
@@ -139,7 +160,9 @@ class JVRoofing(JVBuilderBase):
     def _geometry(props, dims: tuple):
         verts, faces = [], []
 
-        getattr(JVRoofing, "_{}".format(props.roofing_pattern))(dims, props, verts, faces)
+        getattr(JVRoofing, "_{}".format(props.roofing_pattern))(
+            dims, props, verts, faces
+        )
 
         return verts, faces
 
@@ -152,14 +175,14 @@ class JVRoofing(JVBuilderBase):
             (11 * Units.STH_INCH, Units.INCH),
             (17 * Units.STH_INCH, Units.INCH),
             (9 * Units.ETH_INCH, 7 * Units.ETH_INCH),
-            (5 * Units.Q_INCH, 3 * Units.Q_INCH)
+            (5 * Units.Q_INCH, 3 * Units.Q_INCH),
         )
 
         valley_steps = (
             (0, 0),
             (13 * Units.ETH_INCH, 0),
             (15 * Units.ETH_INCH, Units.ETH_INCH),
-            (21 * Units.ETH_INCH, Units.ETH_INCH)
+            (21 * Units.ETH_INCH, Units.ETH_INCH),
         )
 
         # diagonal distance to prep for rotation of vertices
@@ -187,22 +210,32 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def _tin_angular(dims: tuple, props, verts, faces):
-        pan = 3*Units.INCH
-        ridge_steps = ((0, 0), (Units.H_INCH, 5*Units.Q_INCH), (3*Units.H_INCH, 5*Units.Q_INCH), (2*Units.INCH, 0))
-        valley_steps = ((0, 0), (pan, 0), (pan + Units.Q_INCH, Units.ETH_INCH), (pan + 3*Units.H_INCH, Units.ETH_INCH))
+        pan = 3 * Units.INCH
+        ridge_steps = (
+            (0, 0),
+            (Units.H_INCH, 5 * Units.Q_INCH),
+            (3 * Units.H_INCH, 5 * Units.Q_INCH),
+            (2 * Units.INCH, 0),
+        )
+        valley_steps = (
+            (0, 0),
+            (pan, 0),
+            (pan + Units.Q_INCH, Units.ETH_INCH),
+            (pan + 3 * Units.H_INCH, Units.ETH_INCH),
+        )
 
         upper_x, upper_y = dims
         for y in (0, upper_y):
             x = 0
-            while x < upper_x+pan:
+            while x < upper_x + pan:
                 for step in ridge_steps:
-                    verts.append((x+step[0], y, step[1]))
+                    verts.append((x + step[0], y, step[1]))
                 x += 2 * Units.INCH
 
                 for _ in range(2):
                     for step in valley_steps:
-                        verts.append((x+step[0], y, step[1]))
-                    x += pan + 7*Units.Q_INCH
+                        verts.append((x + step[0], y, step[1]))
+                    x += pan + 7 * Units.Q_INCH
 
                 verts.append((x, y, 0))
                 x += pan
@@ -215,8 +248,14 @@ class JVRoofing(JVBuilderBase):
     @staticmethod
     def _tin_standing_seam(dims: tuple, props, verts, faces):
         width = props.pan_width
-        qi, hi, sqi, fei, tei = Units.Q_INCH, Units.H_INCH, 7*Units.Q_INCH, 5*Units.ETH_INCH, 13*Units.ETH_INCH
-        sei, nsi = 7*Units.ETH_INCH, 9*Units.STH_INCH
+        qi, hi, sqi, fei, tei = (
+            Units.Q_INCH,
+            Units.H_INCH,
+            7 * Units.Q_INCH,
+            5 * Units.ETH_INCH,
+            13 * Units.ETH_INCH,
+        )
+        sei, nsi = 7 * Units.ETH_INCH, 9 * Units.STH_INCH
 
         v_offset = 11
         upper_x, upper_y = dims
@@ -226,50 +265,58 @@ class JVRoofing(JVBuilderBase):
             tx = x
             for y in (0, upper_y):
                 verts += [
-                    (x+qi, y, qi),
-                    (x+hi, y, hi),
+                    (x + qi, y, qi),
+                    (x + hi, y, hi),
                     (x, y, hi),
                     (x, y, sqi),
-                    (x+fei, y, sqi),
-                    (x+fei, y, 0)
+                    (x + fei, y, sqi),
+                    (x + fei, y, 0),
                 ]
 
                 x += fei + width
                 verts += [
                     (x, y, 0),
                     (x, y, tei),
-                    (x-qi, y, tei),
-                    (x-qi, y, sei),
-                    (x-hi, y, fei)
+                    (x - qi, y, tei),
+                    (x - qi, y, sei),
+                    (x - hi, y, fei),
                 ]
                 x = tx  # reset back to beginning
 
             x += fei + width - nsi  # move to next pan
 
-            for i in range(v_offset-1):  # one less face than the number of vertices in pan
-                faces.append((p+i, p+i+1, p+i+1+v_offset, p+i+v_offset))
+            for i in range(
+                v_offset - 1
+            ):  # one less face than the number of vertices in pan
+                faces.append((p + i, p + i + 1, p + i + 1 + v_offset, p + i + v_offset))
 
     @staticmethod
     def _shingles_3_tab(dims: tuple, props, verts, faces):
-        width, exposure, th, gap = Units.FOOT, 11*Units.H_INCH, props.thickness_thin, Units.H_INCH
+        width, exposure, th, gap = (
+            Units.FOOT,
+            11 * Units.H_INCH,
+            props.thickness_thin,
+            Units.H_INCH,
+        )
 
-        first_length_for_fixed_offset = (width - (gap/2)) * (props.row_offset / 100)
+        first_length_for_fixed_offset = (width - (gap / 2)) * (props.row_offset / 100)
         if first_length_for_fixed_offset == 0:
-            first_length_for_fixed_offset = width - (gap/2)
+            first_length_for_fixed_offset = width - (gap / 2)
 
-        offset_length_variance = JVRoofing._create_variance_function(props.vary_row_offset, width / 2,
-                                                                     props.row_offset_variance)
+        offset_length_variance = JVRoofing._create_variance_function(
+            props.vary_row_offset, width / 2, props.row_offset_variance
+        )
 
         # there are three layers for the last bit of the shingle, so 1 1/2 up needs to be at 2th
-        bottom_z = (width / (2*exposure)) * 2 * th
+        bottom_z = (width / (2 * exposure)) * 2 * th
         middle_z = bottom_z - th
 
         # bottom backing row
         verts += [
-            (0, 0, bottom_z-th),
-            (props.length, 0, bottom_z-th),
-            (props.length, exposure, middle_z-th),
-            (0, exposure, middle_z-th)
+            (0, 0, bottom_z - th),
+            (props.length, 0, bottom_z - th),
+            (props.length, exposure, middle_z - th),
+            (0, exposure, middle_z - th),
         ]
         faces.append((0, 3, 2, 1))
 
@@ -280,11 +327,13 @@ class JVRoofing(JVBuilderBase):
             x = 0
             p = len(verts)
             is_gap = False
-            while x < upper_x + width:  # go farther to ensure that last set of vertices is placed
+            while (
+                x < upper_x + width
+            ):  # go farther to ensure that last set of vertices is placed
                 verts += [
                     (x, y, bottom_z),
-                    (x, y+exposure, middle_z),
-                    (x, y+width, 0)
+                    (x, y + exposure, middle_z),
+                    (x, y + width, 0),
                 ]
 
                 if is_gap:
@@ -307,11 +356,18 @@ class JVRoofing(JVBuilderBase):
             # faces, connect in two possible ways, depending on whether it is a gap or not
             sets = (len(verts) - p) // 3  # each set contains 3 vertices
             is_gap = False
-            for i in range(0, 3*(sets - 1), 3):  # do one less set to just fill between sets
+            for i in range(
+                0, 3 * (sets - 1), 3
+            ):  # do one less set to just fill between sets
                 if is_gap:
-                    faces.append((p+i+1, p+i+2, p+i+5, p+i+4))
+                    faces.append((p + i + 1, p + i + 2, p + i + 5, p + i + 4))
                 else:
-                    faces.extend(((p+i, p+i+1, p+i+4, p+i+3), (p+i+1, p+i+2, p+i+5, p+i+4)))
+                    faces.extend(
+                        (
+                            (p + i, p + i + 1, p + i + 4, p + i + 3),
+                            (p + i + 1, p + i + 2, p + i + 5, p + i + 4),
+                        )
+                    )
 
                 is_gap = not is_gap
 
@@ -320,10 +376,12 @@ class JVRoofing(JVBuilderBase):
         hi, th, width = Units.H_INCH, props.thickness_thin, Units.FOOT
         hw = width / 2
 
-        bottom_z, mid_z = 4*th, 2*th
+        bottom_z, mid_z = 4 * th, 2 * th
 
-        separation_variance = JVRoofing._create_variance_function(True, 8*Units.INCH, 40)
-        width_variance = JVRoofing._create_variance_function(True, 4*Units.INCH, 60)
+        separation_variance = JVRoofing._create_variance_function(
+            True, 8 * Units.INCH, 40
+        )
+        width_variance = JVRoofing._create_variance_function(True, 4 * Units.INCH, 60)
 
         upper_x, upper_y = dims
         y = 0
@@ -333,12 +391,12 @@ class JVRoofing(JVBuilderBase):
             verts += [
                 (0, y, bottom_z),
                 (upper_x, y, bottom_z),
-                (upper_x, y+width, 0),
-                (0, y+width, 0)
+                (upper_x, y + width, 0),
+                (0, y + width, 0),
             ]
 
             p = len(verts) - 4
-            faces.append((p, p+3, p+2, p+1))
+            faces.append((p, p + 3, p + 2, p + 1))
 
             x = 0
             finish = False
@@ -350,32 +408,36 @@ class JVRoofing(JVBuilderBase):
                     dx /= 2
 
                 verts += [  # all z's are +th because they are layered on top of the backing layer
-                    (x, y+hw, mid_z+th),
-                    (x, y+width, th)
+                    (x, y + hw, mid_z + th),
+                    (x, y + width, th),
                 ]
 
                 x += dx
 
                 if x < upper_x:  # only do tab if we are still under width
                     verts += [
-                        (x-hi, y, bottom_z+th),
-                        (x, y+hw, mid_z+th),
-                        (x, y+width, th)
+                        (x - hi, y, bottom_z + th),
+                        (x, y + hw, mid_z + th),
+                        (x, y + width, th),
                     ]
 
                     x += width_variance()
-                    verts.append((x+hi, y, bottom_z+th))
-                    finish = True  # if we get here, we need to finish the row no matter what
+                    verts.append((x + hi, y, bottom_z + th))
+                    finish = (
+                        True  # if we get here, we need to finish the row no matter what
+                    )
 
             # faces
             # there will always be 2 verts on the end to close everything off, besides that, it will be multiple of 6
             sets = (len(verts) - p - 2) // 6
-            for i in range(0, 6*sets, 6):
-                faces.extend((
-                    (p+i, p+i+1, p+i+4, p+i+3),
-                    (p+i+2, p+i+3, p+i+6, p+i+5),
-                    (p+i+3, p+i+4, p+i+7, p+i+6)
-                ))
+            for i in range(0, 6 * sets, 6):
+                faces.extend(
+                    (
+                        (p + i, p + i + 1, p + i + 4, p + i + 3),
+                        (p + i + 2, p + i + 3, p + i + 6, p + i + 5),
+                        (p + i + 3, p + i + 4, p + i + 7, p + i + 6),
+                    )
+                )
 
             y += hw
             odd = not odd
@@ -389,9 +451,12 @@ class JVRoofing(JVBuilderBase):
         if first_width_for_fixed_offset == 0:
             first_width_for_fixed_offset = width
 
-        offset_width_variance = JVRoofing._create_variance_function(props.vary_row_offset, width / 2,
-                                                                    props.row_offset_variance)
-        width_variance = JVRoofing._create_variance_function(props.vary_width, width, props.width_variance)
+        offset_width_variance = JVRoofing._create_variance_function(
+            props.vary_row_offset, width / 2, props.row_offset_variance
+        )
+        width_variance = JVRoofing._create_variance_function(
+            props.vary_width, width, props.width_variance
+        )
         upper_x, upper_y = dims
 
         # bottom row backing layer
@@ -399,7 +464,7 @@ class JVRoofing(JVBuilderBase):
             (0, 0, th_z / 2),
             (upper_x, 0, th_z / 2),
             (upper_x, hl, 0),
-            (0, hl, 0)
+            (0, hl, 0),
         ]
         faces.append((0, 3, 2, 1))
 
@@ -423,11 +488,11 @@ class JVRoofing(JVBuilderBase):
                     (x, y, th_z),
                     (x + dx, y, th_z),
                     (x + dx, y + dy, 0),
-                    (x, y + dy, 0)
+                    (x, y + dy, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 x += cur_width + gap
             y += hl
@@ -435,14 +500,26 @@ class JVRoofing(JVBuilderBase):
 
     @staticmethod
     def _terracotta(dims: tuple, props, verts, faces):
-        length, radius, th = props.tile_length, props.terracotta_radius, props.thickness_thin
-        spacing, res, hi = props.terracotta_gap, props.terracotta_resolution, Units.H_INCH
+        length, radius, th = (
+            props.tile_length,
+            props.terracotta_radius,
+            props.thickness_thin,
+        )
+        spacing, res, hi = (
+            props.terracotta_gap,
+            props.terracotta_resolution,
+            Units.H_INCH,
+        )
         radius_small = radius - th
 
         # adjust by asin(th/radius) to that the half-circle doesn't overlap with the wing of the next tile
-        bottom_ang_step = (radians(180) - asin(th/radius)) / (res + 1)
-        theta = asin(th/(radius - th))  # similar to asin(th/radius) above, just for smaller radius cricle of the top
-        top_ang_step = radians(180) / (res + 1)  # going from -theta to 180-theta, so full 180 degrees, just rotated
+        bottom_ang_step = (radians(180) - asin(th / radius)) / (res + 1)
+        theta = asin(
+            th / (radius - th)
+        )  # similar to asin(th/radius) above, just for smaller radius cricle of the top
+        top_ang_step = radians(180) / (
+            res + 1
+        )  # going from -theta to 180-theta, so full 180 degrees, just rotated
 
         upper_x, upper_y = dims
         y = 0
@@ -452,27 +529,33 @@ class JVRoofing(JVBuilderBase):
                 p = len(verts)
 
                 # build bottom set of vertices
-                verts += [(x+th, y, hi+th), (x+th+hi, y, th)]
+                verts += [(x + th, y, hi + th), (x + th + hi, y, th)]
                 tx = x + th + hi + spacing + radius
-                for i in range(res+2):
+                for i in range(res + 2):
                     ang = bottom_ang_step * i
                     dx, dz = radius * cos(ang), radius * sin(ang)
-                    verts.append((tx-dx, y, th+dz))
+                    verts.append((tx - dx, y, th + dz))
 
                 # build top set of vertices
-                verts += [(x, y+length, hi), (x+hi, y+length, 0)]
-                tx = x + spacing + (4*th) + (radius - th)  # adjust to center of smaller radius circle
-                for i in range(res+2):
+                verts += [(x, y + length, hi), (x + hi, y + length, 0)]
+                tx = (
+                    x + spacing + (4 * th) + (radius - th)
+                )  # adjust to center of smaller radius circle
+                for i in range(res + 2):
                     ang = top_ang_step * i - theta
                     dx, dz = radius_small * cos(ang), radius_small * sin(ang)
-                    verts.append((tx-dx, y+length, th+dz))
+                    verts.append((tx - dx, y + length, th + dz))
 
                 # faces
-                offset = 2 + res + 2  # 2 vertices for wing and spacing, then res+2 for half-circle
-                for _ in range(2 + res + 1):  # 2 faces for wing and spacing, then res+1 for half-circle
-                    faces.append((p, p+offset, p+offset+1, p+1))
+                offset = (
+                    2 + res + 2
+                )  # 2 vertices for wing and spacing, then res+2 for half-circle
+                for _ in range(
+                    2 + res + 1
+                ):  # 2 faces for wing and spacing, then res+1 for half-circle
+                    faces.append((p, p + offset, p + offset + 1, p + 1))
                     p += 1
 
                 # go forward to right edge of half-circle, then go back so 0.5*0.5" wing doesn't intersect half-circle
-                x += hi + spacing + (2*radius) - th - hi
+                x += hi + spacing + (2 * radius) - th - hi
             y += length - hi  # allow for 'hi' of overlap in circles

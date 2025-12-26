@@ -18,6 +18,7 @@ MODULES: Dict[str, ModuleType] = {}
 
 import bpy
 
+
 def register():
     global MODULES
 
@@ -26,10 +27,7 @@ def register():
             MODULES[name] = importlib.reload(mod)
     else:
         for name in MODULE_NAMES:
-            MODULES[name] = importlib.import_module(
-                f".src.{name}",
-                package=__package__
-            )
+            MODULES[name] = importlib.import_module(f".src.{name}", package=__package__)
 
     for mod in MODULES.values():
         if (reg := getattr(mod, "register", None)) is not None:

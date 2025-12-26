@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bpy.types import Panel
-from . jv_types import get_object_type_handler
+from .jv_types import get_object_type_handler
 
 
 class JVPanel(Panel):
@@ -25,7 +25,7 @@ class JVPanel(Panel):
         ("flooring", "Add Flooring", "MESH_GRID"),
         ("siding", "Add Siding", "MOD_TRIANGULATE"),
         ("roofing", "Add Roofing", "LINCURVE"),
-        ("windows", "Add Window", "MOD_WIREFRAME")
+        ("windows", "Add Window", "MOD_WIREFRAME"),
     ]
 
     jv_consistent_operators = [
@@ -48,7 +48,9 @@ class JVPanel(Panel):
 
         props = obj.jv_properties
         if context.mode == "OBJECT":
-            if props.object_type == "none" and props.object_type_converted == "none":  # convert
+            if (
+                props.object_type == "none" and props.object_type_converted == "none"
+            ):  # convert
                 layout.operator("object.jv_convert", icon="MOD_EXPLODE")
             elif props.object_type != "none" or props.object_type_converted != "none":
                 converted = props.convert_source_object is not None
@@ -59,7 +61,9 @@ class JVPanel(Panel):
                     layout.prop(props, "object_type", icon="MATERIAL")
                 layout.separator()
 
-                handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
+                handler = get_object_type_handler(
+                    props.object_type_converted if converted else props.object_type
+                )
                 if handler is not None:
                     handler.draw(props, layout)
 
@@ -108,7 +112,15 @@ class JVPanel(Panel):
         elif context.mode == "EDIT_MESH":
             if props.object_type == "none":
                 row = layout.row(align=True)
-                row.template_list("OBJECT_UL_face_groups", "", props, "face_groups", props, "face_groups_index", rows=5)
+                row.template_list(
+                    "OBJECT_UL_face_groups",
+                    "",
+                    props,
+                    "face_groups",
+                    props,
+                    "face_groups_index",
+                    rows=5,
+                )
 
                 column = row.column(align=True)
                 column.operator("object.jv_add_face_group", text="", icon="ADD")
@@ -119,8 +131,12 @@ class JVPanel(Panel):
                     indices.extend([i for i in fg.face_indices.split(",")])
 
                 layout.separator()
-                layout.label(text="{}/{} Faces in Face Groups".format(len(indices), len(context.object.data.polygons)),
-                             icon="INFO")
+                layout.label(
+                    text="{}/{} Faces in Face Groups".format(
+                        len(indices), len(context.object.data.polygons)
+                    ),
+                    icon="INFO",
+                )
 
 
 def register():

@@ -14,8 +14,12 @@
 import bpy
 import bmesh
 from bpy.props import IntProperty, StringProperty
-from . jv_types import get_object_type_handler
-from . jv_utils import Units, determine_face_group_scale_rot_loc, determine_bisecting_planes
+from .jv_types import get_object_type_handler
+from .jv_utils import (
+    Units,
+    determine_face_group_scale_rot_loc,
+    determine_bisecting_planes,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +50,9 @@ class JVDelete(bpy.types.Operator):
         props = context.object.jv_properties
         converted = props.convert_source_object is not None
 
-        handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
+        handler = get_object_type_handler(
+            props.object_type_converted if converted else props.object_type
+        )
 
         if handler is not None:
             handler.delete(context.object.jv_properties, context)
@@ -63,7 +69,9 @@ class JVUpdate(bpy.types.Operator):
         props = context.object.jv_properties
         converted = props.convert_source_object is not None
 
-        handler = get_object_type_handler(props.object_type_converted if converted else props.object_type)
+        handler = get_object_type_handler(
+            props.object_type_converted if converted else props.object_type
+        )
 
         if handler is not None:
             handler.update(context.object.jv_properties, context)
@@ -80,12 +88,20 @@ class JVConvert(bpy.types.Operator):
         props = context.object.jv_properties
 
         # if the scale isn't (1.0, 1.0, 1.0) - raise a fuse
-        if not all([i == 1 for i in context.object.scale]) or not all([i == 0 for i in context.object.rotation_euler]):
-            self.report({"ERROR"}, "The scale and rotation must be applied on this object before conversion")
+        if not all([i == 1 for i in context.object.scale]) or not all(
+            [i == 0 for i in context.object.rotation_euler]
+        ):
+            self.report(
+                {"ERROR"},
+                "The scale and rotation must be applied on this object before conversion",
+            )
             return {"FINISHED"}
 
         if len(props.face_groups) == 0:  # no face groups, so try and create one
-            self.report({"ERROR"}, """Please enter edit mode and create a face group before trying to convert""")
+            self.report(
+                {"ERROR"},
+                """Please enter edit mode and create a face group before trying to convert""",
+            )
 
         # divide the faces up into distinct objects that can be used for the boolean process
         # point each face group to the corresponding object
@@ -160,7 +176,7 @@ class JVConvert(bpy.types.Operator):
 
                     # add solidify modifier
                     bpy.ops.object.modifier_add(type="SOLIDIFY")
-                    new_obj.modifiers["Solidify"].thickness = 6*Units.INCH
+                    new_obj.modifiers["Solidify"].thickness = 6 * Units.INCH
                     new_obj.modifiers["Solidify"].offset = 0
                     new_obj.location = src.location
 
@@ -174,7 +190,9 @@ class JVConvert(bpy.types.Operator):
             context.object.location = src.location
             context.object.jv_properties.convert_source_object = src
             src.hide_viewport = True
-            context.object.jv_properties.object_type_converted = "roofing"  # will cause an automatic update
+            context.object.jv_properties.object_type_converted = (
+                "roofing"  # will cause an automatic update
+            )
 
         return {"FINISHED"}
 
@@ -183,7 +201,9 @@ class JVConvert(bpy.types.Operator):
 # UIList Handlers
 # ---------------------------------------------------------------------------
 class OBJECT_UL_face_groups(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+    def draw_item(
+        self, context, layout, data, item, icon, active_data, active_propname, index
+    ):
         layout.label(text="{} face(s)".format(len(item.face_indices.split(","))))
         layout.prop(item, "is_convex", icon="MOD_SIMPLIFY")
 
@@ -234,13 +254,19 @@ class JVAddFaceGroup(bpy.types.Operator):
         bpy.ops.object.editmode_toggle()
         bpy.ops.object.editmode_toggle()
 
-        indices = [str(face.index) for face in context.object.data.polygons if face.select]
+        indices = [
+            str(face.index) for face in context.object.data.polygons if face.select
+        ]
 
         if not indices:
-            self.report({"ERROR"}, "At least one face must be selected to add a face group")
+            self.report(
+                {"ERROR"}, "At least one face must be selected to add a face group"
+            )
         else:
             fg.face_indices = ",".join(indices)
-            props.face_groups_index = min(len(props.face_groups) - 1, props.face_groups_index + 1)
+            props.face_groups_index = min(
+                len(props.face_groups) - 1, props.face_groups_index + 1
+            )
 
         return {"FINISHED"}
 
@@ -255,7 +281,7 @@ class JVDeleteFaceGroup(bpy.types.Operator):
 
         if 0 <= props.face_groups_index < len(props.face_groups):
             props.face_groups.remove(props.face_groups_index)
-            props.face_groups_index = max(0, props.face_groups_index-1)
+            props.face_groups_index = max(0, props.face_groups_index - 1)
 
         return {"FINISHED"}
 
@@ -265,13 +291,11 @@ classes = (
     JVDelete,
     JVUpdate,
     JVConvert,
-
     OBJECT_UL_face_groups,
-
     JVAddCutout,
     JVDeleteCutout,
     JVAddFaceGroup,
-    JVDeleteFaceGroup
+    JVDeleteFaceGroup,
 )
 
 

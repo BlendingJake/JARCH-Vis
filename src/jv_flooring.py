@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from . jv_builder_base import JVBuilderBase
+from .jv_builder_base import JVBuilderBase
 from math import sqrt, cos, tan, radians
 
 
@@ -108,31 +108,45 @@ class JVFlooring(JVBuilderBase):
             JVFlooring._build_mesh_from_geometry(mesh, verts, faces)
 
             # cut if needed
-            if props.flooring_pattern in ("herringbone", "chevron", "hopscotch", "stepping_stone", "hexagons",
-                                          "octagons", "windmill"):
-                JVFlooring._cut_meshes([mesh], [
-                    ((0, 0, 0), (1, 0, 0)),  # left
-                    ((0, 0, 0), (0, 1, 0)),  # bottom
-                    ((props.length, 0, 0), (-1, 0, 0)),  # right
-                    ((0, props.width, 0), (0, -1, 0))  # top
-                ])
+            if props.flooring_pattern in (
+                "herringbone",
+                "chevron",
+                "hopscotch",
+                "stepping_stone",
+                "hexagons",
+                "octagons",
+                "windmill",
+            ):
+                JVFlooring._cut_meshes(
+                    [mesh],
+                    [
+                        ((0, 0, 0), (1, 0, 0)),  # left
+                        ((0, 0, 0), (0, 1, 0)),  # bottom
+                        ((props.length, 0, 0), (-1, 0, 0)),  # right
+                        ((0, props.width, 0), (0, -1, 0)),  # top
+                    ],
+                )
 
         if props.add_cutouts:
-                JVFlooring._cutouts(mesh, props, context.object.matrix_world)
+            JVFlooring._cutouts(mesh, props, context.object.matrix_world)
 
         original_edges = mesh.edges[:]  # used to determine where seams should be added
 
         # solidify
-        new_geometry = JVFlooring._solidify(mesh,
-                                            JVFlooring._create_variance_function(props.vary_thickness,
-                                                                                 props.thickness,
-                                                                                 props.thickness_variance))
+        new_geometry = JVFlooring._solidify(
+            mesh,
+            JVFlooring._create_variance_function(
+                props.vary_thickness, props.thickness, props.thickness_variance
+            ),
+        )
 
         # main material index
         JVFlooring._add_material_index(mesh.faces, 0)
 
         # add uv seams
-        JVFlooring._add_uv_seams_for_solidified_plane(new_geometry, original_edges, mesh)
+        JVFlooring._add_uv_seams_for_solidified_plane(
+            new_geometry, original_edges, mesh
+        )
 
         JVFlooring._finish(context, mesh)
         JVFlooring._uv_unwrap()
@@ -142,24 +156,32 @@ class JVFlooring(JVBuilderBase):
         verts, faces = [], []
 
         # dynamically call correct method as their names will match up with the style name
-        getattr(JVFlooring, "_{}".format(props.flooring_pattern))(dims, props, verts, faces)
+        getattr(JVFlooring, "_{}".format(props.flooring_pattern))(
+            dims, props, verts, faces
+        )
 
         return verts, faces
 
     @staticmethod
     def _regular(dims: tuple, props, verts, faces):
-        width_variance = JVFlooring._create_variance_function(props.vary_width, props.board_width_medium,
-                                                              props.width_variance)
-        length_variance = JVFlooring._create_variance_function(props.vary_length, props.board_length_medium,
-                                                               props.length_variance)
+        width_variance = JVFlooring._create_variance_function(
+            props.vary_width, props.board_width_medium, props.width_variance
+        )
+        length_variance = JVFlooring._create_variance_function(
+            props.vary_length, props.board_length_medium, props.length_variance
+        )
 
-        first_length_for_fixed_offset = props.board_length_medium * (props.row_offset / 100)
+        first_length_for_fixed_offset = props.board_length_medium * (
+            props.row_offset / 100
+        )
         if first_length_for_fixed_offset == 0:
             first_length_for_fixed_offset = props.board_length_medium
 
-        offset_length_variance = JVFlooring._create_variance_function(props.vary_row_offset,
-                                                                      props.board_length_medium / 2,
-                                                                      props.row_offset_variance)
+        offset_length_variance = JVFlooring._create_variance_function(
+            props.vary_row_offset,
+            props.board_length_medium / 2,
+            props.row_offset_variance,
+        )
 
         y = 0
         odd = False
@@ -176,18 +198,18 @@ class JVFlooring(JVBuilderBase):
                     elif odd:
                         length = first_length_for_fixed_offset
 
-                trimmed_width = min(width, upper_y-y)
-                trimmed_length = min(length, upper_x-x)
+                trimmed_width = min(width, upper_y - y)
+                trimmed_length = min(length, upper_x - x)
 
                 verts += [
                     (x, y, 0),
-                    (x+trimmed_length, y, 0),
-                    (x+trimmed_length, y+trimmed_width, 0),
-                    (x, y+trimmed_width, 0)
+                    (x + trimmed_length, y, 0),
+                    (x + trimmed_length, y + trimmed_width, 0),
+                    (x, y + trimmed_width, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 x += length + props.gap_uniform
 
@@ -215,18 +237,18 @@ class JVFlooring(JVBuilderBase):
                     for _ in range(board_count):
                         if x < upper_x:
                             # width is paired with x and length with y because board is rotated
-                            trimmed_width = min(width, upper_x-x)
-                            trimmed_length = min(length, upper_y-y)
+                            trimmed_width = min(width, upper_x - x)
+                            trimmed_length = min(length, upper_y - y)
 
                             verts += [
                                 (x, y, 0),
-                                (x+trimmed_width, y, 0),
-                                (x+trimmed_width, y+trimmed_length, 0),
-                                (x, y+trimmed_length, 0)
+                                (x + trimmed_width, y, 0),
+                                (x + trimmed_width, y + trimmed_length, 0),
+                                (x, y + trimmed_length, 0),
                             ]
 
                             p = len(verts) - 4
-                            faces.append((p, p+3, p+2, p+1))
+                            faces.append((p, p + 3, p + 2, p + 1))
 
                             x += width + gap
                 else:
@@ -241,11 +263,11 @@ class JVFlooring(JVBuilderBase):
                                 (x, ty, 0),
                                 (x + trimmed_length, ty, 0),
                                 (x + trimmed_length, ty + trimmed_width, 0),
-                                (x, ty + trimmed_width, 0)
+                                (x, ty + trimmed_width, 0),
                             ]
 
                             p = len(verts) - 4
-                            faces.append((p, p+3, p+2, p+1))
+                            faces.append((p, p + 3, p + 2, p + 1))
 
                             ty += width + gap
                     x += length + gap
@@ -268,7 +290,9 @@ class JVFlooring(JVBuilderBase):
 
         start_y = -leg_length  # start down some so there are no gaps
         upper_x, upper_y = dims
-        while start_y < upper_y + leg_width:  # go a little further than need to ensure no gaps
+        while (
+            start_y < upper_y + leg_width
+        ):  # go a little further than need to ensure no gaps
             x = 0
 
             y = start_y
@@ -276,13 +300,13 @@ class JVFlooring(JVBuilderBase):
                 # board width positive slope - starting from bottom-most corner
                 verts += [
                     (x, y, 0),
-                    (x+leg_length, y+leg_length, 0),
-                    (x+leg_length-leg_width, y+leg_length+leg_width, 0),
-                    (x-leg_width, y+leg_width, 0)
+                    (x + leg_length, y + leg_length, 0),
+                    (x + leg_length - leg_width, y + leg_length + leg_width, 0),
+                    (x - leg_width, y + leg_width, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 # move to left-most corner of complementary board
                 x += leg_length + leg_gap - leg_width
@@ -293,11 +317,11 @@ class JVFlooring(JVBuilderBase):
                     (x, y, 0),
                     (x + leg_length, y - leg_length, 0),
                     (x + leg_length + leg_width, y - leg_length + leg_width, 0),
-                    (x + leg_width, y + leg_width, 0)
+                    (x + leg_width, y + leg_width, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 # move to bottom-most corner of next board
                 x += leg_length + leg_width + leg_gap
@@ -321,13 +345,13 @@ class JVFlooring(JVBuilderBase):
             while x < upper_x:
                 verts += [
                     (x, y, 0),
-                    (x+leg_length, y+y_leg_length, 0),
-                    (x+leg_length, y+y_leg_length+leg_width, 0),
-                    (x, y+leg_width, 0)
+                    (x + leg_length, y + y_leg_length, 0),
+                    (x + leg_length, y + y_leg_length + leg_width, 0),
+                    (x, y + leg_width, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 x += leg_length + props.gap_uniform
                 y += y_leg_length
@@ -348,13 +372,15 @@ class JVFlooring(JVBuilderBase):
         # the actual distance += half_length + gap, but x is moved that much between creating the two tiles
         distance_between_groups = (2 * gap) + (2 * length)
 
-        x_start_values = [  # there are 5 different rows, each with a different starting x value
-            -gap - length - gap - half_length,  # orange
-            0,  # pink
-            -(length / 2) - gap - half_length - (gap / 2),  # yellow
-            -(2 * gap) - (2*length),  # green
-            -gap - half_length  # blue
-        ]
+        x_start_values = (
+            [  # there are 5 different rows, each with a different starting x value
+                -gap - length - gap - half_length,  # orange
+                0,  # pink
+                -(length / 2) - gap - half_length - (gap / 2),  # yellow
+                -(2 * gap) - (2 * length),  # green
+                -gap - half_length,  # blue
+            ]
+        )
 
         row = 0
         y = -gap - half_width
@@ -365,9 +391,9 @@ class JVFlooring(JVBuilderBase):
             while x < upper_x:
                 verts += [  # small tile
                     (x, y, 0),
-                    (x+half_length, y, 0),
-                    (x+half_length, y+half_width, 0),
-                    (x, y+half_width, 0)
+                    (x + half_length, y, 0),
+                    (x + half_length, y + half_width, 0),
+                    (x, y + half_width, 0),
                 ]
 
                 x += half_length + gap
@@ -376,11 +402,11 @@ class JVFlooring(JVBuilderBase):
                     (x, y, 0),
                     (x + length, y, 0),
                     (x + length, y + width, 0),
-                    (x, y + width, 0)
+                    (x, y + width, 0),
                 ]
 
                 p = len(verts) - 8
-                faces.extend(((p, p+3, p+2, p+1), (p+4, p+7, p+6, p+5)))
+                faces.extend(((p, p + 3, p + 2, p + 1), (p + 4, p + 7, p + 6, p + 5)))
 
                 x += distance_between_groups
 
@@ -401,34 +427,30 @@ class JVFlooring(JVBuilderBase):
             while x < upper_x:
                 verts += [
                     (x, y, 0),  # bottom - horizontal
-                    (x+length, y, 0),
-                    (x+length, y+width, 0),
-                    (x, y+width, 0),
-
-                    (x, y+width+gap, 0),  # left - vertical
-                    (x+width, y+width+gap, 0),
-                    (x+width, y+width+gap+length, 0),
-                    (x, y+width+gap+length, 0),
-
-                    (x+width+gap, y+length+gap, 0),  # top - horizontal
-                    (x+length+gap+width, y+length+gap, 0),
-                    (x+length+gap+width, y+length+gap+width, 0),
-                    (x+width+gap, y+length+gap+width, 0),
-
-                    (x+length+gap, y, 0),  # right - vertical
-                    (x+length+gap+width, y, 0),
-                    (x+length+gap+width, y+length, 0),
-                    (x+length+gap, y+length, 0),
-
-                    (x+width+gap, y+width+gap, 0),  # center
-                    (x+length, y+width+gap, 0),
-                    (x+length, y+length, 0),
-                    (x+width+gap, y+length, 0)
+                    (x + length, y, 0),
+                    (x + length, y + width, 0),
+                    (x, y + width, 0),
+                    (x, y + width + gap, 0),  # left - vertical
+                    (x + width, y + width + gap, 0),
+                    (x + width, y + width + gap + length, 0),
+                    (x, y + width + gap + length, 0),
+                    (x + width + gap, y + length + gap, 0),  # top - horizontal
+                    (x + length + gap + width, y + length + gap, 0),
+                    (x + length + gap + width, y + length + gap + width, 0),
+                    (x + width + gap, y + length + gap + width, 0),
+                    (x + length + gap, y, 0),  # right - vertical
+                    (x + length + gap + width, y, 0),
+                    (x + length + gap + width, y + length, 0),
+                    (x + length + gap, y + length, 0),
+                    (x + width + gap, y + width + gap, 0),  # center
+                    (x + length, y + width + gap, 0),
+                    (x + length, y + length, 0),
+                    (x + width + gap, y + length, 0),
                 ]
 
                 p = len(verts)
-                for i in range(p-20, p, 4):
-                    faces.append((i, i+3, i+2, i+1))
+                for i in range(p - 20, p, 4):
+                    faces.append((i, i + 3, i + 2, i + 1))
 
                 x += length + gap + width + gap
             y += length + gap + width + gap
@@ -448,9 +470,9 @@ class JVFlooring(JVBuilderBase):
                 for _ in range(3):  # three tiles along the bottom
                     verts += [
                         (x, y, 0),
-                        (x+half_length, y, 0),
-                        (x+half_length, y+half_width, 0),
-                        (x, y+half_width, 0)
+                        (x + half_length, y, 0),
+                        (x + half_length, y + half_width, 0),
+                        (x, y + half_width, 0),
                     ]
 
                     x += half_length + gap
@@ -460,9 +482,9 @@ class JVFlooring(JVBuilderBase):
 
                 verts += [
                     (x, y, 0),
-                    (x+length, y, 0),
-                    (x+length, y+width, 0),
-                    (x, y+width, 0)
+                    (x + length, y, 0),
+                    (x + length, y + width, 0),
+                    (x, y + width, 0),
                 ]
 
                 x += length + gap
@@ -472,19 +494,19 @@ class JVFlooring(JVBuilderBase):
                         (x, y, 0),
                         (x + half_length, y, 0),
                         (x + half_length, y + half_width, 0),
-                        (x, y + half_width, 0)
+                        (x, y + half_width, 0),
                     ]
 
                     y += half_width + gap
 
                 p = len(verts)
-                for i in range(p-24, p, 4):  # 6 faces, 4 vertices each
-                    faces.append((i, i+3, i+2, i+1))
+                for i in range(p - 24, p, 4):  # 6 faces, 4 vertices each
+                    faces.append((i, i + 3, i + 2, i + 1))
 
                 x += half_length + gap
                 y = ty
 
-            y += half_width + width + (2*gap)
+            y += half_width + width + (2 * gap)
 
     @staticmethod
     def _hexagons(dims: tuple, props, verts, faces):
@@ -495,11 +517,11 @@ class JVFlooring(JVBuilderBase):
         gap_dif = (gap / 2) * sqrt(3)
 
         # if we are doing dots, figure out the difference between the center and points, actual size is 2x values
-        dot_x = d + (gap/2) - x_leg - gap_dif
-        dot_y = ((2*y_leg) + gap - (2*gap_dif)) / 2
+        dot_x = d + (gap / 2) - x_leg - gap_dif
+        dot_y = ((2 * y_leg) + gap - (2 * gap_dif)) / 2
 
         start_y = y_leg
-        upper_x, upper_y = dims[0] + d, dims[1] + (2*y_leg)
+        upper_x, upper_y = dims[0] + d, dims[1] + (2 * y_leg)
         while start_y < upper_y:
             move_down = True
             x = x_leg
@@ -507,34 +529,34 @@ class JVFlooring(JVBuilderBase):
             y = start_y
             while x < upper_x:
                 verts += [
-                    (x-x_leg, y-y_leg, 0),
-                    (x+x_leg, y-y_leg, 0),
-                    (x+d, y, 0),
-                    (x+x_leg, y+y_leg, 0),
-                    (x-x_leg, y+y_leg, 0),
-                    (x-d, y, 0)
+                    (x - x_leg, y - y_leg, 0),
+                    (x + x_leg, y - y_leg, 0),
+                    (x + d, y, 0),
+                    (x + x_leg, y + y_leg, 0),
+                    (x - x_leg, y + y_leg, 0),
+                    (x - d, y, 0),
                 ]
 
                 p = len(verts) - 6
-                faces.append((p, p+5, p+4, p+3, p+2, p+1))
+                faces.append((p, p + 5, p + 4, p + 3, p + 2, p + 1))
 
                 if props.with_dots:
                     # add cube dot
-                    x += d + (gap/2)
+                    x += d + (gap / 2)
                     y -= gap_dif
 
                     verts += [
                         (x, y, 0),
-                        (x-dot_x, y-dot_y, 0),
-                        (x, y-dot_y-dot_y, 0),
-                        (x+dot_x, y-dot_y, 0),
+                        (x - dot_x, y - dot_y, 0),
+                        (x, y - dot_y - dot_y, 0),
+                        (x + dot_x, y - dot_y, 0),
                     ]
 
                     y += gap_dif
                     x += d + (gap / 2)
 
                     p = len(verts) - 4
-                    faces.append((p, p+3, p+2, p+1))
+                    faces.append((p, p + 3, p + 2, p + 1))
                 else:
                     x += x_leg + gap_dif + d
                     if move_down:
@@ -544,54 +566,55 @@ class JVFlooring(JVBuilderBase):
 
                     move_down = not move_down
 
-            start_y += (2*y_leg) + gap
+            start_y += (2 * y_leg) + gap
 
     @staticmethod
-    def _octagons(dims: tuple, props, verts, faces):  # with dots since octagons cannot fit together otherwise
+    def _octagons(
+        dims: tuple, props, verts, faces
+    ):  # with dots since octagons cannot fit together otherwise
         side_length, gap = props.side_length, props.gap_uniform
         gap_dif = gap * cos(radians(30))
         x_leg = side_length / 2
         y_leg = x_leg / tan(radians(22.5))
 
-        dot_s = ((2 * y_leg + gap) - 2*x_leg - 2*gap_dif) / 2
+        dot_s = ((2 * y_leg + gap) - 2 * x_leg - 2 * gap_dif) / 2
 
         y = y_leg
-        upper_x, upper_y = dims[0] + y_leg, dims[1] + (2*y_leg)
+        upper_x, upper_y = dims[0] + y_leg, dims[1] + (2 * y_leg)
         while y < upper_y:
             x = x_leg
             while x < upper_x:
                 verts += [  # swapping x_leg with y_leg is on purpose
-                    (x-x_leg, y-y_leg, 0),
-                    (x+x_leg, y-y_leg, 0),
-                    (x+y_leg, y-x_leg, 0),
-                    (x+y_leg, y+x_leg, 0),
-
-                    (x+x_leg, y+y_leg, 0),
-                    (x-x_leg, y+y_leg, 0),
-                    (x-y_leg, y+x_leg, 0),
-                    (x-y_leg, y-x_leg, 0)
+                    (x - x_leg, y - y_leg, 0),
+                    (x + x_leg, y - y_leg, 0),
+                    (x + y_leg, y - x_leg, 0),
+                    (x + y_leg, y + x_leg, 0),
+                    (x + x_leg, y + y_leg, 0),
+                    (x - x_leg, y + y_leg, 0),
+                    (x - y_leg, y + x_leg, 0),
+                    (x - y_leg, y - x_leg, 0),
                 ]
 
                 p = len(verts) - 8
-                faces.append((p, p+7, p+6, p+5, p+4, p+3, p+2, p+1))
+                faces.append((p, p + 7, p + 6, p + 5, p + 4, p + 3, p + 2, p + 1))
 
                 x += y_leg + (gap / 2)
                 y -= x_leg + gap_dif
 
                 verts += [
                     (x, y, 0),
-                    (x-dot_s, y-dot_s, 0),
-                    (x, y-dot_s-dot_s, 0),
-                    (x+dot_s, y-dot_s, 0)
+                    (x - dot_s, y - dot_s, 0),
+                    (x, y - dot_s - dot_s, 0),
+                    (x + dot_s, y - dot_s, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 x += y_leg + (gap / 2)
                 y += x_leg + gap_dif
 
-            y += (2*y_leg) + gap
+            y += (2 * y_leg) + gap
 
     @staticmethod
     def _corridor(dims: tuple, props, verts, faces):
@@ -602,9 +625,9 @@ class JVFlooring(JVBuilderBase):
         if first_length_for_fixed_offset == 0:
             first_length_for_fixed_offset = length
 
-        offset_length_variance = JVFlooring._create_variance_function(props.vary_row_offset,
-                                                                      length / 2,
-                                                                      props.row_offset_variance)
+        offset_length_variance = JVFlooring._create_variance_function(
+            props.vary_row_offset, length / 2, props.row_offset_variance
+        )
 
         y = 0
         large = True
@@ -617,7 +640,7 @@ class JVFlooring(JVBuilderBase):
             else:
                 cur_width = half_width
 
-            trimmed_width = min(cur_width, upper_y-y)
+            trimmed_width = min(cur_width, upper_y - y)
             while x < upper_x:
                 cur_length = length
 
@@ -627,17 +650,17 @@ class JVFlooring(JVBuilderBase):
                     else:
                         cur_length = first_length_for_fixed_offset
 
-                trimmed_length = min(cur_length, upper_x-x)
+                trimmed_length = min(cur_length, upper_x - x)
 
                 verts += [
                     (x, y, 0),
-                    (x+trimmed_length, y, 0),
-                    (x+trimmed_length, y+trimmed_width, 0),
-                    (x, y+trimmed_width, 0)
+                    (x + trimmed_length, y, 0),
+                    (x + trimmed_length, y + trimmed_width, 0),
+                    (x, y + trimmed_width, 0),
                 ]
 
                 p = len(verts) - 4
-                faces.append((p, p+3, p+2, p+1))
+                faces.append((p, p + 3, p + 2, p + 1))
 
                 x += cur_length + gap
 

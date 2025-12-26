@@ -11,17 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from . jv_flooring import JVFlooring
-from . jv_siding import JVSiding
-from . jv_roofing import JVRoofing
-from . jv_windows import JVWindows
+from .jv_flooring import JVFlooring
+from .jv_siding import JVSiding
+from .jv_roofing import JVRoofing
+from .jv_windows import JVWindows
 
 
 registered_types = {
     "flooring": JVFlooring,
     "siding": JVSiding,
     "roofing": JVRoofing,
-    "windows": JVWindows
+    "windows": JVWindows,
 }
 
 
