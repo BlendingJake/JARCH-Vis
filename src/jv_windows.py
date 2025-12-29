@@ -13,7 +13,7 @@
 from math import sqrt, radians, acos, asin, sin, cos, tan
 from mathutils import Vector, Euler
 from .jv_builder_base import JVBuilderBase
-from .jv_utils import Units
+from .jv_common_classes import Units
 from typing import Tuple, List
 
 

@@ -14,7 +14,7 @@
 from .jv_builder_base import JVBuilderBase
 from mathutils import Euler, Vector
 from math import atan, cos, radians, sin, asin
-from .jv_utils import Units
+from .jv_common_classes import Units
 
 
 class JVRoofing(JVBuilderBase):

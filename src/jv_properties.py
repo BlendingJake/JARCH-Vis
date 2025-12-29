@@ -1,35 +1,57 @@
 from math import radians
 from typing import Optional
 
+import sys
+
 from bpy.types import Context, PropertyGroup, Object
 from bpy.props import (
-    PointerProperty,
+    BoolProperty,
+    CollectionProperty,
     EnumProperty,
     FloatProperty,
-    BoolProperty,
-    IntProperty,
     FloatVectorProperty,
-    CollectionProperty,
-    StringProperty,
+    IntProperty,
+    PointerProperty,
 )
 import bpy
 
-from .jv_utils import Units
-from .jv_types import get_object_type_handler
+from .jv_common_classes import FaceGroup, Units
+
+
+def get_object_type_handler(*object_types: str):
+    """Get the architecture class (JVFlooring, JVSiding, etc) responsible
+    for constructing the provided object type, which will be a value
+    coming from JVProperties.object_type or object_type_converted
+    """
+    true_type = ""
+    for ot in object_types:
+        if ot != "none":
+            true_type = ot
+            break
+
+    module_name = f"jv_{true_type}"
+    cls_name = f"JV{true_type.title()}"
+    for mod_name, mod in sys.modules.items():
+        if mod_name.endswith(module_name):
+            return getattr(mod, cls_name)
+
+    print(f"Couldn't find {cls_name} in {module_name}")
+    return None
 
 
 def jv_on_property_update(_, context: Context):
     if context.object is None:
-        props = None
-    else:
-        props: Optional[JVProperties] = getattr(context.object, "jv_properties", None)
+        return
 
-    if props is not None and props.update_automatically:
-        converted = props.convert_source_object is not None
-        handler = get_object_type_handler(
-            props.object_type_converted if converted else props.object_type
-        )
-        handler.update(props, context)
+    props: Optional[JVProperties] = getattr(context.object, "jv_properties", None)
+    if props is None or not props.update_automatically:
+        return
+
+    handler = get_object_type_handler(props.object_type_converted, props.object_type)
+    if handler is None:
+        return
+
+    handler.update(props, context)
 
 
 def jv_on_face_group_index_update(_, context: Context):
@@ -59,34 +81,6 @@ def jv_on_face_group_index_update(_, context: Context):
             face.select = face.index in indices
 
         bpy.ops.object.editmode_toggle()
-
-
-class BisectingPlane(PropertyGroup):
-    normal: FloatVectorProperty(name="Normal", size=3, unit="LENGTH")
-
-    # LOCAL
-    center: FloatVectorProperty(name="Center", size=3, unit="LENGTH")
-
-
-class FaceGroup(PropertyGroup):
-    face_indices: StringProperty(name="Face Indices (CSV)", default="")
-
-    is_convex: BoolProperty(
-        name="Convex?",
-        description="Are the faces convex? Aka, are all interior angles <= 180 degrees and are there not cutouts?",
-    )
-
-    boolean_object: PointerProperty(name="Bolean Object", type=Object)
-
-    # the rotation of the face group from the X-Y plane
-    rotation: FloatVectorProperty(subtype="EULER", size=3)
-
-    # LOCAL coordinate of bottom-left corner
-    location: FloatVectorProperty(subtype="TRANSLATION", size=3)
-
-    dimensions: FloatVectorProperty(unit="LENGTH", size=2)
-
-    bisecting_planes: CollectionProperty(name="Bisecting Planes", type=BisectingPlane)
 
 
 class Cutout(PropertyGroup):
@@ -923,9 +917,7 @@ def register():
     from bpy.utils import register_class
     from bpy.types import Object
 
-    register_class(BisectingPlane)
     register_class(Cutout)
-    register_class(FaceGroup)
     register_class(JVProperties)
 
     Object.jv_properties = PointerProperty(
@@ -941,10 +933,8 @@ def unregister():
 
     del Object.jv_properties
 
-    unregister_class(JVProperties)
-    unregister_class(FaceGroup)
     unregister_class(Cutout)
-    unregister_class(BisectingPlane)
+    unregister_class(JVProperties)
 
 
 if __name__ == "__main__":

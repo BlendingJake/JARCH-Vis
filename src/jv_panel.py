@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bpy.types import Panel
-from .jv_types import get_object_type_handler
+from .jv_properties import get_object_type_handler
 
 
 class JVPanel(Panel):
@@ -48,11 +48,15 @@ class JVPanel(Panel):
 
         props = obj.jv_properties
         if context.mode == "OBJECT":
-            if (
-                props.object_type == "none" and props.object_type_converted == "none"
-            ):  # convert
+            true_type = props.object_type
+            if true_type == "none":
+                true_type = props.object_type_converted
+            if true_type == "none":
+                true_type = None
+
+            if true_type is None:  # convert
                 layout.operator("object.jv_convert", icon="MOD_EXPLODE")
-            elif props.object_type != "none" or props.object_type_converted != "none":
+            elif true_type is not None:
                 converted = props.convert_source_object is not None
 
                 if converted:
@@ -61,9 +65,7 @@ class JVPanel(Panel):
                     layout.prop(props, "object_type", icon="MATERIAL")
                 layout.separator()
 
-                handler = get_object_type_handler(
-                    props.object_type_converted if converted else props.object_type
-                )
+                handler = get_object_type_handler(true_type)
                 if handler is not None:
                     handler.draw(props, layout)
 

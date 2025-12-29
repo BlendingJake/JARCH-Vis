@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .jv_builder_base import JVBuilderBase
-from .jv_utils import Units
+from .jv_common_classes import Units
 from math import radians, sqrt, sin, cos
 import bmesh
 import bpy

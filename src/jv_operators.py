@@ -1,22 +1,15 @@
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import Dict, List, Set
 
-import bpy
-import bmesh
+from bmesh.types import BMEdge, BMVert
 from bpy.props import IntProperty, StringProperty
-from .jv_types import get_object_type_handler
+from bpy.types import Context, MeshPolygon, MeshVertex
+
+import bmesh
+import bpy
+
+from .jv_common_classes import Units
+from .jv_properties import JVProperties, get_object_type_handler
 from .jv_utils import (
-    Units,
     determine_face_group_scale_rot_loc,
     determine_bisecting_planes,
 )
@@ -32,9 +25,11 @@ class JVAddObject(bpy.types.Operator):
 
     object_type: StringProperty()
 
-    def execute(self, context):
+    def execute(self, context: Context):
         bpy.ops.mesh.primitive_cube_add()
         o = context.object
+        if o is None:
+            return
 
         o.jv_properties.object_type = self.object_type
 
@@ -46,16 +41,16 @@ class JVDelete(bpy.types.Operator):
     bl_label = "Delete Object"
     bl_description = "JARCH Vis: Delete Object"
 
-    def execute(self, context):
-        props = context.object.jv_properties
-        converted = props.convert_source_object is not None
+    def execute(self, context: Context):
+        if context.object is None:
+            return
 
+        props: JVProperties = context.object.jv_properties
         handler = get_object_type_handler(
-            props.object_type_converted if converted else props.object_type
+            props.object_type, props.object_type_converted
         )
-
         if handler is not None:
-            handler.delete(context.object.jv_properties, context)
+            handler.delete(props, context)
 
         return {"FINISHED"}
 
@@ -67,12 +62,9 @@ class JVUpdate(bpy.types.Operator):
 
     def execute(self, context):
         props = context.object.jv_properties
-        converted = props.convert_source_object is not None
-
         handler = get_object_type_handler(
-            props.object_type_converted if converted else props.object_type
+            props.object_type, props.object_type_converted
         )
-
         if handler is not None:
             handler.update(context.object.jv_properties, context)
 
@@ -85,9 +77,12 @@ class JVConvert(bpy.types.Operator):
     bl_description = "JARCH Vis: Convert Object"
 
     def execute(self, context):
+        if context.object is None:
+            return
+        
         props = context.object.jv_properties
 
-        # if the scale isn't (1.0, 1.0, 1.0) - raise a fuse
+        # if the scale isn't (1.0, 1.0, 1.0) - raise a fuss
         if not all([i == 1 for i in context.object.scale]) or not all(
             [i == 0 for i in context.object.rotation_euler]
         ):
@@ -97,102 +92,104 @@ class JVConvert(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        if len(props.face_groups) == 0:  # no face groups, so try and create one
+        if len(props.face_groups) == 0:
             self.report(
                 {"ERROR"},
                 """Please enter edit mode and create a face group before trying to convert""",
             )
+            return {"FINISHED"}
 
-        # divide the faces up into distinct objects that can be used for the boolean process
-        # point each face group to the corresponding object
-        # create a new object that will contain the architecture and update it
-        else:
-            src = context.object
-            for fg in props.face_groups:
-                indices = set([int(i) for i in fg.face_indices.split(",") if i])
+        # Divide the faces up into distinct objects that can be used for the boolean 
+        # process and point each face group to the corresponding object.
+        # Create a new object that will contain the architecture and update it
+        src = context.object
+        for fg in props.face_groups:
+            indices = set(int(i) for i in fg.face_indices.split(",") if i)
 
-                # collect needed vertices
-                faces = []
-                vertices = set()
-                for face in src.data.polygons:
+            # collect needed vertices
+            faces: List[MeshPolygon] = []
+            vertices: Set[MeshVertex] = set()
+            for face in src.data.polygons:
+                if face.index in indices:
+                    faces.append(face)
+                    for vi in face.vertices:
+                        vertices.add(src.data.vertices[vi])
+
+            # determine loc, rot, dims
+            determine_face_group_scale_rot_loc(faces, list(vertices), fg)
+
+            if fg.is_convex:
+                # If the face group is convex, then we can use bmesh.ops.bisect_plane 
+                # to cut it, so we have to figure out what planes need to be used to 
+                # cut it based on the boundary edges.
+                fg_mesh = bmesh.new()
+                fg_mesh.from_mesh(src.data)
+
+                all_edges: Dict[BMEdge, int] = {}
+                for face in fg_mesh.faces:
                     if face.index in indices:
-                        faces.append(face)
-                        for vi in face.vertices:
-                            vertices.add(src.data.vertices[vi])
+                        for edge in face.edges:
+                            # keep track of how many faces the edge is attached to
+                            if edge in all_edges:
+                                all_edges[edge] += 1
+                            else:
+                                all_edges[edge] = 1
 
-                # determine loc, rot, dims
-                determine_face_group_scale_rot_loc(faces, list(vertices), fg)
+                edges: Set[BMEdge] = set()
+                for edge, count in all_edges.items():
+                    if count == 1:
+                        edges.add(edge)
 
-                if fg.is_convex:
-                    # if the face group is convex, then we can used bmesh.ops.bisect_plane to cut it
-                    # so we have to figure out what planes need to be used to cut it based on the boundary edges
-                    fg_mesh = bmesh.new()
-                    fg_mesh.from_mesh(src.data)
+                fg.bisecting_planes.clear()  # remove any planes from a previous conversion
+                determine_bisecting_planes(edges, vertices, fg, faces[0].normal)
+                fg_mesh.free()
+            else:
+                # If the face group isn't convex, then we have to create a boolean 
+                # object to use as a cutter
+                bm = bmesh.new()
 
-                    all_edges = {}
-                    for face in fg_mesh.faces:
-                        if face.index in indices:
-                            for edge in face.edges:
-                                # keep track of how many faces the edge is attached to
-                                if edge in all_edges:
-                                    all_edges[edge] += 1
-                                else:
-                                    all_edges[edge] = 1
+                # create vertices
+                new_vertex_mappings: Dict[int, BMVert] = {}  # current vertex index -> bmesh vertex
+                for vertex in vertices:
+                    vert = bm.verts.new(vertex.co)
+                    new_vertex_mappings[vertex.index] = vert
 
-                    edges = set()
-                    for edge, count in all_edges.items():
-                        if count == 1:
-                            edges.add(edge)
+                # create faces
+                for face in faces:
+                    bm.faces.new([new_vertex_mappings[i] for i in face.vertices])
 
-                    fg.bisecting_planes.clear()  # remove any planes from a previous conversion
-                    determine_bisecting_planes(edges, vertices, fg, faces[0].normal)
-                    fg_mesh.free()
-                else:
-                    # if the face group isn't convex, then we have to create a boolean object to use as a cutter
-                    bm = bmesh.new()
+                bm.normal_update()
+                bm.verts.ensure_lookup_table()
+                bm.faces.ensure_lookup_table()
 
-                    # create vertices
-                    new_vertex_mappings = {}  # current vertex index -> bmesh vertex
-                    for vertex in vertices:
-                        vert = bm.verts.new(vertex.co)
-                        new_vertex_mappings[vertex.index] = vert
+                # create new object based on this mesh data
+                bpy.ops.mesh.primitive_cube_add()
+                new_obj = context.object
+                new_obj.name = "{}.fg".format(src.name)
 
-                    # create faces
-                    for face in faces:
-                        bm.faces.new([new_vertex_mappings[i] for i in face.vertices])
+                # set rotation, translation
+                new_obj.rotation_euler = src.rotation_euler
+                new_obj.location = src.location
 
-                    bm.normal_update()
-                    bm.verts.ensure_lookup_table()
-                    bm.faces.ensure_lookup_table()
+                # add solidify modifier
+                bpy.ops.object.modifier_add(type="SOLIDIFY")
+                new_obj.modifiers["Solidify"].thickness = 6 * Units.INCH
+                new_obj.modifiers["Solidify"].offset = 0
 
-                    # create new object based on this mesh data
-                    bpy.ops.mesh.primitive_cube_add()
-                    new_obj = context.object
-                    new_obj.name = "{}.fg".format(src.name)
+                bm.to_mesh(new_obj.data)
+                fg.boolean_object = new_obj
+                bm.free()
 
-                    # set rotation, translation
-                    new_obj.rotation_euler = src.rotation_euler
-                    new_obj.location = src.location
+                new_obj.hide_viewport = True
+                new_obj.hide_render = True
 
-                    # add solidify modifier
-                    bpy.ops.object.modifier_add(type="SOLIDIFY")
-                    new_obj.modifiers["Solidify"].thickness = 6 * Units.INCH
-                    new_obj.modifiers["Solidify"].offset = 0
-                    new_obj.location = src.location
+        bpy.ops.mesh.primitive_cube_add()
+        context.object.location = src.location
+        context.object.jv_properties.convert_source_object = src
+        src.hide_viewport = True
 
-                    bm.to_mesh(new_obj.data)
-                    fg.boolean_object = new_obj
-                    bm.free()
-
-                    new_obj.hide_viewport = True
-
-            bpy.ops.mesh.primitive_cube_add()
-            context.object.location = src.location
-            context.object.jv_properties.convert_source_object = src
-            src.hide_viewport = True
-            context.object.jv_properties.object_type_converted = (
-                "roofing"  # will cause an automatic update
-            )
+        # will cause an automatic update
+        context.object.jv_properties.object_type_converted = "roofing"
 
         return {"FINISHED"}
 

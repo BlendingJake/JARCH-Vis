@@ -11,30 +11,43 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import bpy
-import bmesh
-from random import uniform
-from mathutils import Vector, Euler
-from typing import Union, List
 from math import radians, atan
+from random import uniform
+from typing import Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
+
+from bpy.types import Context, Mesh, Object, UILayout
+from bmesh.types import BMEdge, BMFace, BMVert, BMesh
+from mathutils import Euler, Matrix, Vector
+
+import bmesh
+import bpy
+
+from .jv_properties import JVProperties
 from .jv_utils import CuboidalRegion
+
+
+Geometry = List[Union[BMEdge, BMFace, BMVert]]
+VecTuple = Tuple[float, float, float]
 
 
 class JVBuilderBase:
     is_cutable = False
+    """Whether the object supports cutouts"""
+
     is_convertible = False
+    """Whether the object can be converted from FaceGroups"""
 
     @staticmethod
-    def draw(props, layout):
+    def draw(props: JVProperties, layout: UILayout):
         pass
 
     @staticmethod
-    def update(props, context):
+    def update(props: JVProperties, context: Context):
         pass
 
     @staticmethod
-    def delete(props, context):
-        src = props.convert_source_object
+    def delete(props: JVProperties, context: Context):
+        src: Object = props.convert_source_object
 
         if src is not None:  # remove boolean objects if non-convex face groups
             for fg in src.jv_properties.face_groups:
@@ -47,10 +60,11 @@ class JVBuilderBase:
         if src is not None:
             src.hide_viewport = False
             src.select_set(True)
-            context.view_layer.objects.active = src
+            if context.view_layer is not None:
+                context.view_layer.objects.active = src
 
     @staticmethod
-    def _start(context):
+    def _start(context: Context):
         bm = bmesh.new()
         return bm
 
@@ -68,23 +82,30 @@ class JVBuilderBase:
         bpy.ops.object.editmode_toggle()
 
     @staticmethod
-    def _finish(context, bm: bmesh.types.BMesh):
+    def _finish(context: Context, bm: BMesh):
+        if context.object is None or not isinstance(context.object.data, Mesh):
+            return
+
         bm.normal_update()
         bm.to_mesh(context.object.data)
         bm.free()
 
     @staticmethod
-    def _geometry(props, dims: tuple):
+    def _geometry(props: JVProperties, dims: tuple):
         return [], []
 
     @staticmethod
-    def _build_mesh_from_geometry(mesh: bmesh.types.BMesh, vertices: list, faces: list):
-        """
-        Take a bmesh mesh, vertices positions, and face-vertex indices and clear and add the vertices and faces
-        to the mesh object
-        :param mesh: the bmesh object to clear and add the geometry to
-        :param vertices: tuples of the positions of the vertices
-        :param faces: tuples of the indices of the vertices that make up the face
+    def _build_mesh_from_geometry(
+        mesh: BMesh,
+        vertices: List[VecTuple],
+        faces: List[Tuple[int, ...]],
+    ):
+        """Take a bmesh mesh, vertices positions, and face-vertex indices and clear
+        and add the vertices and faces to the mesh object.
+
+        :param mesh: The bmesh object to clear and add the geometry to
+        :param vertices: Tuples of the positions of the vertices
+        :param faces: Tuples of the indices of the vertices that make up the face
         """
         mesh.clear()
         for v in vertices:
@@ -96,30 +117,31 @@ class JVBuilderBase:
         mesh.faces.ensure_lookup_table()
 
     @staticmethod
-    def _solidify(mesh: bmesh.types.BMesh, thickness: Union[callable, float]):
-        """
-        Solidify the mesh. If 'thickness' is callable, then use the normal as the direction
-        :param mesh: the mesh to solidify
-        :param thickness: If thickness is callable, then each new face gets a thickness value from the function.
-                Otherwise, the value will be used consistently.
-        :return:
+    def _solidify(mesh: BMesh, thickness: Union[Callable[[], float], float]):
+        """Solidify the mesh. If 'thickness' is callable, then use the normal
+        as the direction.
+
+        :param mesh: The mesh to solidify
+        :param thickness: If thickness is callable, then each new face gets a
+            thickness value from the function. Otherwise, the value will be
+            used consistently.
         """
         mesh.normal_update()
-        visited = set()
         start_th = 0 if callable(thickness) else thickness
 
-        new_geom = bmesh.ops.solidify(mesh, geom=mesh.faces[:], thickness=start_th)[
-            "geom"
-        ]
+        new_geom: Geometry = bmesh.ops.solidify(
+            mesh, geom=mesh.faces[:], thickness=start_th
+        )["geom"]
 
         # manually add thickness if 'thickness' is callable
         if callable(thickness):
             faces = set()
             for item in new_geom:
-                if isinstance(item, bmesh.types.BMFace):
+                if isinstance(item, BMFace):
                     faces.add(item)
 
             groups = JVBuilderBase._group_connected_faces(faces)
+            visited = set()
             for group in groups:
                 th = thickness()
                 for face in group:
@@ -137,27 +159,35 @@ class JVBuilderBase:
     def _create_variance_function(vary: bool, base_amount: float, variance: float):
         variance /= 100  # convert to decimal
 
-        if vary:
-            return lambda: uniform(
-                base_amount * (1 - variance), base_amount * (1 + variance)
-            )
-        else:
-            return lambda: base_amount
+        def _vary():
+            if not vary:
+                return base_amount
+
+            return uniform(base_amount * (1 - variance), base_amount * (1 + variance))
+
+        return _vary
 
     @staticmethod
-    def _cut_meshes(meshes: list, planes: list, fill_holes=False, remove_geom=True):
-        """
-        Take the bmesh object and bisect it with all the planes given and remove the geometry outside of the planes
-        :param meshes: a list of the meshes to cut
-        :param planes: a list of tuples, each tuple being (plane position, plane normal). The normals should point
-                        towards the center of the mesh, aka, geometry on the opposite side of the normal will be removed
+    def _cut_meshes(
+        meshes: List[BMesh],
+        planes: List[Tuple[VecTuple, VecTuple]],
+        fill_holes=False,
+        remove_geom=True,
+    ):
+        """Take the bmesh object and bisect it with all the planes given and
+        remove the geometry outside of the planes.
+
+        :param meshes: A list of the meshes to cut
+        :param planes: A list of tuples, each tuple being (plane position,
+            plane normal). The normals should point towards the center of the
+            mesh, aka, geometry on the opposite side of the normal will be removed
         """
         for mesh in meshes:
             for plane in planes:
                 pos, normal = plane
                 geom = bmesh.ops.bisect_plane(
                     mesh,
-                    geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:],
+                    geom=[*mesh.faces, *mesh.edges, *mesh.verts],
                     dist=0.001,
                     plane_co=pos,
                     plane_no=normal,
@@ -172,25 +202,27 @@ class JVBuilderBase:
             mesh.verts.ensure_lookup_table()
 
     @staticmethod
-    def _fill_holes(mesh: bmesh.types.BMesh, cut_geometry):
+    def _fill_holes(mesh: BMesh, cut_geometry: Geometry):
+        """Given a mesh and geometry generated by using bisect_plane,
+        fill the holes/ends.
+
+        :param mesh: The mesh to operate on
+        :param cut_geometry: A list of the new vertices, edges, and faces
+            created by bisecting the mesh.
         """
-        Given a mesh and geometry generated by using bisect_plane, fill the holes/ends
-        :param mesh: the mesh to operate
-        :param cut_geometry: a list of the new vertices, edges, and faces created by bisecting the mesh
-        """
-        verts, edges = set(), set()
+        edges: Set[BMEdge] = set()
+        verts: Set[BMVert] = set()
         for item in cut_geometry:
-            if isinstance(item, bmesh.types.BMEdge):
+            if isinstance(item, BMEdge):
                 edges.add(item)
                 verts.add(item.verts[0])
                 verts.add(item.verts[1])
 
-        visited_verts = set()
-        grouped_edges = []
-
+        grouped_edges: List[Set[BMEdge]] = []
+        visited_verts: Set[BMVert] = set()
         for v in verts:
             if v not in visited_verts:
-                group = set()
+                group: Set[BMEdge] = set()
                 JVBuilderBase._get_connected_edges(
                     v, verts, visited_verts, edges, group
                 )
@@ -201,11 +233,16 @@ class JVBuilderBase:
 
     @staticmethod
     def _get_connected_edges(
-        v, all_vs: set, visited_vs: set, edges: Union[dict, set], g: set
+        v: BMVert,
+        all_vs: Set[BMVert],
+        visited_vs: Set[BMVert],
+        edges: Union[dict, Set[BMEdge]],
+        g: Set[BMEdge],
     ):
-        """
-        Starting at a given vertex 'v', follow all attached edges that are in 'edges' and collect them together into 'g'
-        The follow aspect is recursive, and the end result will be all connected edges being put in 'g'
+        """Starting at a given vertex 'v', follow all attached edges that are in 'edges'
+        and collect them together into 'g'. The following aspect is recursive, and the
+        end result will be all connected edges being put in 'g'.
+
         :param v: The vertex to follow
         :param all_vs: A set of all the vertices from the newly created geometry
         :param visited_vs: The vertices that we have visited so far
@@ -227,17 +264,18 @@ class JVBuilderBase:
                         )
 
     @staticmethod
-    def _group_connected_faces(faces: set) -> List[set]:
+    def _group_connected_faces(faces: Set[BMFace]) -> List[Set[BMFace]]:
+        """Take a set of faces and group them together based on whether
+        the faces are connected, aka, share an edge
+
+        :param faces: A set of faces
+        :return: A list of sets of grouped faces
         """
-        Take a set of faces and group them together based on whether the faces are connected, aka, share an edge
-        :param faces: a set of faces
-        :return: a list of sets of grouped faces
-        """
-        groups = []
-        visited = set()
+        groups: List[Set[BMFace]] = []
+        visited: Set[BMFace] = set()
         for face in faces:
             if face not in visited:
-                group = set()
+                group: Set[BMFace] = set()
                 JVBuilderBase._group_connected_faces_worker(face, faces, visited, group)
                 groups.append(group)
 
@@ -245,7 +283,10 @@ class JVBuilderBase:
 
     @staticmethod
     def _group_connected_faces_worker(
-        face: bmesh.types.BMFace, all_faces, visited_faces, group
+        face: BMFace,
+        all_faces: Set[BMFace],
+        visited_faces: Set[BMFace],
+        group: Set[BMFace],
     ):
         group.add(face)
         visited_faces.add(face)
@@ -257,7 +298,7 @@ class JVBuilderBase:
                     )
 
     @staticmethod
-    def _rotate_mesh_vertices(mesh, rotation):
+    def _rotate_mesh_vertices(mesh: BMesh, rotation: Euler):
         for vert in mesh.verts:
             vert.co.rotate(rotation)
 
@@ -266,9 +307,9 @@ class JVBuilderBase:
     @staticmethod
     def _transform_vertex_positions(
         vertices,
-        rotation=Euler((0, 0, 0)),
-        before_translation=Vector((0, 0, 0)),
-        after_translation=Vector((0, 0, 0)),
+        rotation=Euler(),
+        before_translation=Vector(),
+        after_translation=Vector(),
     ):
         for i in range(len(vertices)):
             c = Vector(vertices[i])
@@ -278,29 +319,38 @@ class JVBuilderBase:
             vertices[i] = tuple(c)
 
     @staticmethod
-    def _add_material_index(faces, index: int):
+    def _add_material_index(faces: Iterable[BMFace], index: int):
         for f in faces:
             f.material_index = index
 
     @staticmethod
-    def _add_uv_seams_for_solidified_plane(extruded_geometry, original_edges, mesh):
-        """
-        Add seams to all vertical edges and n-1 of the n top edges to allow the mesh to be unwrapped and lay flat.
-        To determine which top edges should be marked, first, all new vertices are collected, and then the edges
-        connecting them are grouped together based on whether they are connected or not. This groups new edges by
-        board, tile, etc. Next, the number of new faces connected to each edge is used to determine which edges to mark.
-        Only edges connected to one new face will be marked. Then mark all vertical edges
-        :param extruded_geometry: The new vertices, edges, and faces from bmesh.ops.solidify["geom"]
-        :param original_edges: the edges that formed the original plane
+    def _add_uv_seams_for_solidified_plane(
+        extruded_geometry: Geometry,
+        original_edges: List[BMEdge],
+        mesh,
+    ):
+        """Add seams to all vertical edges and n-1 of the n top edges to allow the
+        mesh to be unwrapped and lay flat. To determine which top edges should be
+        marked, first, all new vertices are collected, and then the edges connecting
+        them are grouped together based on whether they are connected or not. This
+        groups new edges by board, tile, etc. Next, the number of new faces connected
+        to each edge is used to determine which edges to mark. Only edges connected to
+        one new face will be marked. Then mark all vertical edges.
+
+        :param extruded_geometry: The new vertices, edges, and faces from
+            bmesh.ops.solidify["geom"]
+        :param original_edges: The edges that formed the original plane
         :param mesh: the current mesh object
         """
-        new_vertices = set()
-        new_faces = set()
-        new_edges = {}  # maps new edge -> count of new faces that share it
+        new_edges: Dict[BMEdge, int] = (
+            {}
+        )  # new edge -> count of new faces that share it
+        new_faces: Set[BMFace] = set()
+        new_vertices: Set[BMVert] = set()
         for item in extruded_geometry:
-            if isinstance(item, bmesh.types.BMEdge):
+            if isinstance(item, BMEdge):
                 new_edges[item] = 0
-            elif isinstance(item, bmesh.types.BMVert):
+            elif isinstance(item, BMVert):
                 new_vertices.add(item)
             else:
                 new_faces.add(item)
@@ -311,11 +361,11 @@ class JVBuilderBase:
                 new_edges[edge] += 1
 
         # group edges by whether they are connected or not
-        visited_vertices = set()
-        grouped_edges = []
+        visited_vertices: Set[BMVert] = set()
+        grouped_edges: List[Set[BMEdge]] = []
         for v in new_vertices:
             if v not in visited_vertices:
-                group = set()
+                group: Set[BMEdge] = set()
                 JVBuilderBase._get_connected_edges(
                     v, new_vertices, visited_vertices, new_edges, group
                 )
@@ -338,13 +388,15 @@ class JVBuilderBase:
                 edge.seam = True
 
     @staticmethod
-    def _cutouts(mesh: bmesh.types.BMesh, props, object_matrix):
-        """
-        For each added cutout, bisect the mesh according to the 6 faces of the cutout cubes. Then manually
-        remove all faces from the mesh that are contained within the cutout cubes.
-        :param mesh: the bmesh mesh
-        :param props: all JV properties
-        :param object_matrix: the matrix of the base object, needed for non-local cutouts
+    def _cutouts(mesh: BMesh, props: JVProperties, object_matrix: Matrix):
+        """For each added cutout, bisect the mesh according to the 6 faces
+        of the cutout cubes. Then manually remove all faces from the mesh
+        that are contained within the cutout cubes.
+
+        :param mesh: The bmesh mesh
+        :param props: All JV properties
+        :param object_matrix: The matrix of the base object, needed for
+            non-local cutouts
         """
         mesh.normal_update()
         inv_matrix = object_matrix.inverted()
@@ -363,7 +415,7 @@ class JVBuilderBase:
 
             # transform plane centers and normals
             center_offset = Vector((hx, hy, hz))
-            planes = []
+            planes: List[Tuple[VecTuple, VecTuple]] = []
             for c, n in center_normals:
                 p_center, p_normal = Vector(c), Vector(n)
 
@@ -372,9 +424,7 @@ class JVBuilderBase:
                 p_center += cutout.location + center_offset
 
                 if not cutout.local:
-                    p_center = (
-                        inv_matrix @ p_center
-                    )  # using new infix matrix multiplication
+                    p_center: Vector = inv_matrix @ p_center
                     p_normal.rotate(inv_rot)
 
                 planes.append((tuple(p_center), tuple(p_normal)))
@@ -382,7 +432,7 @@ class JVBuilderBase:
             for plane_co, plane_normal in planes:
                 bmesh.ops.bisect_plane(
                     mesh,
-                    geom=mesh.faces[:] + mesh.edges[:] + mesh.verts[:],
+                    geom=[*mesh.faces, *mesh.edges, *mesh.verts],
                     dist=0.001,
                     plane_co=plane_co,
                     plane_no=plane_normal,
@@ -393,7 +443,7 @@ class JVBuilderBase:
                 mesh.faces.ensure_lookup_table()
 
             # determine corner locations to know what geometry to remove
-            corners = []
+            corners: List[Vector] = []
             for lz in (-hz, hz):
                 for ly in (-hy, hy):
                     for lx in (-hx, hx):
@@ -429,11 +479,8 @@ class JVBuilderBase:
             JVBuilderBase._clean_mesh(mesh)
 
     @staticmethod
-    def _clean_mesh(mesh: bmesh.types.BMesh):
-        """
-        Remove all vertices and edges that aren't connected to anything
-        :param mesh: the mesh to clean
-        """
+    def _clean_mesh(mesh: BMesh):
+        """Remove all vertices and edges that aren't connected to anything"""
         to_remove = []
         for edge in mesh.edges:
             if edge.is_wire:
@@ -456,26 +503,32 @@ class JVBuilderBase:
 
     @classmethod
     def _generate_mesh_from_converted_object(
-        cls, props, context, rot_offset=(0, 0, 0), geometry_func_name="_geometry"
-    ):
-        """
-        Since the object is converted, go through each face group, creating a new mesh, cutting it,
-        and then joining them all together into a mesh which is returned
-        :param cls: the architecture class to use for generating the geometry
+        cls,
+        props: JVProperties,
+        context: Context,
+        rot_offset=(0, 0, 0),
+        geometry_func_name="_geometry",
+    ) -> BMesh:
+        """Since the object is converted, go through each face group, creating
+        a new mesh, cutting it, and then joining them all together into a mesh
+        which is returned.
+
+        :param cls: The architecture class to use for generating the geometry
         :param props: JVProperties
-        :param context: the current context
-        :param rot_offset: a rotation offset for use with siding as it is built vertically not horizontally
-        :param geometry_func_name: the name of the method on the class that generates the geometry. The method
-            must be take in props and dimensions and return verts and faces
-        :return: the completed mesh
+        :param context: The current context
+        :param rot_offset: A rotation offset for use with siding as it is built
+            vertically not horizontally
+        :param geometry_func_name: The name of the method on the class that
+            generates the geometry. The method must be take in props and
+            dimensions and return verts and faces
         """
-        objects = []
+        objects: List[Object] = []
         main_obj = context.object
         src = props.convert_source_object
 
         for fg in src.jv_properties.face_groups:  # face groups on original object
             verts, faces = getattr(cls, geometry_func_name)(props, tuple(fg.dimensions))
-            rotated_verts = []
+            rotated_verts: List[VecTuple] = []
 
             # rotate and shift vertices
             rot = Euler([fg.rotation[i] + rot_offset[i] for i in range(3)])
@@ -507,7 +560,8 @@ class JVBuilderBase:
             else:
                 bpy.ops.object.modifier_add(type="BOOLEAN")
                 new_obj.modifiers["Boolean"].object = fg.boolean_object
-                bpy.ops.object.modifier_apply(apply_as="DATA", modifier="Boolean")
+                new_obj.modifiers["Boolean"].operation = 'INTERSECT'
+                bpy.ops.object.modifier_apply(modifier="Boolean")
 
             mesh.free()
 
@@ -533,7 +587,7 @@ class JVBuilderBase:
         return bm
 
     @staticmethod
-    def _slope_top(props, meshes):
+    def _slope_top(props: JVProperties, meshes: List[BMesh]):
         # clock-wise is positive for angles in mathutils
         center = Vector((props.length / 2, 0, props.height))
         center += props.pitch_offset
@@ -549,7 +603,7 @@ class JVBuilderBase:
         )
 
     @staticmethod
-    def _mortar_geometry(props, dims: tuple):
+    def _mortar_geometry(props: JVProperties, dims: Tuple[float, float]):
         # account for jointing
         upper_x, upper_z = dims
         th = props.thickness_thick * (1 - (props.grout_depth / 100)) + props.gap_uniform
@@ -567,21 +621,16 @@ class JVBuilderBase:
         return verts, faces
 
     @staticmethod
-    def _mirror(mesh, axis="X"):
-        """
-        Duplicate and mirror existing geometry across the specified axis
-        :param mesh: the mesh to duplicate and mirror
-        :param axis: the axis to mirror across, must be in {'X', 'Y', 'Z'}
-        :return:
-        """
+    def _mirror(mesh: BMesh, axis: Literal["X", "Y", "Z"] = "X"):
+        """Duplicate and mirror existing geometry across the specified axis"""
         # duplicate geometry
-        new_geom = bmesh.ops.duplicate(
-            mesh, geom=mesh.verts[:] + mesh.edges[:] + mesh.faces[:]
+        new_geom: Geometry = bmesh.ops.duplicate(
+            mesh, geom=[*mesh.verts, *mesh.edges, *mesh.faces]
         )["geom"]
 
         i = {"X": 1, "Y": 0, "Z": 2}[axis.upper()]
         for item in new_geom:
-            if isinstance(item, bmesh.types.BMVert):
+            if isinstance(item, BMVert):
                 item.co[i] *= -1
 
         mesh.verts.ensure_lookup_table()
