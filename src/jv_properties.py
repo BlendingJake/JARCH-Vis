@@ -15,7 +15,7 @@ from bpy.props import (
 )
 import bpy
 
-from .jv_common_classes import FaceGroup, Units
+from .jv_common_classes import FaceGroup, RoofingPattern, Units
 
 
 def get_object_type_handler(*object_types: str):
@@ -204,13 +204,13 @@ class JVProperties(PropertyGroup):
     roofing_pattern: EnumProperty(
         name="Pattern",
         items=(
-            ("tin_regular", "Tin - Regular", ""),
-            ("tin_angular", "Tin - Angular", ""),
-            ("tin_standing_seam", "Tin - Standing Seam", ""),
-            ("shingles_3_tab", "Shingles - 3 Tab", ""),
-            ("shingles_architectural", "Shingles - Architectural", ""),
-            ("shakes", "Shakes", ""),
-            ("terracotta", "Terracotta", ""),
+            (RoofingPattern.TinRegular, "Tin - Regular", ""),
+            (RoofingPattern.TinAngular, "Tin - Angular", ""),
+            (RoofingPattern.TinStandingSeam, "Tin - Standing Seam", ""),
+            (RoofingPattern.Shingles3Tab, "Shingles - 3 Tab", ""),
+            (RoofingPattern.ShinglesArchitectural, "Shingles - Architectural", ""),
+            (RoofingPattern.Shakes, "Shakes", ""),
+            (RoofingPattern.Terracotta, "Terracotta", ""),
         ),
         default="tin_regular",
         description="Roofing Pattern",

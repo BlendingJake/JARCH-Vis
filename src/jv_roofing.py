@@ -11,10 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .jv_builder_base import JVBuilderBase
-from mathutils import Euler, Vector
 from math import atan, cos, radians, sin, asin
-from .jv_common_classes import Units
+
+from mathutils import Euler, Vector
+
+from .jv_builder_base import JVBuilderBase
+from .jv_common_classes import RoofingPattern as Pattern, Units
 
 
 class JVRoofing(JVBuilderBase):
@@ -26,29 +28,30 @@ class JVRoofing(JVBuilderBase):
         layout.prop(props, "roofing_pattern", icon="MOD_TRIANGULATE")
 
         layout.separator()
-        row = layout.row()
-        row.prop(props, "width")
-        row.prop(props, "length")
-
+        # Only show width/length and pitch of not a converted object
         if props.convert_source_object is None:
+            row = layout.row()
+            row.prop(props, "width")
+            row.prop(props, "length")
+
             layout.prop(props, "pitch")
 
-        if props.roofing_pattern == "tin_standing_seam":
+        if props.roofing_pattern == Pattern.TinStandingSeam:
             layout.separator()
             layout.prop(props, "pan_width")
-        elif props.roofing_pattern == "shakes":
+        elif props.roofing_pattern == Pattern.Shakes:
             layout.separator()
             row = layout.row()
             row.prop(props, "shake_length")
             row.prop(props, "shake_width")
-        elif props.roofing_pattern == "terracotta":
+        elif props.roofing_pattern == Pattern.Terracotta:
             layout.separator()
             row = layout.row()
             row.prop(props, "tile_length")
             row.prop(props, "terracotta_radius")
 
         # row offset
-        if props.roofing_pattern in ("shingles_3_tab", "shakes"):
+        if props.roofing_pattern in (Pattern.Shingles3Tab, Pattern.Shakes):
             layout.separator()
             row = layout.row()
 
@@ -60,16 +63,16 @@ class JVRoofing(JVBuilderBase):
 
         # thickness
         if props.roofing_pattern in (
-            "shingles_3_tab",
-            "shingles_architectural",
-            "shakes",
-            "terracotta",
+            Pattern.Shingles3Tab,
+            Pattern.ShinglesArchitectural,
+            Pattern.Shakes,
+            Pattern.Terracotta,
         ):
             layout.separator()
             layout.prop(props, "thickness_thin")
 
         # terracotta spacing and resolution
-        if props.roofing_pattern == "terracotta":
+        if props.roofing_pattern == Pattern.Terracotta:
             layout.separator()
             layout.prop(props, "terracotta_gap")
 
@@ -77,7 +80,7 @@ class JVRoofing(JVBuilderBase):
             layout.prop(props, "terracotta_resolution")
 
         # gap
-        if props.roofing_pattern == "shakes":
+        if props.roofing_pattern == Pattern.Shakes:
             layout.separator()
             layout.prop(props, "gap_uniform")
 
@@ -99,19 +102,19 @@ class JVRoofing(JVBuilderBase):
 
             # overall dimension cutting - length
             if props.roofing_pattern in (
-                "tin_regular",
-                "tin_angular",
-                "tin_standing_seam",
-                "shingles_3_tab",
-                "shingles_architectural",
-                "terracotta",
+                Pattern.TinRegular,
+                Pattern.TinAngular,
+                Pattern.TinStandingSeam,
+                Pattern.Shingles3Tab,
+                Pattern.ShinglesArchitectural,
+                Pattern.Terracotta,
             ):
                 JVRoofing._cut_meshes([mesh], [((props.length, 0, 0), (-1, 0, 0))])
             # overall dimension cutting - width
             if props.roofing_pattern in (
-                "shingles_3_tab",
-                "shingles_architectural",
-                "terracotta",
+                Pattern.Shingles3Tab,
+                Pattern.ShinglesArchitectural,
+                Pattern.Terracotta,
             ):
                 JVRoofing._cut_meshes(
                     [mesh],
@@ -140,10 +143,10 @@ class JVRoofing(JVBuilderBase):
         # solidify
         new_geometry = []
         if props.roofing_pattern in (
-            "shingles_3_tab",
-            "shingles_architectural",
-            "shakes",
-            "terracotta",
+            Pattern.Shingles3Tab,
+            Pattern.ShinglesArchitectural,
+            Pattern.Shakes,
+            Pattern.Terracotta,
         ):
             new_geometry += JVRoofing._solidify(mesh, props.thickness_thin)
 

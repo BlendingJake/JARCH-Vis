@@ -79,7 +79,7 @@ class JVConvert(bpy.types.Operator):
     def execute(self, context):
         if context.object is None:
             return
-        
+
         props = context.object.jv_properties
 
         # if the scale isn't (1.0, 1.0, 1.0) - raise a fuss
@@ -99,7 +99,7 @@ class JVConvert(bpy.types.Operator):
             )
             return {"FINISHED"}
 
-        # Divide the faces up into distinct objects that can be used for the boolean 
+        # Divide the faces up into distinct objects that can be used for the boolean
         # process and point each face group to the corresponding object.
         # Create a new object that will contain the architecture and update it
         src = context.object
@@ -119,8 +119,8 @@ class JVConvert(bpy.types.Operator):
             determine_face_group_scale_rot_loc(faces, list(vertices), fg)
 
             if fg.is_convex:
-                # If the face group is convex, then we can use bmesh.ops.bisect_plane 
-                # to cut it, so we have to figure out what planes need to be used to 
+                # If the face group is convex, then we can use bmesh.ops.bisect_plane
+                # to cut it, so we have to figure out what planes need to be used to
                 # cut it based on the boundary edges.
                 fg_mesh = bmesh.new()
                 fg_mesh.from_mesh(src.data)
@@ -144,12 +144,14 @@ class JVConvert(bpy.types.Operator):
                 determine_bisecting_planes(edges, vertices, fg, faces[0].normal)
                 fg_mesh.free()
             else:
-                # If the face group isn't convex, then we have to create a boolean 
+                # If the face group isn't convex, then we have to create a boolean
                 # object to use as a cutter
                 bm = bmesh.new()
 
                 # create vertices
-                new_vertex_mappings: Dict[int, BMVert] = {}  # current vertex index -> bmesh vertex
+                new_vertex_mappings: Dict[int, BMVert] = (
+                    {}
+                )  # current vertex index -> bmesh vertex
                 for vertex in vertices:
                     vert = bm.verts.new(vertex.co)
                     new_vertex_mappings[vertex.index] = vert

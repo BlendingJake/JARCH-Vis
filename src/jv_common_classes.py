@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
@@ -39,6 +41,21 @@ class FaceGroup(PropertyGroup):
     dimensions: FloatVectorProperty(unit="LENGTH", size=2)
 
     bisecting_planes: CollectionProperty(name="Bisecting Planes", type=BisectingPlane)
+
+
+class RoofingPattern(StrEnum):
+    """The unique names for all of the types of roofing which are
+    supported. These are the keys given to the EnumProperty which
+    can then be used for comparison checks later.
+    """
+
+    Shakes = "shakes"
+    Shingles3Tab = "shingles_3_tab"
+    ShinglesArchitectural = "shingles_architectural"
+    Terracotta = "terracotta"
+    TinAngular = "tin_angular"
+    TinRegular = "tin_regular"
+    TinStandingSeam = "tin_standing_seam"
 
 
 class Units:

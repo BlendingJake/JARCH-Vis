@@ -560,7 +560,7 @@ class JVBuilderBase:
             else:
                 bpy.ops.object.modifier_add(type="BOOLEAN")
                 new_obj.modifiers["Boolean"].object = fg.boolean_object
-                new_obj.modifiers["Boolean"].operation = 'INTERSECT'
+                new_obj.modifiers["Boolean"].operation = "INTERSECT"
                 bpy.ops.object.modifier_apply(modifier="Boolean")
 
             mesh.free()
